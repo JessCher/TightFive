@@ -1,18 +1,38 @@
-//
-//  Bit.swift
-//  TightFive
-//
-//  Created by Jesse Cherry on 1/20/26.
-//
+import Foundation
+import SwiftData
 
-import SwiftUI
-
-struct Bit: View {
-    var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
-    }
+enum BitStatus: String, Codable, CaseIterable {
+    case loose
+    case finished
 }
 
-#Preview {
-    Bit()
+@Model
+final class Bit {
+    var id: UUID
+    var text: String
+    var createdAt: Date
+    var updatedAt: Date
+    var statusRaw: String
+
+    init(text: String, status: BitStatus = .loose) {
+        self.id = UUID()
+        self.text = text
+        let now = Date()
+        self.createdAt = now
+        self.updatedAt = now
+        self.statusRaw = status.rawValue
+    }
+
+    var status: BitStatus {
+        get { BitStatus(rawValue: statusRaw) ?? .loose }
+        set { statusRaw = newValue.rawValue }
+    }
+
+    var titleLine: String {
+        let first = text
+            .split(whereSeparator: \.isNewline)
+            .first
+            .map(String.init) ?? ""
+        return first.isEmpty ? "Untitled Bit" : first
+    }
 }

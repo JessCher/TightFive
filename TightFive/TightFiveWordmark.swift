@@ -1,18 +1,19 @@
-//
-//  TightFiveWordmark.swift
-//  TightFive
-//
-//  Created by Jesse Cherry on 1/20/26.
-//
-
 import SwiftUI
 
 struct TightFiveWordmark: View {
-    var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
-    }
-}
+    var size: CGFloat = 18
 
-#Preview {
-    TightFiveWordmark()
+    var body: some View {
+        HStack(spacing: 1) {
+            Text("TIGHT")
+                .font(.custom("Chalkduster", size: size))
+                .foregroundStyle(.white)
+
+            Text("FIVE")
+                .font(.custom("Chalkduster", size: size))
+                .foregroundStyle(Color("TFYellow"))
+        }
+        .kerning(1.2)
+        .accessibilityLabel("TightFive")
+    }
 }

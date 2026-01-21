@@ -1,18 +1,37 @@
-//
-//  RootTabs.swift
-//  TightFive
-//
-//  Created by Jesse Cherry on 1/20/26.
-//
-
 import SwiftUI
 
 struct RootTabs: View {
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        TabView {
+            HomeView()
+                .tabItem { Label("Home", systemImage: "house.fill") }
+
+            LooseBitsView(mode: .all)
+                .tabItem { Label("Bits", systemImage: "square.stack.3d.up.fill") }
+
+            RunModePlaceholderView()
+                .tabItem { Label("Run Mode", systemImage: "timer") }
+
+            MorePlaceholderView()
+                .tabItem { Label("More", systemImage: "ellipsis") }
+        }
     }
 }
 
-#Preview {
-    RootTabs()
+private struct RunModePlaceholderView: View {
+    var body: some View {
+        NavigationStack {
+            ContentUnavailableView("Run Mode", systemImage: "timer", description: Text("Coming soon."))
+                .navigationTitle("Run Mode")
+        }
+    }
+}
+
+private struct MorePlaceholderView: View {
+    var body: some View {
+        NavigationStack {
+            ContentUnavailableView("More", systemImage: "ellipsis", description: Text("Coming soon."))
+                .navigationTitle("More")
+        }
+    }
 }
