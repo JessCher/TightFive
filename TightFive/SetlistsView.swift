@@ -1,21 +1,13 @@
 import SwiftUI
+import SwiftUI
 import SwiftData
+import UIKit
 
 struct SetlistsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Setlist.updatedAt, order: .reverse) private var setlists: [Setlist]
 
-    @State private var query: String = ""
-    @State private var showNew = false
     @State private var newlyCreated: Setlist?
-
-    private var filtered: [Setlist] {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return setlists }
-        return setlists.filter {
-            $0.title.localizedCaseInsensitiveContains(q)
-        }
-    }
 
     var body: some View {
         NavigationStack {
@@ -40,6 +32,7 @@ struct SetlistsView: View {
 
                 Spacer()
             }
+            .hideKeyboardInteractively()
             .padding()
             .navigationTitle("Set lists")
             .navigationBarTitleDisplayMode(.inline)
@@ -217,6 +210,8 @@ struct SetlistEditorView: View {
                 }
         }
         .tfBackground()
+        .hideKeyboardInteractively()
+        // Swipe-down keyboard dismissal now works with .hideKeyboardInteractively()
         .background(NavigationGestureDisabler())
         .onDisappear { saveContext(reason: "onDisappear") }
         .task { saveContext(reason: "onAppear task") }
@@ -302,6 +297,7 @@ struct SetlistEditorView: View {
         }
     }
 }
+
 private extension SetlistEditorView {
     func duplicateSetlist() {
         let copy = Setlist(title: setlist.title, bodyRTF: setlist.bodyRTF, isDraft: setlist.isDraft)
@@ -310,6 +306,7 @@ private extension SetlistEditorView {
     }
 
     func copyTextToClipboard() {
+        // Relies on RTFHelpers.swift
         guard let attributed = NSAttributedString.fromRTF(setlist.bodyRTF) else { return }
         UIPasteboard.general.string = attributed.string
     }
@@ -332,7 +329,6 @@ private extension SetlistEditorView {
     func scheduleDebouncedSave(reason: String, delay: TimeInterval = 0.5) {
         saveWorkItem?.cancel()
         let work = DispatchWorkItem { [weak undoManager] in
-            // Access undoManager to keep reference alive if needed
             _ = undoManager
             saveContext(reason: reason)
         }
@@ -341,14 +337,23 @@ private extension SetlistEditorView {
     }
 }
 
-private extension NSAttributedString {
-    static func fromRTF(_ data: Data) -> NSAttributedString? {
-        guard !data.isEmpty else { return NSAttributedString(string: "") }
-        return try? NSAttributedString(
-            data: data,
-            options: [.documentType: NSAttributedString.DocumentType.rtf],
-            documentAttributes: nil
-        )
+struct SetlistDetailView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.undoManager) private var undoManager
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var setlist: Setlist
+
+    var body: some View {
+        VStack {
+            RichTextEditor(rtfData: $setlist.bodyRTF)
+                .ignoresSafeArea(.keyboard, edges: .bottom)
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                TFWordmarkTitle(title: "Detail", size: 22)
+                    .offset(x: -6)
+            }
+        }
+        .hideKeyboardInteractively()
     }
 }
-

@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		883A78622F21E89E00FFA78E /* DELETION_NOTES.md in Resources */ = {isa = PBXBuildFile; fileRef = 883A78612F21E89E00FFA78E /* DELETION_NOTES.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		888E3FE82F20526B00678706 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +28,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		883A78612F21E89E00FFA78E /* DELETION_NOTES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DELETION_NOTES.md; sourceTree = "<group>"; };
 		888E3FD82F20526900678706 /* TightFive.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TightFive.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		888E3FE72F20526B00678706 /* TightFiveTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TightFiveTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		888E3FF12F20526B00678706 /* TightFiveUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TightFiveUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -98,6 +103,7 @@
 				888E3FEA2F20526B00678706 /* TightFiveTests */,
 				888E3FF42F20526B00678706 /* TightFiveUITests */,
 				888E3FD92F20526900678706 /* Products */,
+				883A78612F21E89E00FFA78E /* DELETION_NOTES.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -232,6 +238,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				883A78622F21E89E00FFA78E /* DELETION_NOTES.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -419,6 +426,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TightFive/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Tight Five needs access to the microphone to hear your dictation.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Tight Five needs to analyze your speech to transcribe your jokes.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -464,6 +473,8 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TightFive/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Tight Five needs access to the microphone to hear your dictation.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Tight Five needs to analyze your speech to transcribe your jokes.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

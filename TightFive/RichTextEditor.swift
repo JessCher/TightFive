@@ -7,31 +7,47 @@ struct RichTextEditor: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeUIView(context: Context) -> UITextView {
-        let tv = UITextView()
-        tv.backgroundColor = .clear
-        tv.keyboardDismissMode = .none
-        tv.textContainerInset = UIEdgeInsets(top: 16, left: 14, bottom: 24, right: 14)
-        tv.delegate = context.coordinator
-        context.coordinator.textView = tv
-
-        // Load existing RTF
-        if let attributed = NSAttributedString.fromRTF(rtfData) {
-            tv.attributedText = attributed
-        } else {
-            tv.attributedText = NSAttributedString(string: "")
+        let textView = UITextView()
+        
+        // CRITICAL FIX 1: Give the coordinator a reference to the text view
+        context.coordinator.textView = textView
+        textView.delegate = context.coordinator
+        
+        // VISUAL CONFIG
+        textView.backgroundColor = .clear
+        textView.textColor = .white
+        textView.font = UIFont.systemFont(ofSize: 17)
+        
+        // BEHAVIOR CONFIG
+        textView.isScrollEnabled = true
+        textView.isEditable = true
+        textView.isUserInteractionEnabled = true
+        
+        // KEYBOARD DISMISSAL: Use .interactive for built-in swipe-to-dismiss
+        // This works in combination with the SwiftUI gesture handlers
+        textView.keyboardDismissMode = .interactive
+        
+        // Set the initial RTF data
+        // Uses the helper from RTFHelpers.swift if available, or standard init
+        if let attributedString = try? NSAttributedString(
+            data: rtfData,
+            options: [.documentType: NSAttributedString.DocumentType.rtf],
+            documentAttributes: nil
+        ) {
+            textView.attributedText = attributedString
         }
-
-        context.coordinator.applyDefaultTypingAttributes()
-        tv.inputAccessoryView = context.coordinator.makeFloatingAccessoryBar()
-
-        // initial state
-        context.coordinator.updateFormatButtonStates()
-
-        return tv
+        
+        // CRITICAL FIX 2: Use your custom Floating Bar
+        textView.inputAccessoryView = context.coordinator.makeFloatingAccessoryBar()
+        
+        return textView
     }
 
     func updateUIView(_ uiView: UITextView, context: Context) {
+        // Only update if the data has actually changed to prevent cursor jumping
+        // Relies on RTFHelpers.swift for .rtfData() and .fromRTF()
         let current = uiView.attributedText.rtfData() ?? Data()
+        
         if current != rtfData, let attributed = NSAttributedString.fromRTF(rtfData) {
             uiView.attributedText = attributed
             context.coordinator.applyDefaultTypingAttributes()
@@ -59,9 +75,9 @@ struct RichTextEditor: UIViewRepresentable {
         private weak var colorMenuButton: UIButton?
 
         // MARK: - UI constants
-        private let barHeight: CGFloat = 66            // taller than before
-        private let buttonW: CGFloat = 44              // universal size
-        private let buttonH: CGFloat = 36              // universal size
+        private let barHeight: CGFloat = 60           // Slightly more compact
+        private let buttonW: CGFloat = 44             // universal size
+        private let buttonH: CGFloat = 36             // universal size
         private let buttonCorner: UIButton.Configuration.CornerStyle = .capsule
 
         init(_ parent: RichTextEditor) {
@@ -71,6 +87,7 @@ struct RichTextEditor: UIViewRepresentable {
 
         // MARK: - UITextView delegate
         func textViewDidChange(_ textView: UITextView) {
+            // Relies on RTFHelpers.swift
             parent.rtfData = textView.attributedText.rtfData() ?? Data()
             updateFormatButtonStates()
         }
@@ -136,20 +153,25 @@ struct RichTextEditor: UIViewRepresentable {
             let container = UIView(frame: CGRect(x: 0, y: 0, width: 0, height: barHeight))
             container.backgroundColor = .clear
 
-            // Floating blur pill
-            let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
-            blur.translatesAutoresizingMaskIntoConstraints = false
-            blur.layer.cornerRadius = 20
-            blur.clipsToBounds = true
+            // Brand-styled card background
+            let cardBackground = UIView()
+            cardBackground.translatesAutoresizingMaskIntoConstraints = false
+            cardBackground.backgroundColor = UIColor(named: "TFCard") ?? UIColor(white: 0.15, alpha: 1.0)
+            cardBackground.layer.cornerRadius = 20 // Match TFTheme corner radius
+            cardBackground.clipsToBounds = false
+            
+            // Subtle stroke border (matching TFCardStroke)
+            cardBackground.layer.borderWidth = 1
+            cardBackground.layer.borderColor = (UIColor(named: "TFCardStroke") ?? UIColor.white.withAlphaComponent(0.2)).cgColor
 
-            // Shadow host
+            // Shadow host (matching brand shadow style)
             let shadowHost = UIView()
             shadowHost.translatesAutoresizingMaskIntoConstraints = false
             shadowHost.backgroundColor = .clear
             shadowHost.layer.shadowColor = UIColor.black.cgColor
-            shadowHost.layer.shadowOpacity = 0.35
+            shadowHost.layer.shadowOpacity = 0.28 // Match TFTheme shadow
             shadowHost.layer.shadowRadius = 18
-            shadowHost.layer.shadowOffset = CGSize(width: 0, height: 10)
+            shadowHost.layer.shadowOffset = CGSize(width: 0, height: 12) // Match brand y:12
 
             let scroll = UIScrollView()
             scroll.translatesAutoresizingMaskIntoConstraints = false
@@ -157,21 +179,20 @@ struct RichTextEditor: UIViewRepresentable {
 
             let stack = UIStackView()
             stack.axis = .horizontal
-            stack.spacing = 10
+            stack.spacing = 8
             stack.alignment = .center
             stack.translatesAutoresizingMaskIntoConstraints = false
-            stack.setContentHuggingPriority(.required, for: .vertical)
-            stack.setContentCompressionResistancePriority(.required, for: .vertical)
 
             func makePillButton(_ title: String, action: Selector) -> UIButton {
                 var config = UIButton.Configuration.filled()
-                config.baseBackgroundColor = UIColor.white.withAlphaComponent(0.10)
+                // Brand-styled button background (subtle white overlay on card)
+                config.baseBackgroundColor = UIColor.white.withAlphaComponent(0.08)
                 config.baseForegroundColor = UIColor.white
-                config.cornerStyle = buttonCorner
-                config.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 0, bottom: 10, trailing: 0)
+                config.cornerStyle = .capsule // Keep capsule for pill shape
+                config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0)
                 config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
                     var out = incoming
-                    out.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+                    out.font = UIFont.systemFont(ofSize: 15, weight: .semibold) // Slightly bolder for brand
                     return out
                 }
 
@@ -187,15 +208,22 @@ struct RichTextEditor: UIViewRepresentable {
                 return b
             }
 
-            // Font size (moved to front)
+            // --- TOOLBAR ITEMS ---
+            
+            // 1. Font Size
             stack.addArrangedSubview(makePillButton("A−", action: #selector(decreaseFontSize)))
             stack.addArrangedSubview(makePillButton("A+", action: #selector(increaseFontSize)))
 
-            // Formatting buttons (store refs so we can highlight them)
+            // 2. Formatting (BIUS)
             let bBold = makePillButton("B", action: #selector(boldTapped))
             let bItalic = makePillButton("I", action: #selector(italicTapped))
             let bUnderline = makePillButton("U", action: #selector(underlineTapped))
             let bStrike = makePillButton("S", action: #selector(strikeTapped))
+            
+            // Adjust fonts for icons
+            bBold.titleLabel?.font = .systemFont(ofSize: 15, weight: .bold)
+            bItalic.titleLabel?.font = .italicSystemFont(ofSize: 15)
+            
             boldButton = bBold
             italicButton = bItalic
             underlineButton = bUnderline
@@ -206,79 +234,77 @@ struct RichTextEditor: UIViewRepresentable {
             stack.addArrangedSubview(bUnderline)
             stack.addArrangedSubview(bStrike)
 
-            // Lists
+            // 3. Lists
             stack.addArrangedSubview(makePillButton("•", action: #selector(toggleBullets)))
             stack.addArrangedSubview(makePillButton("1.", action: #selector(toggleNumbers)))
             stack.addArrangedSubview(makePillButton("☐", action: #selector(toggleCheckbox)))
 
-            // Indent
-            stack.addArrangedSubview(makePillButton("⇥", action: #selector(indent)))
-            stack.addArrangedSubview(makePillButton("⇤", action: #selector(outdent)))
+            // 4. Indent
+            stack.addArrangedSubview(makePillButton("→", action: #selector(indent)))
+            stack.addArrangedSubview(makePillButton("←", action: #selector(outdent)))
 
-            // Headings (keep short)
+            // 5. Headings
             stack.addArrangedSubview(makePillButton("H1", action: #selector(heading1)))
             stack.addArrangedSubview(makePillButton("H2", action: #selector(heading2)))
 
-            // Color menu button (single)
-            let colorBtn = makePillButton("🎨", action: #selector(openColorMenu))
+            // 6. Color
+            let colorBtn = makePillButton("Color", action: #selector(openColorMenu))
+            // Override width for "Color" text
+            colorBtn.removeConstraints(colorBtn.constraints.filter { $0.firstAttribute == .width })
+            colorBtn.widthAnchor.constraint(equalToConstant: 60).isActive = true
+            
             colorMenuButton = colorBtn
             configureColorMenu(on: colorBtn)
-            // Important: show menu on tap instead of calling action
             colorBtn.removeTarget(self, action: #selector(openColorMenu), for: .touchUpInside)
             colorBtn.showsMenuAsPrimaryAction = true
-
             stack.addArrangedSubview(colorBtn)
 
-            // Clear + Done (still universal size)
-            stack.addArrangedSubview(makePillButton("Clr", action: #selector(clearFormatting)))
-
+            // 7. Done Button (BRAND YELLOW - Primary action)
             let done = makePillButton("Done", action: #selector(doneTapped))
-            done.configuration?.baseBackgroundColor = UIColor.systemBlue.withAlphaComponent(0.85)
+            // Use TFYellow from assets or fallback to brand yellow
+            let tfYellow = UIColor(named: "TFYellow") ?? UIColor(red: 0.95, green: 0.76, blue: 0.09, alpha: 1.0)
+            done.configuration?.baseBackgroundColor = tfYellow
+            done.configuration?.baseForegroundColor = .black // Black text on yellow
             done.configuration?.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
                 var out = incoming
-                out.font = UIFont.systemFont(ofSize: 13, weight: .bold)
+                out.font = UIFont.systemFont(ofSize: 15, weight: .bold) // Match button weight
                 return out
             }
+            // Override width for "Done"
+            done.removeConstraints(done.constraints.filter { $0.firstAttribute == .width })
+            done.widthAnchor.constraint(equalToConstant: 60).isActive = true
+            
             stack.addArrangedSubview(done)
 
+            // Layout
             container.addSubview(shadowHost)
-            shadowHost.addSubview(blur)
-            blur.contentView.addSubview(scroll)
+            shadowHost.addSubview(cardBackground)
+            cardBackground.addSubview(scroll)
             scroll.addSubview(stack)
 
             NSLayoutConstraint.activate([
-                shadowHost.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
-                shadowHost.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
-                shadowHost.topAnchor.constraint(equalTo: container.topAnchor, constant: 6),
-                shadowHost.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -10),
+                shadowHost.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 10),
+                shadowHost.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -10),
+                shadowHost.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+                shadowHost.heightAnchor.constraint(equalToConstant: 50),
 
-                blur.leadingAnchor.constraint(equalTo: shadowHost.leadingAnchor),
-                blur.trailingAnchor.constraint(equalTo: shadowHost.trailingAnchor),
-                blur.topAnchor.constraint(equalTo: shadowHost.topAnchor),
-                blur.bottomAnchor.constraint(equalTo: shadowHost.bottomAnchor),
+                cardBackground.leadingAnchor.constraint(equalTo: shadowHost.leadingAnchor),
+                cardBackground.trailingAnchor.constraint(equalTo: shadowHost.trailingAnchor),
+                cardBackground.topAnchor.constraint(equalTo: shadowHost.topAnchor),
+                cardBackground.bottomAnchor.constraint(equalTo: shadowHost.bottomAnchor),
 
-                scroll.leadingAnchor.constraint(equalTo: blur.contentView.leadingAnchor, constant: 10),
-                scroll.trailingAnchor.constraint(equalTo: blur.contentView.trailingAnchor, constant: -10),
-                scroll.topAnchor.constraint(equalTo: blur.contentView.topAnchor, constant: 8),
-                scroll.bottomAnchor.constraint(equalTo: blur.contentView.bottomAnchor, constant: -8),
+                scroll.leadingAnchor.constraint(equalTo: cardBackground.leadingAnchor, constant: 6),
+                scroll.trailingAnchor.constraint(equalTo: cardBackground.trailingAnchor, constant: -6),
+                scroll.topAnchor.constraint(equalTo: cardBackground.topAnchor),
+                scroll.bottomAnchor.constraint(equalTo: cardBackground.bottomAnchor),
 
                 stack.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
                 stack.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
-                stack.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor),
-                stack.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor)
-                // Removed: stack.heightAnchor.constraint(equalTo: scroll.frameLayoutGuide.heightAnchor)
+                stack.centerYAnchor.constraint(equalTo: scroll.centerYAnchor),
+                stack.heightAnchor.constraint(equalTo: scroll.heightAnchor)
             ])
 
-            // Defensive: remove any accidental equal-height constraints on the stack
-            for c in stack.constraints {
-                if (c.firstAttribute == .height && c.relation == .equal && c.secondItem != nil) {
-                    c.isActive = false
-                }
-            }
-
-            // set initial highlight states
             updateFormatButtonStates()
-
             return container
         }
 
@@ -306,10 +332,10 @@ struct RichTextEditor: UIViewRepresentable {
 
         private func updateColorButtonAppearance() {
             guard let btn = colorMenuButton else { return }
-            // Subtle border color to indicate current selection
-            btn.layer.borderWidth = 1
-            btn.layer.borderColor = currentTextColor.withAlphaComponent(0.65).cgColor
-            btn.layer.cornerRadius = 18
+            // Subtle colored border showing current text color
+            btn.layer.borderWidth = 2
+            btn.layer.borderColor = currentTextColor.withAlphaComponent(0.75).cgColor
+            btn.layer.cornerRadius = 18 // Match brand corner radius
         }
 
         // MARK: - Toggle highlight states
@@ -327,17 +353,24 @@ struct RichTextEditor: UIViewRepresentable {
             setButton(underlineButton, active: isUnderline)
             setButton(strikeButton, active: isStrike)
 
-            // keep color menu border updated too
             updateColorButtonAppearance()
         }
 
         private func setButton(_ button: UIButton?, active: Bool) {
             guard let b = button else { return }
             var config = b.configuration ?? UIButton.Configuration.filled()
-            config.baseBackgroundColor = active
-                ? UIColor.systemYellow.withAlphaComponent(0.40)
-                : UIColor.white.withAlphaComponent(0.10)
-            config.baseForegroundColor = .white
+            
+            if active {
+                // Active state: Use TFYellow from assets or fallback
+                let tfYellow = UIColor(named: "TFYellow") ?? UIColor(red: 0.95, green: 0.75, blue: 0.10, alpha: 1.0)
+                config.baseBackgroundColor = tfYellow.withAlphaComponent(0.5)
+                config.baseForegroundColor = .white
+            } else {
+                // Inactive state: Subtle white overlay
+                config.baseBackgroundColor = UIColor.white.withAlphaComponent(0.08)
+                config.baseForegroundColor = .white
+            }
+            
             b.configuration = config
         }
 
@@ -374,7 +407,6 @@ struct RichTextEditor: UIViewRepresentable {
         // MARK: - Actions
 
         @objc func doneTapped() { textView?.resignFirstResponder() }
-        // Removed focusTextView per instructions
 
         @objc private func boldTapped() { toggleTrait(.traitBold) }
         @objc private func italicTapped() { toggleTrait(.traitItalic) }
@@ -412,6 +444,164 @@ struct RichTextEditor: UIViewRepresentable {
             tv.typingAttributes[.font] = UIFont.systemFont(ofSize: currentFontSize)
             tv.typingAttributes[.foregroundColor] = currentTextColor
 
+            parent.rtfData = tv.attributedText.rtfData() ?? Data()
+            updateFormatButtonStates()
+        }
+
+        // MARK: - Font Formatting
+        private func toggleTrait(_ trait: UIFontDescriptor.SymbolicTraits) {
+            guard let tv = textView else { return }
+            let range = tv.selectedRange
+            let attr = NSMutableAttributedString(attributedString: tv.attributedText)
+            
+            if range.length > 0 {
+                let target = clampedTargetRange(for: attr, selection: range)
+                attr.enumerateAttribute(.font, in: target) { value, subrange, _ in
+                    let currentFont = (value as? UIFont) ?? UIFont.systemFont(ofSize: currentFontSize)
+                    let newFont = toggleFontTrait(currentFont, trait: trait)
+                    attr.addAttribute(.font, value: newFont, range: subrange)
+                }
+                tv.attributedText = attr
+                tv.selectedRange = range
+            }
+            
+            // Update typing attributes
+            let currentFont = (tv.typingAttributes[.font] as? UIFont) ?? UIFont.systemFont(ofSize: currentFontSize)
+            let newFont = toggleFontTrait(currentFont, trait: trait)
+            tv.typingAttributes[.font] = newFont
+            
+            parent.rtfData = tv.attributedText.rtfData() ?? Data()
+            updateFormatButtonStates()
+        }
+        
+        private func toggleFontTrait(_ font: UIFont, trait: UIFontDescriptor.SymbolicTraits) -> UIFont {
+            let descriptor = font.fontDescriptor
+            let currentTraits = descriptor.symbolicTraits
+            let newTraits = currentTraits.contains(trait) 
+                ? currentTraits.subtracting(trait)
+                : currentTraits.union(trait)
+            
+            guard let newDescriptor = descriptor.withSymbolicTraits(newTraits) else {
+                return font
+            }
+            return UIFont(descriptor: newDescriptor, size: font.pointSize)
+        }
+        
+        private func toggleUnderline() {
+            guard let tv = textView else { return }
+            let range = tv.selectedRange
+            let attr = NSMutableAttributedString(attributedString: tv.attributedText)
+            
+            if range.length > 0 {
+                let target = clampedTargetRange(for: attr, selection: range)
+                let existing = attr.attribute(.underlineStyle, at: target.location, effectiveRange: nil) as? Int ?? 0
+                let newValue = existing == 0 ? NSUnderlineStyle.single.rawValue : 0
+                
+                if newValue == 0 {
+                    attr.removeAttribute(.underlineStyle, range: target)
+                } else {
+                    attr.addAttribute(.underlineStyle, value: newValue, range: target)
+                }
+                tv.attributedText = attr
+                tv.selectedRange = range
+            }
+            
+            // Update typing attributes
+            let existing = tv.typingAttributes[.underlineStyle] as? Int ?? 0
+            let newValue = existing == 0 ? NSUnderlineStyle.single.rawValue : 0
+            if newValue == 0 {
+                tv.typingAttributes.removeValue(forKey: .underlineStyle)
+            } else {
+                tv.typingAttributes[.underlineStyle] = newValue
+            }
+            
+            parent.rtfData = tv.attributedText.rtfData() ?? Data()
+            updateFormatButtonStates()
+        }
+        
+        private func toggleStrikethrough() {
+            guard let tv = textView else { return }
+            let range = tv.selectedRange
+            let attr = NSMutableAttributedString(attributedString: tv.attributedText)
+            
+            if range.length > 0 {
+                let target = clampedTargetRange(for: attr, selection: range)
+                let existing = attr.attribute(.strikethroughStyle, at: target.location, effectiveRange: nil) as? Int ?? 0
+                let newValue = existing == 0 ? NSUnderlineStyle.single.rawValue : 0
+                
+                if newValue == 0 {
+                    attr.removeAttribute(.strikethroughStyle, range: target)
+                } else {
+                    attr.addAttribute(.strikethroughStyle, value: newValue, range: target)
+                }
+                tv.attributedText = attr
+                tv.selectedRange = range
+            }
+            
+            // Update typing attributes
+            let existing = tv.typingAttributes[.strikethroughStyle] as? Int ?? 0
+            let newValue = existing == 0 ? NSUnderlineStyle.single.rawValue : 0
+            if newValue == 0 {
+                tv.typingAttributes.removeValue(forKey: .strikethroughStyle)
+            } else {
+                tv.typingAttributes[.strikethroughStyle] = newValue
+            }
+            
+            parent.rtfData = tv.attributedText.rtfData() ?? Data()
+            updateFormatButtonStates()
+        }
+        
+        private func applyFont(size: CGFloat, weight: UIFont.Weight, keepTraits: Bool = false) {
+            guard let tv = textView else { return }
+            currentFontSize = size
+            let range = tv.selectedRange
+            
+            if range.length > 0 {
+                let attr = NSMutableAttributedString(attributedString: tv.attributedText)
+                let target = clampedTargetRange(for: attr, selection: range)
+                
+                attr.enumerateAttribute(.font, in: target) { value, subrange, _ in
+                    let currentFont = (value as? UIFont) ?? UIFont.systemFont(ofSize: size)
+                    let newFont: UIFont
+                    
+                    if keepTraits {
+                        let descriptor = currentFont.fontDescriptor
+                        let traits = descriptor.symbolicTraits
+                        if let newDescriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body)
+                            .withSymbolicTraits(traits) {
+                            newFont = UIFont(descriptor: newDescriptor, size: size)
+                        } else {
+                            newFont = UIFont.systemFont(ofSize: size, weight: weight)
+                        }
+                    } else {
+                        newFont = UIFont.systemFont(ofSize: size, weight: weight)
+                    }
+                    
+                    attr.addAttribute(.font, value: newFont, range: subrange)
+                }
+                
+                tv.attributedText = attr
+                tv.selectedRange = range
+            }
+            
+            // Update typing attributes
+            let currentFont = (tv.typingAttributes[.font] as? UIFont) ?? UIFont.systemFont(ofSize: size)
+            let newFont: UIFont
+            
+            if keepTraits {
+                let descriptor = currentFont.fontDescriptor
+                let traits = descriptor.symbolicTraits
+                if let newDescriptor = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body)
+                    .withSymbolicTraits(traits) {
+                    newFont = UIFont(descriptor: newDescriptor, size: size)
+                } else {
+                    newFont = UIFont.systemFont(ofSize: size, weight: weight)
+                }
+            } else {
+                newFont = UIFont.systemFont(ofSize: size, weight: weight)
+            }
+            
+            tv.typingAttributes[.font] = newFont
             parent.rtfData = tv.attributedText.rtfData() ?? Data()
             updateFormatButtonStates()
         }
@@ -551,97 +741,8 @@ struct RichTextEditor: UIViewRepresentable {
             parent.rtfData = tv.attributedText.rtfData() ?? Data()
         }
 
-        // MARK: - Traits / underline / strike / fonts
-
-        private func toggleTrait(_ trait: UIFontDescriptor.SymbolicTraits) {
-            guard let tv = textView else { return }
-            let range = tv.selectedRange
-            let attr = NSMutableAttributedString(attributedString: tv.attributedText)
-            let target = clampedTargetRange(for: attr, selection: range)
-
-            attr.enumerateAttribute(.font, in: target) { value, subrange, _ in
-                let current = (value as? UIFont) ?? UIFont.systemFont(ofSize: currentFontSize)
-                var traits = current.fontDescriptor.symbolicTraits
-                if traits.contains(trait) { traits.remove(trait) } else { traits.insert(trait) }
-
-                let desc = current.fontDescriptor.withSymbolicTraits(traits) ?? current.fontDescriptor
-                let updated = UIFont(descriptor: desc, size: current.pointSize)
-                attr.addAttribute(.font, value: updated, range: subrange)
-                attr.addAttribute(.foregroundColor, value: currentTextColor, range: subrange)
-            }
-
-            tv.attributedText = attr
-            tv.selectedRange = range
-            parent.rtfData = tv.attributedText.rtfData() ?? Data()
-            updateFormatButtonStates()
-        }
-
-        private func toggleUnderline() {
-            guard let tv = textView else { return }
-            let range = tv.selectedRange
-            let attr = NSMutableAttributedString(attributedString: tv.attributedText)
-            let target = clampedTargetRange(for: attr, selection: range)
-            let current = attr.attribute(.underlineStyle, at: target.location, effectiveRange: nil) as? Int ?? 0
-            let newValue = (current == 0) ? NSUnderlineStyle.single.rawValue : 0
-            attr.addAttribute(.underlineStyle, value: newValue, range: target)
-            attr.addAttribute(.foregroundColor, value: currentTextColor, range: target)
-            tv.attributedText = attr
-            tv.selectedRange = range
-            parent.rtfData = tv.attributedText.rtfData() ?? Data()
-            updateFormatButtonStates()
-        }
-
-        private func toggleStrikethrough() {
-            guard let tv = textView else { return }
-            let range = tv.selectedRange
-            let attr = NSMutableAttributedString(attributedString: tv.attributedText)
-            let target = clampedTargetRange(for: attr, selection: range)
-            let current = attr.attribute(.strikethroughStyle, at: target.location, effectiveRange: nil) as? Int ?? 0
-            let newValue = (current == 0) ? NSUnderlineStyle.single.rawValue : 0
-            attr.addAttribute(.strikethroughStyle, value: newValue, range: target)
-            attr.addAttribute(.foregroundColor, value: currentTextColor, range: target)
-            tv.attributedText = attr
-            tv.selectedRange = range
-            parent.rtfData = tv.attributedText.rtfData() ?? Data()
-            updateFormatButtonStates()
-        }
-
-        private func applyFont(size: CGFloat, weight: UIFont.Weight, keepTraits: Bool = false) {
-            guard let tv = textView else { return }
-            let range = tv.selectedRange
-            let attr = NSMutableAttributedString(attributedString: tv.attributedText)
-            let target = clampedTargetRange(for: attr, selection: range)
-
-            if keepTraits {
-                attr.enumerateAttribute(.font, in: target) { value, subrange, _ in
-                    let current = (value as? UIFont) ?? UIFont.systemFont(ofSize: currentFontSize)
-                    let traits = current.fontDescriptor.symbolicTraits
-
-                    let base = UIFont.systemFont(ofSize: size, weight: weight)
-                    let desc = base.fontDescriptor.withSymbolicTraits(traits) ?? base.fontDescriptor
-                    let updated = UIFont(descriptor: desc, size: size)
-
-                    attr.addAttribute(.font, value: updated, range: subrange)
-                    attr.addAttribute(.foregroundColor, value: currentTextColor, range: subrange)
-                }
-            } else {
-                let font = UIFont.systemFont(ofSize: size, weight: weight)
-                attr.addAttribute(.font, value: font, range: target)
-                attr.addAttribute(.foregroundColor, value: currentTextColor, range: target)
-            }
-
-            tv.attributedText = attr
-            tv.selectedRange = range
-            tv.typingAttributes[.font] = UIFont.systemFont(ofSize: size, weight: weight)
-            tv.typingAttributes[.foregroundColor] = currentTextColor
-            parent.rtfData = tv.attributedText.rtfData() ?? Data()
-            updateFormatButtonStates()
-        }
-
         // MARK: - Line analysis helpers
         private func isEmptyListItem(_ line: String) -> Bool {
-            // Treat a line as an empty list item if it is exactly a list prefix (with optional leading spaces)
-            // and contains no additional non-whitespace characters after the prefix.
             let trimmedLeading = line.drop { $0 == " " || $0 == "\t" }
             let prefixes = ["• ", "☐ ", "☑ "]
             for p in prefixes {
@@ -650,10 +751,7 @@ struct RichTextEditor: UIViewRepresentable {
                     return rest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 }
             }
-            // Numbered list like "1. "
             if let n = numberPrefix(String(trimmedLeading)), n >= 1 {
-                // remove the matched number prefix from the start
-                // pattern is one or more digits + ". "
                 if let re = try? NSRegularExpression(pattern: "^\\d+\\.\\s"),
                    let match = re.firstMatch(in: String(trimmedLeading), range: NSRange(location: 0, length: String(trimmedLeading).utf16.count)) {
                     let ns = String(trimmedLeading) as NSString
@@ -665,18 +763,11 @@ struct RichTextEditor: UIViewRepresentable {
         }
 
         private func listPrefixToContinue(for line: String) -> String? {
-            // Decide which list prefix to continue on a new line based on the current line
             let trimmedLeading = line.drop { $0 == " " || $0 == "\t" }
-
             if trimmedLeading.hasPrefix("• ") { return "• " }
             if trimmedLeading.hasPrefix("☐ ") { return "☐ " }
             if trimmedLeading.hasPrefix("☑ ") { return "☑ " }
-
-            // Numbered list: increment the detected number
-            if let n = numberPrefix(String(trimmedLeading)) {
-                return "\(n + 1). "
-            }
-
+            if let n = numberPrefix(String(trimmedLeading)) { return "\(n + 1). " }
             return nil
         }
 
@@ -685,30 +776,9 @@ struct RichTextEditor: UIViewRepresentable {
             guard let re = try? NSRegularExpression(pattern: pattern),
                   let match = re.firstMatch(in: line, range: NSRange(location: 0, length: line.utf16.count)),
                   match.numberOfRanges >= 2 else { return nil }
-
             let ns = line as NSString
             let nStr = ns.substring(with: match.range(at: 1))
             return Int(nStr)
         }
     }
 }
-
-// MARK: - RTF helpers
-private extension NSAttributedString {
-    static func fromRTF(_ data: Data) -> NSAttributedString? {
-        guard !data.isEmpty else { return NSAttributedString(string: "") }
-        return try? NSAttributedString(
-            data: data,
-            options: [.documentType: NSAttributedString.DocumentType.rtf],
-            documentAttributes: nil
-        )
-    }
-
-    func rtfData() -> Data? {
-        try? data(
-            from: NSRange(location: 0, length: length),
-            documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
-        )
-    }
-}
-

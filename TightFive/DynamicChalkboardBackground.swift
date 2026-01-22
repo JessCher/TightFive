@@ -6,14 +6,14 @@ struct DynamicChalkboardBackground: View {
     @StateObject private var motion = MotionSampler()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    // MARK: - Tunables
-    private let dustCount = 1200       // Optimized count
-    private let clumpCount = 80        // Optimized count
+    // MARK: - Tunables (PERFORMANCE OPTIMIZED)
+    private let dustCount = 800        // Reduced from 1200
+    private let clumpCount = 50        // Reduced from 80
     private let breatheSpeed = 0.25
     private let breatheAmplitude: CGFloat = 0.06
     
-    // Cap at 30 FPS to stop overheating
-    private let frameRate: TimeInterval = 1.0 / 30.0
+    // Cap at 20 FPS to reduce overheating (was 30)
+    private let frameRate: TimeInterval = 1.0 / 20.0
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: frameRate)) { context in
@@ -143,7 +143,7 @@ private final class MotionSampler: ObservableObject {
 
     private let manager = CMMotionManager()
     private let queue = OperationQueue()
-    private let maxTilt: Double = 0.35 // Increased slightly for softer feel
+    private let maxTilt: Double = 0.35
 
     func start(reduceMotion: Bool) {
         #if targetEnvironment(simulator)
@@ -152,8 +152,8 @@ private final class MotionSampler: ObservableObject {
         
         guard !reduceMotion, manager.isDeviceMotionAvailable else { return }
         
-        // 30Hz update rate saves battery
-        manager.deviceMotionUpdateInterval = 1.0 / 30.0
+        // PERFORMANCE: 20Hz update rate (was 30Hz) saves battery
+        manager.deviceMotionUpdateInterval = 1.0 / 20.0
         
         manager.startDeviceMotionUpdates(to: queue) { [weak self] motion, _ in
             guard let self = self, let m = motion else { return }
@@ -165,7 +165,7 @@ private final class MotionSampler: ObservableObject {
             let ny = pitch / self.maxTilt
             
             DispatchQueue.main.async {
-                withAnimation(.linear(duration: 0.1)) {
+                withAnimation(.linear(duration: 0.15)) { // Slightly longer animation
                     self.normalizedTilt = CGPoint(x: CGFloat(nx), y: CGFloat(ny))
                 }
             }
@@ -174,6 +174,7 @@ private final class MotionSampler: ObservableObject {
 
     func stop() {
         manager.stopDeviceMotionUpdates()
+        normalizedTilt = .zero // Reset when stopped
     }
 }
 

@@ -85,22 +85,48 @@ struct HomeView: View {
     }
 
     private var quickBitButton: some View {
-            Button {
-                showQuickBit = true
-            } label: {
-                HStack(spacing: 8) {
-                    Text("Quick Bit")
-                        .font(.title.weight(.bold)) // Increased weight to match the "heavier" look
-                }
-                .foregroundStyle(.black) // Keep black text for high contrast on Yellow
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 35) // Slightly taller to feel like a "Hero" button
-                // NEW: Use the dynamic modifier with TFYellow
-                .tfDynamicCard(color: Color("TFYellow"), cornerRadius: 20)
+        Button {
+            showQuickBit = true
+        } label: {
+            ZStack {
+                // Base yellow background
+                Color("TFYellow")
+                
+                // Dynamic dust layers with BLACK particles for yellow background
+                DynamicGritLayer(
+                    density: 80,
+                    opacity: 0.55,
+                    speedMultiplier: 0.5,
+                    seed: 7777,
+                    particleColor: .black
+                )
+                
+                DynamicGritLayer(
+                    density: 50,
+                    opacity: 0.88,
+                    speedMultiplier: 1.0,
+                    seed: 8888,
+                    particleColor: .black
+                )
+                
+                // Button text on top
+                Text("Quick Bit")
+                    .font(.title.weight(.bold))
+                    .foregroundStyle(.black)
             }
-            // Add a specialized shadow for the main button to make it "pop" more than the list items
+            .frame(maxWidth: .infinity)
+            .frame(height: 100) // Explicit height for hero button
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(Color("TFCardStroke"), lineWidth: 1.5)
+                    .opacity(0.9)
+                    .blendMode(.overlay)
+            )
+            .shadow(color: .black.opacity(0.8), radius: 10, x: 0, y: 8)
             .shadow(color: Color("TFYellow").opacity(0.15), radius: 12, x: 0, y: 0)
         }
+    }
 }
 
 // MARK: - Tile

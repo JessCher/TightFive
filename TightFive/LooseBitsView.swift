@@ -111,6 +111,7 @@ struct LooseBitsView: View {
                     .presentationDetents([.medium, .large])
             }
         }
+        .hideKeyboardInteractively() // Use combined tap + swipe-down dismissal
     }
 
     private var emptyState: some View {
@@ -158,7 +159,7 @@ struct BitSwipeView<Content: View>: View {
     let content: Content
 
     @State private var offset: CGFloat = 0
-    @State private var isDragging = false
+    @State private var isSwiping = false
     
     // Threshold to trigger the action automatically
     private let actionThreshold: CGFloat = 100
@@ -178,16 +179,16 @@ struct BitSwipeView<Content: View>: View {
                 HStack(spacing: 0) {
                     // LEFT SIDE (Swipe Right -> Finish)
                     ZStack(alignment: .leading) {
-                        TFTheme.yellow // Or Green
+                        TFTheme.yellow
                         Image(systemName: bit.status == .loose ? "checkmark.seal.fill" : "tray.full.fill")
                             .font(.title2)
                             .foregroundColor(.black)
                             .padding(.leading, 30)
-                            .scaleEffect(offset > 0 ? 1.0 : 0.001) // Simple scale animation
+                            .scaleEffect(offset > 0 ? 1.0 : 0.001)
                             .opacity(offset > 0 ? 1 : 0)
                     }
                     .frame(width: geo.size.width / 2)
-                    .offset(x: offset > 0 ? 0 : -geo.size.width / 2) // Reveal Logic
+                    .offset(x: offset > 0 ? 0 : -geo.size.width / 2)
 
                     // RIGHT SIDE (Swipe Left -> Delete)
                     ZStack(alignment: .trailing) {
@@ -200,45 +201,50 @@ struct BitSwipeView<Content: View>: View {
                             .opacity(offset < 0 ? 1 : 0)
                     }
                     .frame(width: geo.size.width / 2)
-                    .offset(x: offset < 0 ? 0 : geo.size.width / 2) // Reveal Logic
+                    .offset(x: offset < 0 ? 0 : geo.size.width / 2)
                 }
             }
-            .cornerRadius(18) // Match your card corner radius
+            .cornerRadius(18)
 
             // Foreground Layer (The Card)
             content
                 .offset(x: offset)
-                .gesture(
-                    DragGesture()
+                .highPriorityGesture(
+                    DragGesture(minimumDistance: 20)
                         .onChanged { value in
-                            // Add resistance logic so it doesn't slide too easily
-                            // and "rubber bands"
                             let translation = value.translation.width
-                            withAnimation(.interactiveSpring()) {
-                                offset = translation
+                            let vertical = abs(value.translation.height)
+                            
+                            // Only start swiping if it's mostly horizontal
+                            // This allows vertical scrolling to work naturally
+                            if abs(translation) > vertical * 1.5 {
+                                isSwiping = true
+                                withAnimation(.interactiveSpring(response: 0.3, dampingFraction: 0.8)) {
+                                    offset = translation
+                                }
                             }
                         }
                         .onEnded { value in
+                            guard isSwiping else { return }
+                            
                             let translation = value.translation.width
                             withAnimation(.snappy) {
                                 if translation > actionThreshold {
                                     // Swipe Right -> Finish
                                     onFinish()
-                                    offset = 0 // Reset after action
+                                    offset = 0
                                 } else if translation < -actionThreshold {
                                     // Swipe Left -> Delete
                                     onDelete()
-                                    // Don't reset offset immediately if deleting,
-                                    // let the list remove the view naturally
                                     offset = -500
                                 } else {
                                     // Snap back
                                     offset = 0
                                 }
                             }
+                            isSwiping = false
                         }
                 )
-                // Add explicit tap gesture here to bypass the drag gesture for clicks
                 .onTapGesture {
                     if offset == 0 {
                         onTap()
@@ -248,35 +254,25 @@ struct BitSwipeView<Content: View>: View {
     }
 }
 
-// MARK: - Bit row (Unchanged)
+// MARK: - Bit row
 private struct BitCardRow: View {
     let bit: Bit
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: bit.status == .finished ? "checkmark.seal.fill" : "tray.full.fill")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(TFTheme.yellow)
-                .padding(.top, 2)
+        VStack(alignment: .leading, spacing: 8) {
+            Text(bit.titleLine)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text(bit.titleLine)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-
-                Text(bit.updatedAt, style: .date)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.55))
-            }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.25))
-                .padding(.top, 4)
+            Text(bit.updatedAt, style: .date)
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.55))
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
         .tfDynamicCard(cornerRadius: 18)
     }
 }

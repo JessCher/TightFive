@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUI
 import CoreMotion
 import Combine
 
@@ -10,21 +11,45 @@ final class SharedMotionManager: ObservableObject {
     @Published var roll: Double = 0.0
     
     private let manager = CMMotionManager()
+    private var isRunning = false
+    private var activeViewCount = 0
     
     private init() {
-        guard manager.isDeviceMotionAvailable else { return }
+        // Don't start automatically - wait for views to register
+    }
+    
+    func startIfNeeded() {
+        guard !isRunning, manager.isDeviceMotionAvailable else { return }
         
-        // SAFETY FIX: Reduced to 30 FPS to prevent overheating
-        manager.deviceMotionUpdateInterval = 1.0 / 30.0
+        activeViewCount += 1
         
-        manager.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
-            guard let self = self, let motion = motion else { return }
+        if activeViewCount == 1 {
+            // SAFETY FIX: Reduced to 20 FPS (was 30) to prevent overheating
+            manager.deviceMotionUpdateInterval = 1.0 / 20.0
             
-            // Smoothed animation
-            withAnimation(.linear(duration: 0.1)) {
-                self.pitch = motion.attitude.pitch
-                self.roll = motion.attitude.roll
+            manager.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
+                guard let self = self, let motion = motion else { return }
+                
+                // Smoothed animation
+                withAnimation(.linear(duration: 0.15)) {
+                    self.pitch = motion.attitude.pitch
+                    self.roll = motion.attitude.roll
+                }
             }
+            isRunning = true
+        }
+    }
+    
+    func stopIfNeeded() {
+        activeViewCount = max(0, activeViewCount - 1)
+        
+        if activeViewCount == 0 && isRunning {
+            manager.stopDeviceMotionUpdates()
+            isRunning = false
+            
+            // Reset to zero when stopped
+            pitch = 0.0
+            roll = 0.0
         }
     }
 }
@@ -35,6 +60,7 @@ struct DynamicGritLayer: View {
     var opacity: Double
     var speedMultiplier: CGFloat
     var seed: Int
+    var particleColor: Color = .white // New parameter with default
     
     @ObservedObject private var motion = SharedMotionManager.shared
     
@@ -62,7 +88,7 @@ struct DynamicGritLayer: View {
                 let r = Double.random(in: 0.5...1.5, using: &rng)
                 
                 let rect = CGRect(x: x, y: y, width: r, height: r)
-                context.fill(Path(ellipseIn: rect), with: .color(.white))
+                context.fill(Path(ellipseIn: rect), with: .color(particleColor))
             }
         }
         .opacity(opacity)
@@ -71,6 +97,12 @@ struct DynamicGritLayer: View {
         // drastically reducing GPU strain for complex shapes.
         .drawingGroup()
         .allowsHitTesting(false)
+        .onAppear {
+            motion.startIfNeeded()
+        }
+        .onDisappear {
+            motion.stopIfNeeded()
+        }
     }
 }
 
