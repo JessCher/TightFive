@@ -85,19 +85,22 @@ struct HomeView: View {
     }
 
     private var quickBitButton: some View {
-        Button {
-            showQuickBit = true
-        } label: {
-            Text("Quick Bit")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(.black)
+            Button {
+                showQuickBit = true
+            } label: {
+                HStack(spacing: 8) {
+                    Text("Quick Bit")
+                        .font(.title.weight(.bold)) // Increased weight to match the "heavier" look
+                }
+                .foregroundStyle(.black) // Keep black text for high contrast on Yellow
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
-                .background(Color("TFYellow"))
-                .clipShape(Capsule())
-                .shadow(color: .black.opacity(0.45), radius: 14, x: 0, y: 10)
+                .padding(.vertical, 35) // Slightly taller to feel like a "Hero" button
+                // NEW: Use the dynamic modifier with TFYellow
+                .tfDynamicCard(color: Color("TFYellow"), cornerRadius: 20)
+            }
+            // Add a specialized shadow for the main button to make it "pop" more than the list items
+            .shadow(color: Color("TFYellow").opacity(0.15), radius: 12, x: 0, y: 0)
         }
-    }
 }
 
 // MARK: - Tile
@@ -106,7 +109,7 @@ private struct HomeTile: View {
     let title: String
     let subtitle: String
     let iconName: String
-
+    
     var body: some View {
         HStack(spacing: 14) {
             Image(iconName)
@@ -114,32 +117,30 @@ private struct HomeTile: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 34, height: 34)
-
+            
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(.white)
-
+                
                 Text(subtitle)
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.62))
             }
-
+            
             Spacer()
-
+            
             Image(systemName: "chevron.right")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.28))
         }
         .padding(.vertical, 18)
         .padding(.horizontal, 16)
-        .tfTexturedCard(cornerRadius: 20)
+        .tfDynamicCard(cornerRadius: 20) // New dynamic generator
     }
 }
 
-// MARK: - Placeholders (same styling)
-
-private struct SetlistsPlaceholderView: View {
+struct SetlistsPlaceholderView: View {
     var body: some View {
         ZStack {
             ContentUnavailableView("Setlists", systemImage: "list.bullet.rectangle", description: Text("Coming soon."))
@@ -151,7 +152,7 @@ private struct SetlistsPlaceholderView: View {
     }
 }
 
-private struct ShowNotesPlaceholderView: View {
+struct ShowNotesPlaceholderView: View {
     var body: some View {
         ZStack {
             ContentUnavailableView("Show Notes", systemImage: "note.text", description: Text("Coming soon."))
@@ -162,4 +163,3 @@ private struct ShowNotesPlaceholderView: View {
         .tfBackground()
     }
 }
-

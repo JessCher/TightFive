@@ -277,7 +277,7 @@ private struct BitCardRow: View {
                 .foregroundStyle(.white.opacity(0.25))
                 .padding(.top, 4)
         }
-        .tfTexturedCard(cornerRadius: 18)
+        .tfDynamicCard(cornerRadius: 18)
     }
 }
 

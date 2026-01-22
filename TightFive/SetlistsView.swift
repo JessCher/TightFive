@@ -109,7 +109,7 @@ private struct SetlistMenuTile: View {
         }
         .padding(.vertical, 18)
         .padding(.horizontal, 16)
-        .tfTexturedCard(cornerRadius: 20)
+        .tfDynamicCard(cornerRadius: 20)
     }
 }
 
