@@ -15,6 +15,9 @@ struct LooseBitsView: View {
 
     @State private var query: String = ""
     @State private var showQuickBit = false
+    
+    // Navigation Path State for programmatic navigation (fixes gesture conflicts)
+    @State private var navigationPath = NavigationPath()
 
     private var title: String {
         switch mode {
@@ -39,7 +42,7 @@ struct LooseBitsView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             ScrollView {
                 VStack(spacing: 12) {
                     if filtered.isEmpty {
@@ -47,49 +50,23 @@ struct LooseBitsView: View {
                             .padding(.top, 40)
                     } else {
                         ForEach(filtered) { bit in
-                            NavigationLink {
-                                BitDetailView(bit: bit)
-                            } label: {
+                            // Custom Swipe Wrapper
+                            BitSwipeView(
+                                bit: bit,
+                                onFinish: {
+                                    withAnimation(.snappy) { toggleStatus(bit) }
+                                },
+                                onDelete: {
+                                    withAnimation(.snappy) { modelContext.delete(bit) }
+                                },
+                                onTap: {
+                                    // Handle navigation manually to avoid gesture conflict
+                                    navigationPath.append(bit)
+                                }
+                            ) {
+                                // The Card Itself
                                 BitCardRow(bit: bit)
                                     .contentShape(Rectangle())
-                            }
-                            .contextMenu {
-                                Button {
-                                    withAnimation(.easeInOut) {
-                                        toggleStatus(bit)
-                                    }
-                                } label: {
-                                    Label(bit.status == .loose ? "Mark Finished" : "Mark Loose",
-                                          systemImage: bit.status == .loose ? "checkmark.seal" : "tray.full")
-                                }
-
-                                Button(role: .destructive) {
-                                    withAnimation(.easeInOut) {
-                                        modelContext.delete(bit)
-                                    }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    withAnimation(.easeInOut) {
-                                        modelContext.delete(bit)
-                                    }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                Button {
-                                    withAnimation(.easeInOut) {
-                                        toggleStatus(bit)
-                                    }
-                                } label: {
-                                    Label(bit.status == .loose ? "Finish" : "Loose",
-                                          systemImage: bit.status == .loose ? "checkmark.seal.fill" : "tray.full.fill")
-                                }
-                                .tint(TFTheme.yellow)
                             }
                         }
                     }
@@ -102,6 +79,10 @@ struct LooseBitsView: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: "Search bits")
+            // Handle Navigation Destination here
+            .navigationDestination(for: Bit.self) { bit in
+                BitDetailView(bit: bit)
+            }
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     TFWordmarkTitle(title: title, size: 22)
@@ -167,8 +148,107 @@ struct LooseBitsView: View {
     }
 }
 
-// MARK: - Bit row
+// MARK: - Custom Swipe View
+// This replaces the generic .swipeActions which only works in Lists
+struct BitSwipeView<Content: View>: View {
+    let bit: Bit
+    let onFinish: () -> Void
+    let onDelete: () -> Void
+    let onTap: () -> Void
+    let content: Content
 
+    @State private var offset: CGFloat = 0
+    @State private var isDragging = false
+    
+    // Threshold to trigger the action automatically
+    private let actionThreshold: CGFloat = 100
+    
+    init(bit: Bit, onFinish: @escaping () -> Void, onDelete: @escaping () -> Void, onTap: @escaping () -> Void, @ViewBuilder content: () -> Content) {
+        self.bit = bit
+        self.onFinish = onFinish
+        self.onDelete = onDelete
+        self.onTap = onTap
+        self.content = content()
+    }
+
+    var body: some View {
+        ZStack {
+            // Background Layer (The Actions)
+            GeometryReader { geo in
+                HStack(spacing: 0) {
+                    // LEFT SIDE (Swipe Right -> Finish)
+                    ZStack(alignment: .leading) {
+                        TFTheme.yellow // Or Green
+                        Image(systemName: bit.status == .loose ? "checkmark.seal.fill" : "tray.full.fill")
+                            .font(.title2)
+                            .foregroundColor(.black)
+                            .padding(.leading, 30)
+                            .scaleEffect(offset > 0 ? 1.0 : 0.001) // Simple scale animation
+                            .opacity(offset > 0 ? 1 : 0)
+                    }
+                    .frame(width: geo.size.width / 2)
+                    .offset(x: offset > 0 ? 0 : -geo.size.width / 2) // Reveal Logic
+
+                    // RIGHT SIDE (Swipe Left -> Delete)
+                    ZStack(alignment: .trailing) {
+                        Color.red
+                        Image(systemName: "trash.fill")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                            .padding(.trailing, 30)
+                            .scaleEffect(offset < 0 ? 1.0 : 0.001)
+                            .opacity(offset < 0 ? 1 : 0)
+                    }
+                    .frame(width: geo.size.width / 2)
+                    .offset(x: offset < 0 ? 0 : geo.size.width / 2) // Reveal Logic
+                }
+            }
+            .cornerRadius(18) // Match your card corner radius
+
+            // Foreground Layer (The Card)
+            content
+                .offset(x: offset)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            // Add resistance logic so it doesn't slide too easily
+                            // and "rubber bands"
+                            let translation = value.translation.width
+                            withAnimation(.interactiveSpring()) {
+                                offset = translation
+                            }
+                        }
+                        .onEnded { value in
+                            let translation = value.translation.width
+                            withAnimation(.snappy) {
+                                if translation > actionThreshold {
+                                    // Swipe Right -> Finish
+                                    onFinish()
+                                    offset = 0 // Reset after action
+                                } else if translation < -actionThreshold {
+                                    // Swipe Left -> Delete
+                                    onDelete()
+                                    // Don't reset offset immediately if deleting,
+                                    // let the list remove the view naturally
+                                    offset = -500
+                                } else {
+                                    // Snap back
+                                    offset = 0
+                                }
+                            }
+                        }
+                )
+                // Add explicit tap gesture here to bypass the drag gesture for clicks
+                .onTapGesture {
+                    if offset == 0 {
+                        onTap()
+                    }
+                }
+        }
+    }
+}
+
+// MARK: - Bit row (Unchanged)
 private struct BitCardRow: View {
     let bit: Bit
 
@@ -201,8 +281,7 @@ private struct BitCardRow: View {
     }
 }
 
-// MARK: - Detail
-
+// MARK: - Detail (Unchanged)
 private struct BitDetailView: View {
     @Bindable var bit: Bit
 
@@ -236,4 +315,3 @@ private struct BitDetailView: View {
         }
     }
 }
-

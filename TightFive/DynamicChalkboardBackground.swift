@@ -6,74 +6,86 @@ struct DynamicChalkboardBackground: View {
     @StateObject private var motion = MotionSampler()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    // Tunables
-    private let dustCount = 2000       // tiny speckles
-    private let clumpCount = 99      // big soft clouds
-    private let breatheSpeed = 0.25   // Hz (cycles per second)
+    // MARK: - Tunables
+    private let dustCount = 1200       // Optimized count
+    private let clumpCount = 80        // Optimized count
+    private let breatheSpeed = 0.25
     private let breatheAmplitude: CGFloat = 0.06
+    
+    // Cap at 30 FPS to stop overheating
+    private let frameRate: TimeInterval = 1.0 / 30.0
 
     var body: some View {
-        TimelineView(.animation) { context in
+        TimelineView(.periodic(from: .now, by: frameRate)) { context in
             let t = context.date.timeIntervalSinceReferenceDate
             let breathe = reduceMotion ? 0 as CGFloat : breatheAmplitude * CGFloat(sin(2 * .pi * breatheSpeed * t))
+            
+            // Smoothed tilt
             let tilt = reduceMotion ? .zero : motion.normalizedTilt
+            
+            // Re-added the Glow Opacity calculation you had originally
             let topGlowOpacity = 0.20 + Double(max(0, breathe) * CGFloat(0.06))
 
+            // Pre-calculate parallax offsets (Performance Fix)
+            let fastLayerOffset = CGSize(width: tilt.x * 25, height: tilt.y * 25)
+            let slowLayerOffset = CGSize(width: tilt.x * 40, height: tilt.y * 40)
+            let vignetteOffset = CGSize(width: tilt.x * -15, height: tilt.y * -15)
+
             ZStack {
-                // Base board tone
+                // 1. Base Tone
                 Color("TFBackground")
 
-                // Breathing chalk speckles (fast layer)
+                // 2. Breathing Chalk Speckles (Fast Layer)
                 Canvas { ctx, size in
-                    let seed = UInt64(t.rounded(.towardZero))  // seed per frame (fast jitter)
-                    var rng = SeededRandom(seed: seed)
-                    let margin: CGFloat = 60
+                    // Use a stable seed (12345) to prevent CPU overload,
+                    // but we animate the position via translation.
+                    var rng = SeededRandom(seed: 12345)
+                    let margin: CGFloat = 100
+
+                    // Move the entire layer based on tilt
+                    ctx.translateBy(x: fastLayerOffset.width, y: fastLayerOffset.height)
 
                     for _ in 0..<dustCount {
                         let x = rng.next(in: -margin...(size.width + margin))
                         let y = rng.next(in: -margin...(size.height + margin))
+                        let r = rng.next(in: CGFloat(0.4)...CGFloat(1.2))
+                        let alpha = rng.next(in: 0.02...0.07)
 
-                        // Subtle parallax with tilt
-                        let px = x + tilt.x * 10
-                        let py = y + tilt.y * 10
-
-                        let r = rng.next(in: CGFloat(0.4)...CGFloat(1.1))
-                        let alpha = rng.next(in: 0.02...0.06)
-
-                        let rect = CGRect(x: px, y: py, width: r, height: r)
+                        let rect = CGRect(x: x, y: y, width: r, height: r)
                         ctx.fill(Path(ellipseIn: rect), with: .color(.white.opacity(alpha)))
                     }
                 }
                 .opacity(0.18 + breathe * 0.12)
                 .blendMode(.overlay)
-                .drawingGroup()
+                .drawingGroup() // RESTORED: Essential for the blend mode to look "cloudy"
 
-                // Soft clumps (slow layer)
+                // 3. Soft Clumps (Slow Layer)
                 Canvas { ctx, size in
-                    var rng = SeededRandom(seed: 42) // stable layout; we animate transform only
-                    let margin: CGFloat = 80
+                    var rng = SeededRandom(seed: 42)
+                    let margin: CGFloat = 150
+
+                    ctx.translateBy(x: slowLayerOffset.width, y: slowLayerOffset.height)
+
+                    // Scale logic for breathing (Optimized)
+                    let scaleCenter = CGPoint(x: size.width / 2, y: size.height / 2)
+                    let scaleFactor: CGFloat = 1 + breathe * 0.15
+                    
+                    ctx.translateBy(x: scaleCenter.x, y: scaleCenter.y)
+                    ctx.scaleBy(x: scaleFactor, y: scaleFactor)
+                    ctx.translateBy(x: -scaleCenter.x, y: -scaleCenter.y)
 
                     for _ in 0..<clumpCount {
                         let cx = rng.next(in: -margin...(size.width + margin))
                         let cy = rng.next(in: -margin...(size.height + margin))
-                        let base = rng.next(in: CGFloat(180.0)...CGFloat(420.0))
+                        let base = rng.next(in: CGFloat(150.0)...CGFloat(400.0))
 
-                        // Breathing + parallax
-                        let scale: CGFloat = 1 + breathe * 0.15
-                        let offset = CGSize(width: tilt.x * 20, height: tilt.y * 20)
+                        let rect = CGRect(x: cx - base/2, y: cy - base/2, width: base, height: base)
 
-                        let rect = CGRect(
-                            x: cx - base/2 + offset.width,
-                            y: cy - base/2 + offset.height,
-                            width: base * scale,
-                            height: base * scale
-                        )
-
-                        // Radial soft spot
                         let gradient = Gradient(stops: [
-                            .init(color: .white.opacity(0.10), location: 0.0),
+                            .init(color: .white.opacity(0.08), location: 0.0),
                             .init(color: .white.opacity(0.00), location: 1.0)
                         ])
+                        
                         ctx.fill(
                             Path(ellipseIn: rect),
                             with: .radialGradient(
@@ -87,9 +99,9 @@ struct DynamicChalkboardBackground: View {
                 }
                 .opacity(0.18)
                 .blendMode(.softLight)
-                .drawingGroup()
+                .drawingGroup() // RESTORED: Essential for performance and visuals
 
-                // Top glow (breathes slightly)
+                // 4. RESTORED: Top Glow (This provides the light/haze at the top)
                 LinearGradient(
                     colors: [
                         Color.white.opacity(topGlowOpacity),
@@ -99,20 +111,24 @@ struct DynamicChalkboardBackground: View {
                     startPoint: .top, endPoint: .center
                 )
                 .offset(y: breathe * 8)
+                .allowsHitTesting(false)
 
-                // Vignette (subtle parallax)
+                // 5. Vignette
                 RadialGradient(
                     colors: [
                         Color.clear,
-                        Color.black.opacity(0.55)
+                        Color.black.opacity(0.60)
                     ],
                     center: .center,
-                    startRadius: 140,
-                    endRadius: 750
+                    startRadius: 100,
+                    endRadius: 800
                 )
-                .offset(x: tilt.x * -12, y: tilt.y * -12)
+                .offset(vignetteOffset)
                 .allowsHitTesting(false)
             }
+            // 6. Scale Fix: Zooms in 10% to prevent black bars when tilting
+            .scaleEffect(1.1)
+            .animation(.easeOut(duration: 0.2), value: tilt)
         }
         .ignoresSafeArea()
         .onAppear { motion.start(reduceMotion: reduceMotion) }
@@ -120,34 +136,37 @@ struct DynamicChalkboardBackground: View {
     }
 }
 
-// MARK: - Motion
+// MARK: - Motion Manager (Optimized)
 
 private final class MotionSampler: ObservableObject {
     @Published var normalizedTilt: CGPoint = .zero
 
     private let manager = CMMotionManager()
     private let queue = OperationQueue()
-    private let maxTilt: Double = 0.25 // radians clamp for normalization
+    private let maxTilt: Double = 0.35 // Increased slightly for softer feel
 
     func start(reduceMotion: Bool) {
-#if targetEnvironment(simulator)
+        #if targetEnvironment(simulator)
         return
-#endif
-        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" { return }
-        guard !reduceMotion else { return }
-        if manager.isDeviceMotionAvailable {
-            manager.deviceMotionUpdateInterval = 1.0/30.0
-            manager.startDeviceMotionUpdates(to: queue) { [weak self] motion, _ in
-                guard let self, let m = motion else { return }
-                // Use attitude pitch/roll, clamp, and normalize to [-1, 1]
-                let pitch = max(-maxTilt, min(maxTilt, m.attitude.pitch))
-                let roll  = max(-maxTilt, min(maxTilt, m.attitude.roll))
-                let nx = roll / maxTilt
-                let ny = pitch / maxTilt
-                DispatchQueue.main.async {
-                    withAnimation(.easeOut(duration: 0.15)) {
-                        self.normalizedTilt = CGPoint(x: CGFloat(nx), y: CGFloat(ny))
-                    }
+        #endif
+        
+        guard !reduceMotion, manager.isDeviceMotionAvailable else { return }
+        
+        // 30Hz update rate saves battery
+        manager.deviceMotionUpdateInterval = 1.0 / 30.0
+        
+        manager.startDeviceMotionUpdates(to: queue) { [weak self] motion, _ in
+            guard let self = self, let m = motion else { return }
+            
+            let pitch = max(-self.maxTilt, min(self.maxTilt, m.attitude.pitch))
+            let roll  = max(-self.maxTilt, min(self.maxTilt, m.attitude.roll))
+            
+            let nx = roll / self.maxTilt
+            let ny = pitch / self.maxTilt
+            
+            DispatchQueue.main.async {
+                withAnimation(.linear(duration: 0.1)) {
+                    self.normalizedTilt = CGPoint(x: CGFloat(nx), y: CGFloat(ny))
                 }
             }
         }
@@ -158,8 +177,7 @@ private final class MotionSampler: ObservableObject {
     }
 }
 
-// MARK: - Random helpers
-
+// MARK: - Random Helper
 private struct SeededRandom {
     private var state: UInt64
     init(seed: UInt64) { self.state = seed &* 0x9E3779B97F4A7C15 }
@@ -182,4 +200,3 @@ private struct SeededRandom {
         CGFloat(next(in: ClosedRange<Double>(uncheckedBounds: (Double(range.lowerBound), Double(range.upperBound)))))
     }
 }
-
