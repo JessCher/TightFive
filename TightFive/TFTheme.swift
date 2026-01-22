@@ -19,7 +19,10 @@ extension View {
     /// App background (fills screen)
     func tfBackground() -> some View {
         self
-            .background(TFTheme.background)
+            .background(
+                DynamicChalkboardBackground()
+                    .ignoresSafeArea()
+            )
             .preferredColorScheme(.dark)
     }
 
@@ -91,3 +94,4 @@ extension Color {
         self.init(.sRGB, red: r, green: g, blue: b, opacity: alpha)
     }
 }
+

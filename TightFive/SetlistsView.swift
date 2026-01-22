@@ -41,7 +41,14 @@ struct SetlistsView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle("Setlists")
+            .navigationTitle("Set lists")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    TFWordmarkTitle(title: "Set lists", size: 22)
+                        .offset(x: -6)
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -123,6 +130,13 @@ struct InProgressSetlistsView: View {
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("In Progress")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                TFWordmarkTitle(title: "In Progress", size: 22)
+                    .offset(x: -6)
+            }
+        }
         .tfBackground()
     }
 
@@ -152,6 +166,13 @@ struct FinishedSetlistsView: View {
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("Finished")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                TFWordmarkTitle(title: "Finished", size: 22)
+                    .offset(x: -6)
+            }
+        }
         .tfBackground()
     }
 
@@ -201,6 +222,12 @@ struct SetlistEditorView: View {
         .task { saveContext(reason: "onAppear task") }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                TFWordmarkTitle(title: "Setlist", size: 22)
+                    .offset(x: -6)
+            }
+        }
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {

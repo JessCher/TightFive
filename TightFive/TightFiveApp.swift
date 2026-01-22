@@ -11,10 +11,6 @@ struct TightFiveApp: App {
         WindowGroup {
             ContentView()
                 .tint(TFTheme.yellow)        // accent color across SwiftUI
-                .background(
-                    TFChalkboardBackground()
-                        .ignoresSafeArea()
-                )
         }
         .modelContainer(for: [Bit.self, Setlist.self])
     }

@@ -37,7 +37,8 @@ struct TFWordmarkTitle: View {
     VStack(spacing: 16) {
         TFWordmarkTitle(title: "Loose Bits")
         TFWordmarkTitle(title: "Finished Bits")
-        TFWordmarkTitle(title: "Setlists")
+        TFWordmarkTitle(title: "Set lists")
+        TFWordmarkTitle(title: "Show Notes")
     }
     .padding()
     .background(Color.black)

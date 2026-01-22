@@ -49,34 +49,34 @@ struct HomeView: View {
                 .padding(.top, 14)
                 .padding(.bottom, 28)
             }
-            .background(TFChalkboardBackground().ignoresSafeArea()) // ✅ DOES NOT AFFECT LAYOUT
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                            ToolbarItem(placement: .principal) {
-                                HStack(spacing: 8) {
-                                    Image("IconLogo")
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 50, height: 50)
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 8) {
+                        Image("IconLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 50, height: 50)
 
-                                    TightFiveWordmark(size: 22)
-                                }
-                                .offset(x: -15)
-                            }
+                        TightFiveWordmark(size: 22)
+                    }
+                    .offset(x: -15)
+                }
 
-                            ToolbarItem(placement: .topBarTrailing) {
-                                Button {
-                                    showQuickBit = true
-                                } label: {
-                                    Image(systemName: "plus")
-                                        .font(.system(size: 18, weight: .bold))
-                                        .foregroundStyle(Color("TFYellow"))
-                                        .frame(width: 40, height: 40)
-                                        .background(Color.white.opacity(0.0))
-                                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showQuickBit = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(Color("TFYellow"))
+                            .frame(width: 40, height: 40)
+                            .background(Color.white.opacity(0.0))
+                    }
                     .accessibilityLabel("New Bit")
                 }
             }
+            .tfBackground()
             .sheet(isPresented: $showQuickBit) {
                 QuickBitEditor()
                     .presentationDetents([.medium, .large])
@@ -142,23 +142,24 @@ private struct HomeTile: View {
 private struct SetlistsPlaceholderView: View {
     var body: some View {
         ZStack {
-            TFChalkboardBackground().ignoresSafeArea()
             ContentUnavailableView("Setlists", systemImage: "list.bullet.rectangle", description: Text("Coming soon."))
                 .foregroundStyle(.white)
         }
         .navigationTitle("Setlists")
         .navigationBarTitleDisplayMode(.inline)
+        .tfBackground()
     }
 }
 
 private struct ShowNotesPlaceholderView: View {
     var body: some View {
         ZStack {
-            TFChalkboardBackground().ignoresSafeArea()
             ContentUnavailableView("Show Notes", systemImage: "note.text", description: Text("Coming soon."))
                 .foregroundStyle(.white)
         }
         .navigationTitle("Show Notes")
         .navigationBarTitleDisplayMode(.inline)
+        .tfBackground()
     }
 }
+

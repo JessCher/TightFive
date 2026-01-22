@@ -100,9 +100,14 @@ struct LooseBitsView: View {
             }
             .tfBackground()
             .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: "Search bits")
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    TFWordmarkTitle(title: title, size: 22)
+                        .offset(x: -6)
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showQuickBit = true
@@ -231,3 +236,4 @@ private struct BitDetailView: View {
         }
     }
 }
+

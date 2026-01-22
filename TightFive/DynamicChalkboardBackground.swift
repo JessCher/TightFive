@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import CoreMotion
 
 struct DynamicChalkboardBackground: View {
@@ -6,16 +7,17 @@ struct DynamicChalkboardBackground: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // Tunables
-    private let dustCount = 900       // tiny speckles
-    private let clumpCount = 22       // big soft clouds
-    private let breatheSpeed = 0.12   // Hz (cycles per second)
+    private let dustCount = 2000       // tiny speckles
+    private let clumpCount = 99      // big soft clouds
+    private let breatheSpeed = 0.25   // Hz (cycles per second)
     private let breatheAmplitude: CGFloat = 0.06
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0/30.0)) { timeline in
-            let t = timeline.date.timeIntervalSinceReferenceDate
-            let breathe = reduceMotion ? 0 : breatheAmplitude * CGFloat(sin(2 * .pi * breatheSpeed * t))
+        TimelineView(.animation) { context in
+            let t = context.date.timeIntervalSinceReferenceDate
+            let breathe = reduceMotion ? 0 as CGFloat : breatheAmplitude * CGFloat(sin(2 * .pi * breatheSpeed * t))
             let tilt = reduceMotion ? .zero : motion.normalizedTilt
+            let topGlowOpacity = 0.20 + Double(max(0, breathe) * CGFloat(0.06))
 
             ZStack {
                 // Base board tone
@@ -25,16 +27,17 @@ struct DynamicChalkboardBackground: View {
                 Canvas { ctx, size in
                     let seed = UInt64(t.rounded(.towardZero))  // seed per frame (fast jitter)
                     var rng = SeededRandom(seed: seed)
+                    let margin: CGFloat = 60
 
                     for _ in 0..<dustCount {
-                        let x = rng.next(in: 0...size.width)
-                        let y = rng.next(in: 0...size.height)
+                        let x = rng.next(in: -margin...(size.width + margin))
+                        let y = rng.next(in: -margin...(size.height + margin))
 
                         // Subtle parallax with tilt
                         let px = x + tilt.x * 10
                         let py = y + tilt.y * 10
 
-                        let r = rng.next(in: 0.4...1.1)
+                        let r = rng.next(in: CGFloat(0.4)...CGFloat(1.1))
                         let alpha = rng.next(in: 0.02...0.06)
 
                         let rect = CGRect(x: px, y: py, width: r, height: r)
@@ -48,14 +51,15 @@ struct DynamicChalkboardBackground: View {
                 // Soft clumps (slow layer)
                 Canvas { ctx, size in
                     var rng = SeededRandom(seed: 42) // stable layout; we animate transform only
+                    let margin: CGFloat = 80
 
                     for _ in 0..<clumpCount {
-                        let cx = rng.next(in: 0...size.width)
-                        let cy = rng.next(in: 0...size.height)
-                        let base = rng.next(in: 180.0...420.0)
+                        let cx = rng.next(in: -margin...(size.width + margin))
+                        let cy = rng.next(in: -margin...(size.height + margin))
+                        let base = rng.next(in: CGFloat(180.0)...CGFloat(420.0))
 
                         // Breathing + parallax
-                        let scale = 1.0 + breathe * 0.15
+                        let scale: CGFloat = 1 + breathe * 0.15
                         let offset = CGSize(width: tilt.x * 20, height: tilt.y * 20)
 
                         let rect = CGRect(
@@ -70,12 +74,15 @@ struct DynamicChalkboardBackground: View {
                             .init(color: .white.opacity(0.10), location: 0.0),
                             .init(color: .white.opacity(0.00), location: 1.0)
                         ])
-                        ctx.fill(Path(ellipseIn: rect), with: .radialGradient(
-                            .init(gradient, center: .center, startRadius: 0, endRadius: base/2),
-                            center: CGPoint(x: rect.midX, y: rect.midY),
-                            startRadius: 0,
-                            endRadius: base/2
-                        ))
+                        ctx.fill(
+                            Path(ellipseIn: rect),
+                            with: .radialGradient(
+                                gradient,
+                                center: CGPoint(x: rect.midX, y: rect.midY),
+                                startRadius: 0,
+                                endRadius: base / 2
+                            )
+                        )
                     }
                 }
                 .opacity(0.18)
@@ -85,7 +92,7 @@ struct DynamicChalkboardBackground: View {
                 // Top glow (breathes slightly)
                 LinearGradient(
                     colors: [
-                        Color.white.opacity(0.10 + Double(max(0, breathe) * 0.06)),
+                        Color.white.opacity(topGlowOpacity),
                         Color.white.opacity(0.03),
                         Color.clear
                     ],
@@ -123,6 +130,10 @@ private final class MotionSampler: ObservableObject {
     private let maxTilt: Double = 0.25 // radians clamp for normalization
 
     func start(reduceMotion: Bool) {
+#if targetEnvironment(simulator)
+        return
+#endif
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" { return }
         guard !reduceMotion else { return }
         if manager.isDeviceMotionAvailable {
             manager.deviceMotionUpdateInterval = 1.0/30.0
@@ -135,7 +146,7 @@ private final class MotionSampler: ObservableObject {
                 let ny = pitch / maxTilt
                 DispatchQueue.main.async {
                     withAnimation(.easeOut(duration: 0.15)) {
-                        self.normalizedTilt = CGPoint(x: nx, y: ny)
+                        self.normalizedTilt = CGPoint(x: CGFloat(nx), y: CGFloat(ny))
                     }
                 }
             }
@@ -171,3 +182,4 @@ private struct SeededRandom {
         CGFloat(next(in: ClosedRange<Double>(uncheckedBounds: (Double(range.lowerBound), Double(range.upperBound)))))
     }
 }
+

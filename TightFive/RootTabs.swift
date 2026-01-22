@@ -24,6 +24,7 @@ private struct RunModePlaceholderView: View {
             ContentUnavailableView("Run Mode", systemImage: "timer", description: Text("Coming soon."))
                 .navigationTitle("Run Mode")
         }
+        .tfBackground()
     }
 }
 
@@ -33,5 +34,6 @@ private struct MorePlaceholderView: View {
             ContentUnavailableView("More", systemImage: "ellipsis", description: Text("Coming soon."))
                 .navigationTitle("More")
         }
+        .tfBackground()
     }
 }
