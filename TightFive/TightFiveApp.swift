@@ -10,8 +10,13 @@ struct TightFiveApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .tint(TFTheme.yellow)        // accent color across SwiftUI
+                .tint(TFTheme.yellow)
         }
-        .modelContainer(for: [Bit.self, Setlist.self])
+        .modelContainer(for: [
+            Bit.self,
+            Setlist.self,
+            BitVariation.self,
+            SetlistAssignment.self
+        ])
     }
 }

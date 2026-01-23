@@ -11,7 +11,7 @@ struct LooseBitsView: View {
     let mode: Mode
 
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Bit.updatedAt, order: .reverse) private var bits: [Bit]
+    @Query(sort: \Bit.updatedAt, order: .reverse) private var allBits: [Bit]
 
     @State private var query: String = ""
     @State private var showQuickBit = false
@@ -27,18 +27,24 @@ struct LooseBitsView: View {
         }
     }
 
+    /// Filter out deleted bits, then apply mode and search filters
     private var filtered: [Bit] {
-        let base: [Bit] = {
+        // First: exclude soft-deleted bits
+        let liveBits = allBits.filter { !$0.isDeleted }
+        
+        // Second: apply mode filter
+        let modeFiltered: [Bit] = {
             switch mode {
-            case .all: return bits
-            case .loose: return bits.filter { $0.status == .loose }
-            case .finished: return bits.filter { $0.status == .finished }
+            case .all: return liveBits
+            case .loose: return liveBits.filter { $0.status == .loose }
+            case .finished: return liveBits.filter { $0.status == .finished }
             }
         }()
 
+        // Third: apply search filter
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return base }
-        return base.filter { $0.text.localizedCaseInsensitiveContains(q) }
+        guard !q.isEmpty else { return modeFiltered }
+        return modeFiltered.filter { $0.text.localizedCaseInsensitiveContains(q) }
     }
 
     var body: some View {
@@ -57,7 +63,7 @@ struct LooseBitsView: View {
                                     withAnimation(.snappy) { toggleStatus(bit) }
                                 },
                                 onDelete: {
-                                    withAnimation(.snappy) { modelContext.delete(bit) }
+                                    withAnimation(.snappy) { softDeleteBit(bit) }
                                 },
                                 onTap: {
                                     // Handle navigation manually to avoid gesture conflict
@@ -111,7 +117,7 @@ struct LooseBitsView: View {
                     .presentationDetents([.medium, .large])
             }
         }
-        .hideKeyboardInteractively() // Use combined tap + swipe-down dismissal
+        .hideKeyboardInteractively()
     }
 
     private var emptyState: some View {
@@ -121,8 +127,8 @@ struct LooseBitsView: View {
                 .foregroundStyle(.white)
 
             Text(mode == .finished
-                 ? "Move a bit to Finished when it’s stage-ready."
-                 : "Tap + to capture an idea and it’ll show up here.")
+                 ? "Move a bit to Finished when it's stage-ready."
+                 : "Tap + to capture an idea and it'll show up here.")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.65))
                 .multilineTextAlignment(.center)
@@ -146,6 +152,11 @@ struct LooseBitsView: View {
     private func toggleStatus(_ bit: Bit) {
         bit.status = (bit.status == .loose) ? .finished : .loose
         bit.updatedAt = Date()
+    }
+    
+    /// Soft delete: marks bit as deleted, hard-deletes variations, preserves setlist assignments
+    private func softDeleteBit(_ bit: Bit) {
+        bit.softDelete(context: modelContext)
     }
 }
 
@@ -260,11 +271,26 @@ private struct BitCardRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(bit.titleLine)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(.white)
-                .lineLimit(3)
-                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Text(bit.titleLine)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                Spacer()
+                
+                // Show variation count badge if any
+                if bit.variationCount > 0 {
+                    Text("\(bit.variationCount)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(TFTheme.yellow)
+                        .clipShape(Capsule())
+                }
+            }
 
             Text(bit.updatedAt, style: .date)
                 .font(.subheadline)
@@ -277,7 +303,7 @@ private struct BitCardRow: View {
     }
 }
 
-// MARK: - Detail (Unchanged)
+// MARK: - Detail
 private struct BitDetailView: View {
     @Bindable var bit: Bit
 
@@ -300,6 +326,27 @@ private struct BitDetailView: View {
                     Text("Finished").tag(BitStatus.finished)
                 }
                 .pickerStyle(.segmented)
+            }
+            
+            // Show variations section if any exist
+            if !bit.variations.isEmpty {
+                Section("Variations (\(bit.variationCount))") {
+                    ForEach(bit.variations.sorted(by: { $0.createdAt > $1.createdAt })) { variation in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(variation.setlistTitle)
+                                .font(.subheadline.weight(.medium))
+                            Text(variation.formattedDate)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            if let note = variation.note {
+                                Text(note)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .italic()
+                            }
+                        }
+                    }
+                }
             }
         }
         .scrollContentBackground(.hidden)

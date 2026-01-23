@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftUI
 import SwiftData
 import UIKit
 
@@ -45,7 +44,7 @@ struct SetlistsView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        let s = Setlist(title: "Untitled Set", bodyRTF: Data(), isDraft: true)
+                        let s = Setlist(title: "Untitled Set", notesRTF: Data(), isDraft: true)
                         modelContext.insert(s)
                         try? modelContext.save()
                         newlyCreated = s
@@ -106,22 +105,30 @@ private struct SetlistMenuTile: View {
     }
 }
 
-struct InProgressSetlistsView: View {
-    init() {}
+// MARK: - In Progress List
 
+struct InProgressSetlistsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(filter: #Predicate { $0.isDraft == true }, sort: \Setlist.updatedAt, order: .reverse) private var setlists: [Setlist]
+    @Query(filter: #Predicate<Setlist> { $0.isDraft == true }, sort: \Setlist.updatedAt, order: .reverse) private var setlists: [Setlist]
 
     var body: some View {
-        List {
-            ForEach(setlists) { s in
-                NavigationLink { SetlistEditorView(setlist: s) } label: { row(s) }
-            }
-            .onDelete { indexSet in
-                for i in indexSet { modelContext.delete(setlists[i]) }
+        Group {
+            if setlists.isEmpty {
+                emptyState
+            } else {
+                List {
+                    ForEach(setlists) { s in
+                        NavigationLink { SetlistEditorView(setlist: s) } label: { row(s) }
+                    }
+                    .onDelete { indexSet in
+                        for i in indexSet { modelContext.delete(setlists[i]) }
+                    }
+                    .listRowBackground(Color.clear)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
         }
-        .scrollContentBackground(.hidden)
         .navigationTitle("In Progress")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -132,32 +139,68 @@ struct InProgressSetlistsView: View {
         }
         .tfBackground()
     }
+    
+    private var emptyState: some View {
+        VStack(spacing: 14) {
+            Spacer()
+            Image(systemName: "hammer")
+                .font(.system(size: 48))
+                .foregroundStyle(.white.opacity(0.3))
+            Text("No setlists in progress")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.white)
+            Text("Create a new setlist to start building.")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.6))
+            Spacer()
+        }
+    }
 
     private func row(_ s: Setlist) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(s.title).font(.headline)
-            Text(s.updatedAt, style: .date).font(.caption).foregroundStyle(.secondary)
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(s.title).font(.headline).foregroundStyle(.white)
+                HStack(spacing: 8) {
+                    Text(s.updatedAt, style: .date)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.5))
+                    if s.bitCount > 0 {
+                        Text("\(s.bitCount) bits")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                }
+            }
+            Spacer()
         }
-        .listRowBackground(Color.clear)
+        .padding(.vertical, 4)
     }
 }
 
-struct FinishedSetlistsView: View {
-    init() {}
+// MARK: - Finished List
 
+struct FinishedSetlistsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(filter: #Predicate { $0.isDraft == false }, sort: \Setlist.updatedAt, order: .reverse) private var setlists: [Setlist]
+    @Query(filter: #Predicate<Setlist> { $0.isDraft == false }, sort: \Setlist.updatedAt, order: .reverse) private var setlists: [Setlist]
 
     var body: some View {
-        List {
-            ForEach(setlists) { s in
-                NavigationLink { SetlistEditorView(setlist: s) } label: { row(s) }
-            }
-            .onDelete { indexSet in
-                for i in indexSet { modelContext.delete(setlists[i]) }
+        Group {
+            if setlists.isEmpty {
+                emptyState
+            } else {
+                List {
+                    ForEach(setlists) { s in
+                        NavigationLink { SetlistEditorView(setlist: s) } label: { row(s) }
+                    }
+                    .onDelete { indexSet in
+                        for i in indexSet { modelContext.delete(setlists[i]) }
+                    }
+                    .listRowBackground(Color.clear)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
         }
-        .scrollContentBackground(.hidden)
         .navigationTitle("Finished")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -168,15 +211,45 @@ struct FinishedSetlistsView: View {
         }
         .tfBackground()
     }
+    
+    private var emptyState: some View {
+        VStack(spacing: 14) {
+            Spacer()
+            Image(systemName: "checkmark.seal")
+                .font(.system(size: 48))
+                .foregroundStyle(.white.opacity(0.3))
+            Text("No finished setlists")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.white)
+            Text("Mark a setlist as finished when it's stage-ready.")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.6))
+            Spacer()
+        }
+    }
 
     private func row(_ s: Setlist) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(s.title).font(.headline)
-            Text(s.updatedAt, style: .date).font(.caption).foregroundStyle(.secondary)
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(s.title).font(.headline).foregroundStyle(.white)
+                HStack(spacing: 8) {
+                    Text(s.updatedAt, style: .date)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.5))
+                    if s.bitCount > 0 {
+                        Text("\(s.bitCount) bits")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                }
+            }
+            Spacer()
         }
-        .listRowBackground(Color.clear)
+        .padding(.vertical, 4)
     }
 }
+
+// MARK: - Setlist Editor (Phase 2)
 
 struct SetlistEditorView: View {
     @Environment(\.modelContext) private var modelContext
@@ -184,45 +257,62 @@ struct SetlistEditorView: View {
     @Environment(\.dismiss) private var dismiss
 
     @Bindable var setlist: Setlist
-    @State private var saveWorkItem: DispatchWorkItem? = nil
+    
+    // Tab state
+    enum EditorTab: String, CaseIterable {
+        case bits = "Bits"
+        case notes = "Notes"
+    }
+    @State private var selectedTab: EditorTab = .bits
+    
+    // Sheet state
+    @State private var showBitDrawer = false
+    @State private var assignmentToEdit: SetlistAssignment?
+    
+    // Save debouncing
+    @State private var saveWorkItem: DispatchWorkItem?
 
     var body: some View {
         VStack(spacing: 0) {
             // Title field
             TextField("Set title", text: $setlist.title)
                 .font(.title2.weight(.semibold))
+                .foregroundStyle(.white)
                 .padding(.horizontal, 16)
                 .padding(.top, 14)
                 .padding(.bottom, 10)
-
                 .onChange(of: setlist.title) { _, _ in
                     setlist.updatedAt = Date()
-                    scheduleDebouncedSave(reason: "content changed")
+                    scheduleDebouncedSave(reason: "title changed")
                 }
 
+            // Tab picker
+            Picker("View", selection: $selectedTab) {
+                ForEach(EditorTab.allCases, id: \.self) { tab in
+                    Text(tab.rawValue).tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+            
             Divider().opacity(0.25)
 
-            // Rich editor
-            RichTextEditor(rtfData: $setlist.bodyRTF)
-                .onChange(of: setlist.bodyRTF) { _, _ in
-                    setlist.updatedAt = Date()
-                    scheduleDebouncedSave(reason: "content changed")
-                }
+            // Tab content
+            switch selectedTab {
+            case .bits:
+                bitsTab
+            case .notes:
+                notesTab
+            }
         }
         .tfBackground()
         .hideKeyboardInteractively()
-        // Swipe-down keyboard dismissal now works with .hideKeyboardInteractively()
         .background(NavigationGestureDisabler())
         .onDisappear { saveContext(reason: "onDisappear") }
         .task { saveContext(reason: "onAppear task") }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                TFWordmarkTitle(title: "Setlist", size: 22)
-                    .offset(x: -6)
-            }
-        }
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -230,27 +320,13 @@ struct SetlistEditorView: View {
                     saveContext(reason: "Done tapped")
                     dismiss()
                 }
+                .foregroundStyle(TFTheme.yellow)
                 .accessibilityLabel("Done")
             }
-
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    undoManager?.undo()
-                } label: {
-                    Image(systemName: "arrow.uturn.backward")
-                }
-                .disabled(!(undoManager?.canUndo ?? false))
-                .accessibilityLabel("Undo")
-            }
-
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    undoManager?.redo()
-                } label: {
-                    Image(systemName: "arrow.uturn.forward")
-                }
-                .disabled(!(undoManager?.canRedo ?? false))
-                .accessibilityLabel("Redo")
+            
+            ToolbarItem(placement: .principal) {
+                TFWordmarkTitle(title: "Setlist", size: 22)
+                    .offset(x: -6)
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -292,23 +368,136 @@ struct SetlistEditorView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(TFTheme.yellow)
+                }
+            }
+        }
+        .sheet(isPresented: $showBitDrawer) {
+            BitDrawerView(setlist: setlist) { bit in
+                addBitToSetlist(bit)
+            }
+        }
+        .sheet(item: $assignmentToEdit) { assignment in
+            AssignmentEditorView(setlist: setlist, assignment: assignment)
+        }
+    }
+    
+    // MARK: - Bits Tab
+    
+    private var bitsTab: some View {
+        Group {
+            if setlist.orderedAssignments.isEmpty {
+                SetlistEmptyState(onAddBit: { showBitDrawer = true })
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 10) {
+                        ForEach(Array(setlist.orderedAssignments.enumerated()), id: \.element.id) { index, assignment in
+                            SwipeableSetlistBitCard(
+                                assignment: assignment,
+                                displayOrder: index + 1,
+                                onTap: {
+                                    assignmentToEdit = assignment
+                                },
+                                onDelete: {
+                                    withAnimation(.snappy) {
+                                        removeAssignment(assignment)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    addBitFAB
                 }
             }
         }
     }
+    
+    // MARK: - Notes Tab
+    
+    private var notesTab: some View {
+        RichTextEditor(rtfData: $setlist.notesRTF)
+            .onChange(of: setlist.notesRTF) { _, _ in
+                setlist.updatedAt = Date()
+                scheduleDebouncedSave(reason: "notes changed")
+            }
+    }
+    
+    // MARK: - FAB
+    
+    private var addBitFAB: some View {
+        Button {
+            showBitDrawer = true
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(.black)
+                .frame(width: 56, height: 56)
+                .background(TFTheme.yellow)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.4), radius: 8, x: 0, y: 4)
+        }
+        .padding(.trailing, 20)
+        .padding(.bottom, 20)
+        .accessibilityLabel("Add Bit")
+    }
+    
+    // MARK: - Actions
+    
+    private func addBitToSetlist(_ bit: Bit) {
+        withAnimation(.snappy) {
+            setlist.addBit(bit, context: modelContext)
+            saveContext(reason: "bit added")
+        }
+    }
+    
+    private func removeAssignment(_ assignment: SetlistAssignment) {
+        setlist.removeAssignment(assignment, context: modelContext)
+        saveContext(reason: "assignment removed")
+    }
 }
+
+// MARK: - Editor Helpers
 
 private extension SetlistEditorView {
     func duplicateSetlist() {
-        let copy = Setlist(title: setlist.title, bodyRTF: setlist.bodyRTF, isDraft: setlist.isDraft)
+        let copy = Setlist(title: setlist.title + " (Copy)", notesRTF: setlist.notesRTF, isDraft: setlist.isDraft)
+        
+        // Duplicate assignments too
+        for assignment in setlist.orderedAssignments {
+            let assignmentCopy = SetlistAssignment(
+                order: assignment.order,
+                performedRTF: assignment.performedRTF,
+                bitId: assignment.bitId,
+                bitTitleSnapshot: assignment.bitTitleSnapshot
+            )
+            assignmentCopy.setlist = copy
+            copy.assignments.append(assignmentCopy)
+            modelContext.insert(assignmentCopy)
+        }
+        
         modelContext.insert(copy)
         try? modelContext.save()
     }
 
     func copyTextToClipboard() {
-        // Relies on RTFHelpers.swift
-        guard let attributed = NSAttributedString.fromRTF(setlist.bodyRTF) else { return }
-        UIPasteboard.general.string = attributed.string
+        var text = setlist.title + "\n\n"
+        
+        // Add bits
+        for (index, assignment) in setlist.orderedAssignments.enumerated() {
+            text += "\(index + 1). \(assignment.plainText)\n\n"
+        }
+        
+        // Add notes if any
+        if let notes = NSAttributedString.fromRTF(setlist.notesRTF)?.string,
+           !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            text += "---\nNotes:\n\(notes)"
+        }
+        
+        UIPasteboard.general.string = text
     }
 
     func deleteSetlist() {
@@ -320,7 +509,9 @@ private extension SetlistEditorView {
     func saveContext(reason: String) {
         do {
             try modelContext.save()
+            #if DEBUG
             print("[Save] success -", reason)
+            #endif
         } catch {
             print("[Save] error -", reason, error.localizedDescription)
         }
@@ -337,6 +528,8 @@ private extension SetlistEditorView {
     }
 }
 
+// MARK: - Detail View (Legacy)
+
 struct SetlistDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.undoManager) private var undoManager
@@ -345,7 +538,7 @@ struct SetlistDetailView: View {
 
     var body: some View {
         VStack {
-            RichTextEditor(rtfData: $setlist.bodyRTF)
+            RichTextEditor(rtfData: $setlist.notesRTF)
                 .ignoresSafeArea(.keyboard, edges: .bottom)
         }
         .toolbar {

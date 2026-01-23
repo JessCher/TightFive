@@ -46,11 +46,11 @@ extension View {
         )
     }
     
-    /// Combines tap and drag-down gestures for maximum keyboard dismissal coverage
+    /// Dismiss the keyboard with a downward swipe; tap-to-dismiss is disabled to preserve selection gestures.
     func hideKeyboardInteractively() -> some View {
-        self
-            .hideKeyboardOnTap()
-            .hideKeyboardOnDragDown()
+        // Tap-to-dismiss disabled to avoid fighting with text selection.
+        // Keep swipe-down to dismiss only.
+        self.hideKeyboardOnDragDown()
     }
 }
 
