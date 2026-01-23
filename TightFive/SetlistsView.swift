@@ -249,7 +249,7 @@ struct FinishedSetlistsView: View {
     }
 }
 
-// MARK: - Setlist Editor (Phase 2)
+// MARK: - Setlist Editor (Phase 3)
 
 struct SetlistEditorView: View {
     @Environment(\.modelContext) private var modelContext
@@ -265,8 +265,13 @@ struct SetlistEditorView: View {
     }
     @State private var selectedTab: EditorTab = .bits
     
+    // Edit mode for reordering
+    @State private var editMode: EditMode = .inactive
+    
     // Sheet state
     @State private var showBitDrawer = false
+    @State private var showRunMode = false
+    @State private var showExport = false
     @State private var assignmentToEdit: SetlistAssignment?
     
     // Save debouncing
@@ -306,6 +311,7 @@ struct SetlistEditorView: View {
                 notesTab
             }
         }
+        .environment(\.editMode, $editMode)
         .tfBackground()
         .hideKeyboardInteractively()
         .background(NavigationGestureDisabler())
@@ -330,7 +336,36 @@ struct SetlistEditorView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
+                // Run Mode button (only if has notes)
+                if !setlist.notesPlainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Button {
+                        showRunMode = true
+                    } label: {
+                        Image(systemName: "play.fill")
+                            .foregroundStyle(TFTheme.yellow)
+                    }
+                    .accessibilityLabel("Run Mode")
+                }
+            }
+            
+            ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    // Edit/Reorder toggle
+                    if selectedTab == .bits && !setlist.orderedAssignments.isEmpty {
+                        Button {
+                            withAnimation {
+                                editMode = editMode == .active ? .inactive : .active
+                            }
+                        } label: {
+                            Label(
+                                editMode == .active ? "Done Reordering" : "Reorder Bits",
+                                systemImage: editMode == .active ? "checkmark" : "arrow.up.arrow.down"
+                            )
+                        }
+                        
+                        Divider()
+                    }
+                    
                     Button {
                         setlist.isDraft = true
                         setlist.updatedAt = Date()
@@ -348,6 +383,12 @@ struct SetlistEditorView: View {
                     }
 
                     Divider()
+                    
+                    Button {
+                        showExport = true
+                    } label: {
+                        Label("Export", systemImage: "square.and.arrow.up")
+                    }
 
                     Button {
                         duplicateSetlist()
@@ -380,6 +421,12 @@ struct SetlistEditorView: View {
         .sheet(item: $assignmentToEdit) { assignment in
             AssignmentEditorView(setlist: setlist, assignment: assignment)
         }
+        .sheet(isPresented: $showExport) {
+            SetlistShareSheet(setlist: setlist)
+        }
+        .fullScreenCover(isPresented: $showRunMode) {
+            RunModeView(setlist: setlist)
+        }
     }
     
     // MARK: - Bits Tab
@@ -389,28 +436,30 @@ struct SetlistEditorView: View {
             if setlist.orderedAssignments.isEmpty {
                 SetlistEmptyState(onAddBit: { showBitDrawer = true })
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 10) {
-                        ForEach(Array(setlist.orderedAssignments.enumerated()), id: \.element.id) { index, assignment in
-                            SwipeableSetlistBitCard(
-                                assignment: assignment,
-                                displayOrder: index + 1,
-                                onTap: {
-                                    assignmentToEdit = assignment
-                                },
-                                onDelete: {
-                                    withAnimation(.snappy) {
-                                        removeAssignment(assignment)
-                                    }
-                                }
-                            )
-                        }
+                List {
+                    ForEach(setlist.orderedAssignments) { assignment in
+                        let index = setlist.orderedAssignments.firstIndex(where: { $0.id == assignment.id }) ?? 0
+                        
+                        SetlistBitRow(
+                            assignment: assignment,
+                            displayOrder: index + 1,
+                            onTap: {
+                                assignmentToEdit = assignment
+                            }
+                        )
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .onMove(perform: moveAssignments)
+                    .onDelete(perform: deleteAssignments)
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
                 .overlay(alignment: .bottomTrailing) {
-                    addBitFAB
+                    if editMode == .inactive {
+                        addBitFAB
+                    }
                 }
             }
         }
@@ -454,9 +503,103 @@ struct SetlistEditorView: View {
         }
     }
     
-    private func removeAssignment(_ assignment: SetlistAssignment) {
-        setlist.removeAssignment(assignment, context: modelContext)
-        saveContext(reason: "assignment removed")
+    private func moveAssignments(from source: IndexSet, to destination: Int) {
+        // Get current ordered list as mutable copy
+        var ordered = setlist.orderedAssignments
+        
+        // Perform the move
+        ordered.move(fromOffsets: source, toOffset: destination)
+        
+        // Update all orders
+        for (index, assignment) in ordered.enumerated() {
+            assignment.order = index
+        }
+        
+        setlist.updatedAt = Date()
+        saveContext(reason: "assignments reordered")
+    }
+    
+    private func deleteAssignments(at offsets: IndexSet) {
+        let ordered = setlist.orderedAssignments
+        for index in offsets {
+            let assignment = ordered[index]
+            setlist.removeAssignment(assignment, context: modelContext)
+        }
+        saveContext(reason: "assignment deleted")
+    }
+}
+
+// MARK: - Setlist Bit Row (for List with reorder support)
+
+private struct SetlistBitRow: View {
+    @Environment(\.modelContext) private var modelContext
+    
+    let assignment: SetlistAssignment
+    let displayOrder: Int
+    let onTap: () -> Void
+    
+    private var isOrphaned: Bool {
+        assignment.isOrphaned(in: modelContext)
+    }
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                // Order number badge
+                Text("\(displayOrder)")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(.black)
+                    .frame(width: 28, height: 28)
+                    .background(TFTheme.yellow)
+                    .clipShape(Circle())
+                
+                // Content
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(assignment.titleLine)
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    
+                    // Status indicators
+                    HStack(spacing: 6) {
+                        if assignment.isModified {
+                            StatusBadge(text: "Modified", color: .blue)
+                        }
+                        
+                        if isOrphaned {
+                            StatusBadge(text: "Original Deleted", color: .orange)
+                        }
+                    }
+                }
+                
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color("TFCard"))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(Color("TFCardStroke").opacity(0.7), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct StatusBadge: View {
+    let text: String
+    let color: Color
+    
+    var body: some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.15))
+            .clipShape(Capsule())
     }
 }
 
@@ -484,20 +627,7 @@ private extension SetlistEditorView {
     }
 
     func copyTextToClipboard() {
-        var text = setlist.title + "\n\n"
-        
-        // Add bits
-        for (index, assignment) in setlist.orderedAssignments.enumerated() {
-            text += "\(index + 1). \(assignment.plainText)\n\n"
-        }
-        
-        // Add notes if any
-        if let notes = NSAttributedString.fromRTF(setlist.notesRTF)?.string,
-           !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            text += "---\nNotes:\n\(notes)"
-        }
-        
-        UIPasteboard.general.string = text
+        UIPasteboard.general.string = SetlistExporter.generatePlainText(for: setlist)
     }
 
     func deleteSetlist() {

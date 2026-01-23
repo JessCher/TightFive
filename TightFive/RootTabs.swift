@@ -9,22 +9,12 @@ struct RootTabs: View {
             LooseBitsView(mode: .all)
                 .tabItem { Label("Bits", systemImage: "square.stack.3d.up.fill") }
 
-            RunModePlaceholderView()
+            RunModeLauncherView()
                 .tabItem { Label("Run Mode", systemImage: "timer") }
 
             MorePlaceholderView()
                 .tabItem { Label("More", systemImage: "ellipsis") }
         }
-    }
-}
-
-private struct RunModePlaceholderView: View {
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView("Run Mode", systemImage: "timer", description: Text("Coming soon."))
-                .navigationTitle("Run Mode")
-        }
-        .tfBackground()
     }
 }
 

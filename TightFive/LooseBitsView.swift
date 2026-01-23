@@ -306,6 +306,7 @@ private struct BitCardRow: View {
 // MARK: - Detail
 private struct BitDetailView: View {
     @Bindable var bit: Bit
+    @State private var showVariationComparison = false
 
     var body: some View {
         Form {
@@ -330,22 +331,32 @@ private struct BitDetailView: View {
             
             // Show variations section if any exist
             if !bit.variations.isEmpty {
-                Section("Variations (\(bit.variationCount))") {
-                    ForEach(bit.variations.sorted(by: { $0.createdAt > $1.createdAt })) { variation in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(variation.setlistTitle)
-                                .font(.subheadline.weight(.medium))
-                            Text(variation.formattedDate)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            if let note = variation.note {
-                                Text(note)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .italic()
-                            }
+                Section {
+                    Button {
+                        showVariationComparison = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.on.doc")
+                                .foregroundStyle(TFTheme.yellow)
+                            
+                            Text("Compare Variations")
+                                .foregroundStyle(.white)
+                            
+                            Spacer()
+                            
+                            Text("\(bit.variationCount)")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(TFTheme.yellow)
+                                .clipShape(Capsule())
                         }
                     }
+                } header: {
+                    Text("Variations")
+                } footer: {
+                    Text("See how this bit evolved across different setlists.")
                 }
             }
         }
@@ -355,6 +366,9 @@ private struct BitDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: bit.text) {
             bit.updatedAt = Date()
+        }
+        .sheet(isPresented: $showVariationComparison) {
+            VariationComparisonView(bit: bit)
         }
     }
 }
