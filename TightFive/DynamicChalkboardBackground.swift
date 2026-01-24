@@ -64,7 +64,7 @@ struct DynamicChalkboardBackground: View {
         let tilt: CGPoint = (isAnimated && !reduceMotion) ? motion.normalizedTilt : .zero
 
         // Glow opacity (kept identical to animated version)
-        let topGlowOpacity = 0.20 + Double(max(0, breathe) * CGFloat(0.06))
+        let topGlowOpacity = 0.30 + Double(max(0, breathe) * CGFloat(0.06))
 
         // Parallax offsets
         let fastLayerOffset = CGSize(width: tilt.x * 25, height: tilt.y * 25)
@@ -92,7 +92,7 @@ struct DynamicChalkboardBackground: View {
                     ctx.fill(Path(ellipseIn: rect), with: .color(.white.opacity(alpha)))
                 }
             }
-            .opacity(0.18 + breathe * 0.12)
+            .opacity(0.24 + breathe * 0.12)
             .blendMode(.overlay)
             .drawingGroup()
 
@@ -103,7 +103,7 @@ struct DynamicChalkboardBackground: View {
 
                 ctx.translateBy(x: slowLayerOffset.width, y: slowLayerOffset.height)
 
-                let scaleCenter = CGPoint(x: size.width / 2, y: size.height / 2)
+                let scaleCenter = CGPoint(x: size.width / 4, y: size.height / 1)
                 let scaleFactor: CGFloat = 1 + breathe * 0.15
 
                 ctx.translateBy(x: scaleCenter.x, y: scaleCenter.y)
@@ -118,8 +118,8 @@ struct DynamicChalkboardBackground: View {
                     let rect = CGRect(x: cx - base/2, y: cy - base/2, width: base, height: base)
 
                     let gradient = Gradient(stops: [
-                        .init(color: .white.opacity(0.08), location: 0.0),
-                        .init(color: .white.opacity(0.00), location: 1.0)
+                        .init(color: .white.opacity(0.18), location: 0.0),
+                        .init(color: .white.opacity(0.03), location: 1.0)
                     ])
 
                     ctx.fill(

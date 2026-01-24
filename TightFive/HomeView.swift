@@ -13,7 +13,7 @@ struct HomeView: View {
                         NavigationLink {
                             LooseBitsView(mode: .loose)
                         } label: {
-                            HomeTile(title: "Loose Bits",
+                            HomeTile(title: "Loose Ideas",
                                      subtitle: "Save joke ideas for later…",
                                      iconName: "IconLooseBits")
                         }
@@ -166,26 +166,3 @@ private struct HomeTile: View {
     }
 }
 
-struct SetlistsPlaceholderView: View {
-    var body: some View {
-        ZStack {
-            ContentUnavailableView("Setlists", systemImage: "list.bullet.rectangle", description: Text("Coming soon."))
-                .foregroundStyle(.white)
-        }
-        .navigationTitle("Setlists")
-        .navigationBarTitleDisplayMode(.inline)
-        .tfBackground()
-    }
-}
-
-struct ShowNotesPlaceholderView: View {
-    var body: some View {
-        ZStack {
-            ContentUnavailableView("Show Notes", systemImage: "note.text", description: Text("Coming soon."))
-                .foregroundStyle(.white)
-        }
-        .navigationTitle("Show Notes")
-        .navigationBarTitleDisplayMode(.inline)
-        .tfBackground()
-    }
-}

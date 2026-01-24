@@ -129,7 +129,7 @@ final class StageAnchorRecognizer: ObservableObject {
         
         // Configure audio session for recording alongside playback
         let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers])
+        try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetoothHFP, .mixWithOthers])
         try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
         
         // Create recognition request
@@ -283,9 +283,7 @@ final class StageAnchorRecognizer: ObservableObject {
     private func startBufferResetTimer() {
         stopBufferResetTimer()
         bufferResetTimer = Timer.scheduledTimer(withTimeInterval: bufferResetInterval, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.transcriptBuffer = ""
-            }
+            self?.transcriptBuffer = ""
         }
         if let timer = bufferResetTimer {
             RunLoop.main.add(timer, forMode: .common)

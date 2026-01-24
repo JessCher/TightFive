@@ -68,7 +68,7 @@ final class PerformanceRecorder: ObservableObject {
         
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers])
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP, .mixWithOthers])
             try session.setActive(true)
         } catch {
             self.error = .configurationFailed
@@ -159,18 +159,26 @@ final class PerformanceRecorder: ObservableObject {
     
     @MainActor
     private func startTimers() {
-        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.updateAudioLevel()
+        // Capture a weak reference to avoid capturing `self` strongly in a @Sendable context.
+        weak let weakSelf = self
+
+        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            // Ensure we hop to the main actor explicitly and avoid capturing `self` in the closure.
+            if let strongSelf = weakSelf {
+                Task { @MainActor in
+                    strongSelf.updateAudioLevel()
+                }
             }
         }
         if let timer = levelTimer {
             RunLoop.main.add(timer, forMode: .common)
         }
-        
-        timeTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.updateTime()
+
+        timeTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            if let strongSelf = weakSelf {
+                Task { @MainActor in
+                    strongSelf.updateTime()
+                }
             }
         }
         if let timer = timeTimer {

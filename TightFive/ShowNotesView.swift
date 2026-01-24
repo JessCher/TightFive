@@ -576,17 +576,19 @@ final class AudioPlayerManager: NSObject, ObservableObject {
     
     private func startTimer() {
         stopTimer()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.updateProgress()
-            }
-        }
-        RunLoop.main.add(timer!, forMode: .common)
+        let timer = Timer(timeInterval: 0.1, target: self, selector: #selector(timerFired(_:)), userInfo: nil, repeats: true)
+        self.timer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
     
     private func stopTimer() {
         timer?.invalidate()
         timer = nil
+    }
+    
+    @objc private func timerFired(_ timer: Timer) {
+        // We're on the main run loop; AudioPlayerManager is @MainActor
+        updateProgress()
     }
     
     private func updateProgress() {
@@ -747,3 +749,4 @@ struct StorageInfoView: View {
 #Preview {
     ShowNotesView()
 }
+

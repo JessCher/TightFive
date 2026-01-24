@@ -48,7 +48,7 @@ private struct MorePlaceholderView: View {
                     
                     Divider().opacity(0.2)
                     
-                    settingsRow(icon: "questionmark.circle", title: "Help", subtitle: "Coming soon")
+                    settingsRow(icon: "questionmark.circle", title: "Help", subtitle: "Probably not coming")
                 }
                 .background(Color("TFCard"))
                 .clipShape(RoundedRectangle(cornerRadius: 14))

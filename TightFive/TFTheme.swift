@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Combine
 
 enum TFTheme {
     // MARK: - Colors (from Assets)
@@ -103,16 +104,38 @@ final class TFKeyboardState: ObservableObject {
 
     private init() {
         let nc = NotificationCenter.default
-        tokens.append(nc.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.isVisible = true
+        tokens.append(nc.addObserver(
+            forName: UIResponder.keyboardWillShowNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.keyboardWillShow()
+            }
         })
-        tokens.append(nc.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.isVisible = false
+
+        tokens.append(nc.addObserver(
+            forName: UIResponder.keyboardWillHideNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.keyboardWillHide()
+            }
         })
     }
 
     deinit {
         tokens.forEach { NotificationCenter.default.removeObserver($0) }
+    }
+
+    @objc private func keyboardWillShow() {
+        // We are already @MainActor, so direct mutation is safe.
+        isVisible = true
+    }
+
+    @objc private func keyboardWillHide() {
+        isVisible = false
     }
 }
 
@@ -125,8 +148,7 @@ struct TFUndoRedoControls: View {
     var body: some View {
         HStack(spacing: 10) {
             Button {
-                undoManager?.undo()
-                refresh()
+                undoManager?.undo()  // ✅ Only call undo, let observers handle refresh
             } label: {
                 Image(systemName: "arrow.uturn.backward")
                     .font(.system(size: 16, weight: .semibold))
@@ -162,8 +184,10 @@ struct TFUndoRedoControls: View {
     }
 
     private func refresh() {
-        canUndo = undoManager?.canUndo ?? false
-        canRedo = undoManager?.canRedo ?? false
+        DispatchQueue.main.async {
+            self.canUndo = self.undoManager?.canUndo ?? false  // ✅ Next run loop
+            self.canRedo = self.undoManager?.canRedo ?? false
+        }
     }
 
     private func observeUndoManager() {

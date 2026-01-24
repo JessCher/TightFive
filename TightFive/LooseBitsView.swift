@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import SwiftData
+import Combine
 
 struct LooseBitsView: View {
     enum Mode {
@@ -12,7 +13,9 @@ struct LooseBitsView: View {
     let mode: Mode
 
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Bit.updatedAt, order: .reverse) private var allBits: [Bit]
+    @Query(filter: #Predicate<Bit> { bit in
+        !bit.isDeleted
+    }, sort: \Bit.updatedAt, order: .reverse) private var allBits: [Bit]
 
     @State private var query: String = ""
     @State private var showQuickBit = false
@@ -23,26 +26,23 @@ struct LooseBitsView: View {
     private var title: String {
         switch mode {
         case .all: return "Bits"
-        case .loose: return "Loose Bits"
+        case .loose: return "Loose ideas"
         case .finished: return "Finished Bits"
         }
     }
 
-    /// Filter out deleted bits, then apply mode and search filters
+    /// Apply mode and search filters (deleted bits already excluded by @Query predicate)
     private var filtered: [Bit] {
-        // First: exclude soft-deleted bits
-        let liveBits = allBits.filter { !$0.isDeleted }
-        
-        // Second: apply mode filter
+        // First: apply mode filter
         let modeFiltered: [Bit] = {
             switch mode {
-            case .all: return liveBits
-            case .loose: return liveBits.filter { $0.status == .loose }
-            case .finished: return liveBits.filter { $0.status == .finished }
+            case .all: return allBits
+            case .loose: return allBits.filter { $0.status == .loose }
+            case .finished: return allBits.filter { $0.status == .finished }
             }
         }()
 
-        // Third: apply search filter
+        // Second: apply search filter
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return modeFiltered }
         return modeFiltered.filter { $0.text.localizedCaseInsensitiveContains(q) }
@@ -123,7 +123,7 @@ struct LooseBitsView: View {
 
     private var emptyState: some View {
         VStack(spacing: 14) {
-            Text(mode == .finished ? "No finished bits yet" : "No loose bits yet")
+            Text(mode == .finished ? "No finished bits yet" : "No loose ideas yet")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(.white)
 
@@ -158,6 +158,8 @@ struct LooseBitsView: View {
     /// Soft delete: marks bit as deleted, hard-deletes variations, preserves setlist assignments
     private func softDeleteBit(_ bit: Bit) {
         bit.softDelete(context: modelContext)
+        // Explicitly save to ensure the deletion persists immediately
+        try? modelContext.save()
     }
 }
 
@@ -305,31 +307,95 @@ private struct BitCardRow: View {
 }
 
 // MARK: - Detail
+
+// UITextView wrapper with built-in undo support (matches RichTextEditor pattern)
+private struct UndoableTextEditor: UIViewRepresentable {
+    @Binding var text: String
+    let modelContext: ModelContext
+    let bit: Bit
+    var undoManager: UndoManager?
+    
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.font = .systemFont(ofSize: 17)
+        textView.backgroundColor = .clear
+        textView.textColor = .white
+        textView.delegate = context.coordinator
+        textView.allowsEditingTextAttributes = false
+        textView.isScrollEnabled = true
+        textView.autocapitalizationType = .sentences
+        textView.autocorrectionType = .yes
+        textView.spellCheckingType = .yes
+        
+        // Load initial text
+        textView.text = text
+        
+        return textView
+    }
+    
+    func updateUIView(_ textView: UITextView, context: Context) {
+        // Don't update if the change came from the text view itself
+        if !context.coordinator.isInternalUpdate && textView.text != text {
+            textView.text = text
+        }
+        context.coordinator.isInternalUpdate = false
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text, modelContext: modelContext, bit: bit)
+    }
+    
+    class Coordinator: NSObject, UITextViewDelegate {
+        @Binding var text: String
+        let modelContext: ModelContext
+        let bit: Bit
+        var isInternalUpdate = false
+        
+        init(text: Binding<String>, modelContext: ModelContext, bit: Bit) {
+            self._text = text
+            self.modelContext = modelContext
+            self.bit = bit
+        }
+        
+        func textViewDidChange(_ textView: UITextView) {
+            isInternalUpdate = true
+            text = textView.text
+            bit.text = textView.text
+            bit.updatedAt = Date()
+            try? modelContext.save()
+        }
+    }
+}
+
 private struct BitDetailView: View {
     @Bindable var bit: Bit
     @State private var showVariationComparison = false
     @ObservedObject private var keyboard = TFKeyboardState.shared
-    @State private var undoManager = UndoManager()
-
+    @Environment(\.undoManager) private var undoManager
+    @Environment(\.modelContext) private var modelContext
+    
     var body: some View {
         Form {
             Section("Text") {
-                TextEditor(text: $bit.text)
-                    .frame(minHeight: 240)
+                UndoableTextEditor(
+                    text: $bit.text,
+                    modelContext: modelContext,
+                    bit: bit,
+                    undoManager: undoManager
+                )
+                .frame(minHeight: 240)
             }
 
             Section("Status") {
-                Picker("Status", selection: Binding(
-                    get: { bit.status },
-                    set: { newValue in
-                        bit.status = newValue
-                        bit.updatedAt = Date()
-                    }
-                )) {
+                Picker("Status", selection: $bit.status) {
                     Text("Loose").tag(BitStatus.loose)
                     Text("Finished").tag(BitStatus.finished)
                 }
                 .pickerStyle(.segmented)
+                .onChange(of: bit.status) { oldValue, newValue in
+                    bit.updatedAt = Date()
+                    try? modelContext.save()
+                }
             }
             
             // Show variations section if any exist
@@ -365,15 +431,14 @@ private struct BitDetailView: View {
         }
         .scrollContentBackground(.hidden)
         .tfBackground()
-        .environment(\.undoManager, undoManager)
         .tfUndoRedoToolbar(isVisible: keyboard.isVisible)
         .navigationTitle("Bit")
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: bit.text) {
-            bit.updatedAt = Date()
-        }
         .sheet(isPresented: $showVariationComparison) {
             VariationComparisonView(bit: bit)
         }
     }
 }
+
+
+
