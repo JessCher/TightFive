@@ -179,7 +179,10 @@ struct SetlistBuilderView: View {
                     isEditing: editingBlockId == block.id,
                     onStartEdit: { editingBlockId = block.id },
                     onEndEdit: { rtfData in
-                        setlist.updateFreeformBlock(id: block.id, rtfData: rtfData)
+                        // For freeform blocks only
+                        if block.isFreeform {
+                            setlist.updateFreeformBlock(id: block.id, rtfData: rtfData)
+                        }
                         editingBlockId = nil
                     },
                     onInsertAbove: {
@@ -353,6 +356,8 @@ struct SetlistBuilderView: View {
 // MARK: - Script Block Row
 
 private struct ScriptBlockRowView: View {
+    @Environment(\.modelContext) private var modelContext
+    
     let block: ScriptBlock
     let assignment: SetlistAssignment?
     let isEditing: Bool
@@ -360,8 +365,14 @@ private struct ScriptBlockRowView: View {
     let onEndEdit: (Data) -> Void
     let onInsertAbove: () -> Void
     let onAddTextAbove: () -> Void
+    
+    var setlist: Setlist? {
+        assignment?.setlist
+    }
 
     @State private var editRTF: Data = TFRTFTheme.body("")
+    @State private var showVariationNote = false
+    @State private var variationNote = ""
     @FocusState private var isFocused: Bool
     @Environment(\.undoManager) private var undoManager
     
@@ -464,12 +475,77 @@ private struct ScriptBlockRowView: View {
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.5))
                         .lineLimit(1)
+                    
+                    if assignment.isModified {
+                        Image(systemName: "pencil.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
                 }
                 
-                Text(assignment.plainText)
-                    .font(.body)
-                    .foregroundStyle(.white.opacity(0.9))
-                    .lineLimit(6)
+                if isEditing {
+                    VStack(alignment: .leading, spacing: 8) {
+                        RichTextEditor(rtfData: $editRTF, undoManager: undoManager)
+                            .frame(minHeight: 140)
+                            .padding(6)
+                            .background(Color.black.opacity(0.3))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .onAppear {
+                                editRTF = assignment.performedRTF
+                            }
+                        
+                        Button {
+                            showVariationNote = true
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "note.text")
+                                    .font(.caption)
+                                Text(variationNote.isEmpty ? "Add variation note (optional)" : variationNote)
+                                    .font(.caption)
+                                    .lineLimit(1)
+                            }
+                            .foregroundStyle(.white.opacity(0.6))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.black.opacity(0.3))
+                            .clipShape(Capsule())
+                        }
+                    }
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            Spacer()
+                            Button("Done") {
+                                saveVariation()
+                            }
+                            .foregroundStyle(TFTheme.yellow)
+                        }
+                    }
+                    .alert("Variation Note", isPresented: $showVariationNote) {
+                        TextField("What changed?", text: $variationNote)
+                        Button("Cancel", role: .cancel) {}
+                        Button("Save") {}
+                    } message: {
+                        Text("Add a note about what you changed in this version (e.g., 'tightened tag', 'new opener')")
+                    }
+                    .onChange(of: isFocused) { oldValue, newValue in
+                        if oldValue == true && newValue == false {
+                            saveVariation()
+                        }
+                    }
+                    .onDisappear {
+                        saveVariation()
+                    }
+                } else {
+                    Text(assignment.plainText)
+                        .font(.body)
+                        .foregroundStyle(.white.opacity(0.9))
+                        .lineLimit(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            onStartEdit()
+                        }
+                }
             } else {
                 Text("Bit not found")
                     .font(.body)
@@ -483,6 +559,26 @@ private struct ScriptBlockRowView: View {
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(TFTheme.yellow.opacity(0.3), lineWidth: 1)
         )
+    }
+    
+    private func saveVariation() {
+        guard let assignment = assignment,
+              let setlist = setlist,
+              editRTF != assignment.performedRTF else {
+            onEndEdit(editRTF)
+            return
+        }
+        
+        // Create variation and update assignment
+        setlist.commitVariation(
+            for: assignment,
+            newRTF: editRTF,
+            note: variationNote.isEmpty ? nil : variationNote,
+            context: modelContext
+        )
+        
+        variationNote = ""
+        onEndEdit(editRTF)
     }
 }
 

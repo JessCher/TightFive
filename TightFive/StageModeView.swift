@@ -409,12 +409,31 @@ struct StageModeView: View {
     }
     
     private func navigateToAnchor(_ anchor: StageAnchor) {
-        // Find the block index for this anchor's assignment
-        if let index = blocks.index(forAssignmentId: anchor.assignmentId) {
+        // FIXED: Handle both bit and freeform block references
+        let blockIndex: Int?
+        
+        switch anchor.blockReference {
+        case .bit(let assignmentId):
+            blockIndex = blocks.firstIndex { block in
+                if case .bit(_, let blockAssignmentId) = block {
+                    return blockAssignmentId == assignmentId
+                }
+                return false
+            }
+        case .freeform(let blockId):
+            blockIndex = blocks.firstIndex { block in
+                block.id == blockId
+            }
+        }
+        
+        if let index = blockIndex {
             withAnimation(.easeInOut(duration: 0.3)) {
                 currentBlockIndex = index
             }
             hapticFeedback()
+            
+            // CRITICAL: Clear detection state to allow recognizing the NEXT anchor
+            recognizer.clearLastDetection()
         }
     }
     

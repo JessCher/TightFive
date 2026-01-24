@@ -155,10 +155,31 @@ struct VariationComparisonView: View {
             if isExpanded {
                 Divider().opacity(0.2)
                 
-                // Content
-                Text(variation.plainText)
+                // Diff Legend
+                HStack(spacing: 16) {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.green.opacity(0.3))
+                            .frame(width: 8, height: 8)
+                        Text("Added")
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                    
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.orange.opacity(0.3))
+                            .frame(width: 8, height: 8)
+                        Text("Removed")
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                }
+                .padding(.bottom, 8)
+                
+                // Content with diff highlighting
+                Text(diffHighlightedAttributedString(original: bit.text, modified: variation.plainText))
                     .font(.body)
-                    .foregroundStyle(.white.opacity(0.9))
                     .fixedSize(horizontal: false, vertical: true)
                 
                 // Note if present
@@ -187,6 +208,134 @@ struct VariationComparisonView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(Color("TFCardStroke").opacity(0.6), lineWidth: 1)
         )
+    }
+    
+    // MARK: - Diff Highlighting
+    
+    private func diffHighlightedAttributedString(original: String, modified: String) -> AttributedString {
+        let diff = computeDiff(original: original, modified: modified)
+        var result = AttributedString()
+        
+        for change in diff {
+            switch change {
+            case .unchanged(let text):
+                var unchanged = AttributedString(text)
+                unchanged.foregroundColor = .white.opacity(0.9)
+                result.append(unchanged)
+                
+            case .added(let text):
+                var added = AttributedString(text)
+                added.foregroundColor = .white
+                added.backgroundColor = .green.opacity(0.3)
+                result.append(added)
+                
+            case .removed(let text):
+                var removed = AttributedString(text)
+                removed.foregroundColor = .white.opacity(0.6)
+                removed.strikethroughStyle = .single
+                removed.strikethroughColor = .orange
+                removed.backgroundColor = .orange.opacity(0.2)
+                result.append(removed)
+            }
+        }
+        
+        return result
+    }
+    
+    private enum DiffChange {
+        case unchanged(String)
+        case added(String)
+        case removed(String)
+    }
+    
+    private func computeDiff(original: String, modified: String) -> [DiffChange] {
+        // Split into words for better readability
+        let originalWords = original.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
+        let modifiedWords = modified.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
+        
+        // Use longest common subsequence algorithm
+        let lcs = longestCommonSubsequence(originalWords, modifiedWords)
+        
+        var result: [DiffChange] = []
+        var i = 0  // index in original
+        var j = 0  // index in modified
+        var k = 0  // index in lcs
+        
+        while i < originalWords.count || j < modifiedWords.count {
+            if k < lcs.count {
+                let commonWord = lcs[k]
+                
+                // Add removed words
+                while i < originalWords.count && originalWords[i] != commonWord {
+                    result.append(.removed(originalWords[i] + " "))
+                    i += 1
+                }
+                
+                // Add added words
+                while j < modifiedWords.count && modifiedWords[j] != commonWord {
+                    result.append(.added(modifiedWords[j] + " "))
+                    j += 1
+                }
+                
+                // Add common word
+                if i < originalWords.count && j < modifiedWords.count {
+                    result.append(.unchanged(commonWord + " "))
+                    i += 1
+                    j += 1
+                    k += 1
+                }
+            } else {
+                // Process remaining words
+                while i < originalWords.count {
+                    result.append(.removed(originalWords[i] + " "))
+                    i += 1
+                }
+                
+                while j < modifiedWords.count {
+                    result.append(.added(modifiedWords[j] + " "))
+                    j += 1
+                }
+            }
+        }
+        
+        return result
+    }
+    
+    private func longestCommonSubsequence(_ a: [String], _ b: [String]) -> [String] {
+        let m = a.count
+        let n = b.count
+        
+        // Build DP table
+        var dp = Array(repeating: Array(repeating: 0, count: n + 1), count: m + 1)
+        
+        for i in 1...m {
+            for j in 1...n {
+                if a[i-1] == b[j-1] {
+                    dp[i][j] = dp[i-1][j-1] + 1
+                } else {
+                    dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+                }
+            }
+        }
+        
+        // Backtrack to find LCS
+        var lcs: [String] = []
+        var i = m
+        var j = n
+        
+        while i > 0 && j > 0 {
+            if a[i-1] == b[j-1] {
+                lcs.insert(a[i-1], at: 0)
+                i -= 1
+                j -= 1
+            } else if dp[i-1][j] > dp[i][j-1] {
+                i -= 1
+            } else {
+                j -= 1
+            }
+        }
+        
+        return lcs
     }
     
     // MARK: - Diff Indicator

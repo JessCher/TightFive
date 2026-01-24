@@ -436,6 +436,13 @@ struct AnchorTestView: View {
                     }
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
+                    
+                    // CRITICAL: Clear after short delay to allow user to see the match
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        Task { @MainActor in
+                            recognizer.clearLastDetection()
+                        }
+                    }
                 }
                 let success = await recognizer.startListening(for: anchors)
                 isListening = success
