@@ -1,14 +1,10 @@
 import UIKit
 
-// MARK: - NSAttributedString ↔ RTF
-
-/// Single source of truth for all RTF operations in TightFive.
-/// All RTF conversion should go through these extensions.
+// MARK: - NSAttributedString RTF Conversion
 
 extension NSAttributedString {
     
     /// Create an attributed string from RTF data.
-    /// Returns empty string for empty/invalid data.
     static func fromRTF(_ data: Data) -> NSAttributedString? {
         guard !data.isEmpty else { return NSAttributedString(string: "") }
         return try? NSAttributedString(
@@ -19,7 +15,6 @@ extension NSAttributedString {
     }
     
     /// Convert attributed string to RTF data.
-    /// Returns nil if conversion fails.
     func rtfData() -> Data? {
         try? data(
             from: NSRange(location: 0, length: length),
@@ -33,22 +28,11 @@ extension NSAttributedString {
     }
 }
 
-// MARK: - String → Themed RTF
+// MARK: - String to RTF Conversion
 
 extension String {
     
     /// Convert plain text to RTF with TightFive theme.
-    ///
-    /// Use this when adding bits to setlists to ensure consistent styling.
-    /// The default parameters match the app's standard text appearance.
-    ///
-    /// - Parameters:
-    ///   - font: Text font (default: system 17pt)
-    ///   - color: Text color (default: white)
-    ///   - lineSpacing: Space between lines (default: 4pt)
-    ///   - paragraphSpacing: Space between paragraphs (default: 12pt)
-    ///   - lineHeightMultiple: Line height multiplier (default: 1.2)
-    /// - Returns: RTF data with theme applied
     func toRTF(
         font: UIFont = .systemFont(ofSize: 17),
         color: UIColor = .white,
@@ -56,26 +40,22 @@ extension String {
         paragraphSpacing: CGFloat = 12,
         lineHeightMultiple: CGFloat = 1.2
     ) -> Data {
-        // Configure paragraph style
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineSpacing = lineSpacing
         paragraphStyle.paragraphSpacing = paragraphSpacing
         paragraphStyle.lineHeightMultiple = lineHeightMultiple
         
-        // Build attributes
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: color,
             .paragraphStyle: paragraphStyle
         ]
         
-        // Create attributed string and convert
         let attributedString = NSAttributedString(string: self, attributes: attributes)
         return attributedString.rtfData() ?? Data()
     }
     
     /// Convert RTF data back to plain text.
-    /// Convenience wrapper around NSAttributedString.fromRTF.
     static func fromRTF(_ data: Data) -> String? {
         NSAttributedString.fromRTF(data)?.string
     }
@@ -83,7 +63,6 @@ extension String {
 
 // MARK: - Theme Presets
 
-/// Predefined RTF themes for different contexts in TightFive.
 enum TFRTFTheme {
     
     /// Standard body text for setlist content

@@ -6,11 +6,6 @@ import SwiftData
 /// **Core Principle:** `performedRTF` is the source of truth.
 /// Setlists always render from this snapshot, never from the source Bit.
 /// This ensures setlists remain intact even if the original bit is deleted.
-///
-/// **Relationships:**
-/// - `bitId`: Optional provenance link (may be orphaned if bit deleted)
-/// - `variationId`: Optional link to analytics record (if content was modified)
-/// - `setlist`: Required parent relationship
 @Model
 final class SetlistAssignment {
     
@@ -18,7 +13,7 @@ final class SetlistAssignment {
     
     var id: UUID
     
-    /// 0-indexed position in the setlist
+    /// Legacy order field (kept for migration compatibility)
     var order: Int
     
     /// When this assignment was added to the setlist
@@ -28,7 +23,6 @@ final class SetlistAssignment {
     
     /// The actual performed content as rich text.
     /// This is the canonical version - setlist always renders from this.
-    /// Never dependent on Bit existence.
     var performedRTF: Data
     
     // MARK: - Provenance (Optional - for analytics)
@@ -37,7 +31,6 @@ final class SetlistAssignment {
     var bitId: UUID?
     
     /// Snapshot of bit title at time of adding.
-    /// Preserved even if bit is deleted - used for display.
     var bitTitleSnapshot: String
     
     /// Link to variation record (if content was modified from original)
@@ -46,7 +39,6 @@ final class SetlistAssignment {
     // MARK: - Relationship
     
     /// The setlist this assignment belongs to.
-    /// Inverse relationship configured on Setlist.assignments
     var setlist: Setlist?
     
     // MARK: - Initialization
@@ -95,14 +87,9 @@ extension SetlistAssignment {
 extension SetlistAssignment {
     
     /// Fetch the source bit if it exists and is not deleted.
-    /// Returns nil if:
-    /// - No bitId was set (ad-hoc assignment)
-    /// - Bit was soft-deleted
-    /// - Bit not found in context
     func sourceBit(in context: ModelContext) -> Bit? {
         guard let bitId else { return nil }
         
-        // Capture to local constant for predicate
         let id = bitId
         let descriptor = FetchDescriptor<Bit>(
             predicate: #Predicate { $0.id == id }
@@ -117,7 +104,7 @@ extension SetlistAssignment {
         sourceBit(in: context) != nil
     }
     
-    /// Check if the original bit was deleted (we have a bitId but bit is gone/deleted)
+    /// Check if the original bit was deleted
     func isOrphaned(in context: ModelContext) -> Bool {
         guard bitId != nil else { return false }
         return sourceBit(in: context) == nil

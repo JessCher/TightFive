@@ -35,7 +35,7 @@ struct HomeView: View {
                         }
 
                         NavigationLink {
-                            ShowNotesPlaceholderView()
+                            ShowNotesView()
                         } label: {
                             HomeTile(title: "Show Notes",
                                      subtitle: "Reflect on how shows went.",

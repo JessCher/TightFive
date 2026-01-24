@@ -60,7 +60,6 @@ struct RichTextEditor: UIViewRepresentable {
         textView.isScrollEnabled = true
         textView.isEditable = true
         textView.isUserInteractionEnabled = true
-        textView.keyboardDismissMode = .interactive
         textView.layoutManager.allowsNonContiguousLayout = true
 
         textView.isSelectable = true
@@ -137,13 +136,14 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
         attributesEngine.applyDefaults(to: textView)
 
         // Size the toolbar using a screen derived from context to avoid UIScreen.main deprecation
-        let contextWidth: CGFloat = {
+        // Clamp to a sensible minimum to avoid invalid (negative/zero/NaN) sizes when the view isn't in a window yet.
+        let rawWidth: CGFloat = {
             if let w = textView.window, let scene = w.windowScene {
                 return scene.screen.bounds.width
             }
-            // Fallback to the textView's own bounds if window/scene aren't available yet
-            return max(textView.bounds.width, 320)
+            return textView.bounds.width
         }()
+        let contextWidth = max(320, rawWidth.isFinite ? rawWidth : 320)
         toolbar.frame = CGRect(x: 0, y: 0, width: contextWidth, height: 60)
 
         textView.reloadInputViews()

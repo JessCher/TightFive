@@ -35,7 +35,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		888E401E2F2068FA00678706 /* Exceptions for "TightFive" folder in "TightFive" target */ = {
+		883A7BEA2F24A3B500FFA78E /* Exceptions for "TightFive" folder in "TightFive" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -48,7 +48,7 @@
 		888E3FDA2F20526900678706 /* TightFive */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				888E401E2F2068FA00678706 /* Exceptions for "TightFive" folder in "TightFive" target */,
+				883A7BEA2F24A3B500FFA78E /* Exceptions for "TightFive" folder in "TightFive" target */,
 			);
 			path = TightFive;
 			sourceTree = "<group>";
@@ -201,6 +201,7 @@
 				TargetAttributes = {
 					888E3FD72F20526900678706 = {
 						CreatedOnToolsVersion = 26.2;
+						LastSwiftMigration = 2620;
 					};
 					888E3FE62F20526B00678706 = {
 						CreatedOnToolsVersion = 26.2;
@@ -417,6 +418,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X879YA8X7Q;
@@ -452,6 +454,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
@@ -464,6 +467,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X879YA8X7Q;
