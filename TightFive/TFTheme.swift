@@ -21,7 +21,7 @@ extension View {
         self
             // Critical: ensure even empty states expand to the full screen
             // so the background never "crops" on short content.
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
                 // Keep the exact same appearance, but render it as a static snapshot.
                 DynamicChalkboardBackground(isAnimated: false)
@@ -88,6 +88,119 @@ extension TFTheme {
         UITabBar.appearance().unselectedItemTintColor = UIColor.white.withAlphaComponent(0.55)
     }
 }
+
+
+// MARK: - Undo / Redo + Keyboard visibility
+
+/// Lightweight keyboard visibility observer (shared).
+@MainActor
+final class TFKeyboardState: ObservableObject {
+    static let shared = TFKeyboardState()
+
+    @Published private(set) var isVisible: Bool = false
+
+    private var tokens: [NSObjectProtocol] = []
+
+    private init() {
+        let nc = NotificationCenter.default
+        tokens.append(nc.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.isVisible = true
+        })
+        tokens.append(nc.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.isVisible = false
+        })
+    }
+
+    deinit {
+        tokens.forEach { NotificationCenter.default.removeObserver($0) }
+    }
+}
+
+struct TFUndoRedoControls: View {
+    @Environment(\.undoManager) private var undoManager
+    @State private var canUndo = false
+    @State private var canRedo = false
+    @State private var tokens: [NSObjectProtocol] = []
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button {
+                undoManager?.undo()
+                refresh()
+            } label: {
+                Image(systemName: "arrow.uturn.backward")
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 34, height: 34)
+                    .background(Color.white.opacity(0.06))
+                    .clipShape(Circle())
+            }
+            .disabled(!canUndo)
+            .opacity(canUndo ? 1.0 : 0.35)
+
+            Button {
+                undoManager?.redo()
+                refresh()
+            } label: {
+                Image(systemName: "arrow.uturn.forward")
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 34, height: 34)
+                    .background(Color.white.opacity(0.06))
+                    .clipShape(Circle())
+            }
+            .disabled(!canRedo)
+            .opacity(canRedo ? 1.0 : 0.35)
+        }
+        .foregroundStyle(TFTheme.yellow)
+        .onAppear {
+            observeUndoManager()
+            refresh()
+        }
+        .onDisappear {
+            tokens.forEach { NotificationCenter.default.removeObserver($0) }
+            tokens.removeAll()
+        }
+    }
+
+    private func refresh() {
+        canUndo = undoManager?.canUndo ?? false
+        canRedo = undoManager?.canRedo ?? false
+    }
+
+    private func observeUndoManager() {
+        guard let um = undoManager else { return }
+        let nc = NotificationCenter.default
+
+        // Any of these should prompt a refresh of canUndo/canRedo.
+        let names: [Notification.Name] = [
+            .NSUndoManagerDidUndoChange,
+            .NSUndoManagerDidRedoChange,
+            .NSUndoManagerDidOpenUndoGroup,
+            .NSUndoManagerDidCloseUndoGroup,
+            .NSUndoManagerWillCloseUndoGroup,
+            .NSUndoManagerCheckpoint
+        ]
+
+        tokens = names.map { name in
+            nc.addObserver(forName: name, object: um, queue: .main) { _ in
+                refresh()
+            }
+        }
+    }
+}
+
+extension View {
+    /// Adds compact undo/redo controls in the top trailing toolbar, meant for text editing screens.
+    func tfUndoRedoToolbar(isVisible: Bool) -> some View {
+        self.toolbar {
+            if isVisible {
+                ToolbarItem(placement: .topBarTrailing) {
+                    TFUndoRedoControls()
+                }
+            }
+        }
+    }
+}
+
 
 // MARK: - Hex Color fallback helper (optional)
 extension Color {

@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 import SwiftData
 
 struct LooseBitsView: View {
@@ -307,25 +308,14 @@ private struct BitCardRow: View {
 private struct BitDetailView: View {
     @Bindable var bit: Bit
     @State private var showVariationComparison = false
-    @State private var editRTF: Data = TFRTFTheme.body("")
-    
+    @ObservedObject private var keyboard = TFKeyboardState.shared
+    @State private var undoManager = UndoManager()
+
     var body: some View {
         Form {
             Section("Text") {
-                RichTextEditor(rtfData: $editRTF)
+                TextEditor(text: $bit.text)
                     .frame(minHeight: 240)
-                    .onAppear {
-                        // Initialize RTF from the plain text when opening detail
-                        editRTF = TFRTFTheme.body(bit.text)
-                    }
-                    .onChange(of: editRTF) { _, newValue in
-                        // Keep the bit's plain text in sync for fast search
-                        let plain = NSAttributedString.fromRTF(newValue)?.string ?? ""
-                        if bit.text != plain {
-                            bit.text = plain
-                            bit.updatedAt = Date()
-                        }
-                    }
             }
 
             Section("Status") {
@@ -375,8 +365,13 @@ private struct BitDetailView: View {
         }
         .scrollContentBackground(.hidden)
         .tfBackground()
+        .environment(\.undoManager, undoManager)
+        .tfUndoRedoToolbar(isVisible: keyboard.isVisible)
         .navigationTitle("Bit")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: bit.text) {
+            bit.updatedAt = Date()
+        }
         .sheet(isPresented: $showVariationComparison) {
             VariationComparisonView(bit: bit)
         }
