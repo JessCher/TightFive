@@ -315,7 +315,7 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
             }
             um.setActionName("Edit")
         }
-        */
+         */
 
         // Reset burst
         undoBurstStartData = nil

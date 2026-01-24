@@ -169,8 +169,8 @@ struct RunModeView: View {
     
     private func blockContentText(_ block: ScriptBlock) -> String {
         switch block {
-        case .freeform(_, let text):
-            return text
+        case .freeform(_, let rtfData):
+            return NSAttributedString.fromRTF(rtfData)?.string ?? ""
         case .bit(_, let assignmentId):
             // Return ONLY the content, NOT the title
             guard let assignment = setlist.assignments.first(where: { $0.id == assignmentId }) else {

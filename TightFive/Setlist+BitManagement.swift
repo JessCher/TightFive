@@ -9,8 +9,8 @@ extension Setlist {
     // MARK: - Add Content
     
     /// Add a freeform text block at the specified position
-    func addFreeformBlock(text: String = "", at index: Int? = nil) {
-        let block = ScriptBlock.newFreeform(text: text)
+    func addFreeformBlock(rtfData: Data = TFRTFTheme.body(""), at index: Int? = nil) {
+        let block = ScriptBlock.newFreeform(rtfData: rtfData)
         var blocks = scriptBlocks
         
         if let index = index, index < blocks.count {
@@ -53,13 +53,23 @@ extension Setlist {
     // MARK: - Update Content
     
     /// Update freeform block content
-    func updateFreeformBlock(id: UUID, text: String) {
+    func updateFreeformBlock(id: UUID, rtfData: Data) {
         var blocks = scriptBlocks
         if let index = blocks.firstIndex(where: { $0.id == id }) {
-            blocks[index] = .freeform(id: id, text: text)
+            blocks[index] = .freeform(id: id, rtfData: rtfData)
             scriptBlocks = blocks
             updatedAt = Date()
         }
+    }
+
+    /// Backwards-compat convenience for older callsites.
+    func addFreeformBlock(text: String = "", at index: Int? = nil) {
+        addFreeformBlock(rtfData: TFRTFTheme.body(text), at: index)
+    }
+
+    /// Backwards-compat convenience for older callsites.
+    func updateFreeformBlock(id: UUID, text: String) {
+        updateFreeformBlock(id: id, rtfData: TFRTFTheme.body(text))
     }
     
     // MARK: - Remove Content

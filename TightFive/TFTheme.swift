@@ -19,8 +19,12 @@ extension View {
     /// App background (fills screen)
     func tfBackground() -> some View {
         self
+            // Critical: ensure even empty states expand to the full screen
+            // so the background never "crops" on short content.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(
-                DynamicChalkboardBackground()
+                // Keep the exact same appearance, but render it as a static snapshot.
+                DynamicChalkboardBackground(isAnimated: false)
                     .ignoresSafeArea()
             )
             .preferredColorScheme(.dark)

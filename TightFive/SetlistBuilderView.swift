@@ -174,8 +174,8 @@ struct SetlistBuilderView: View {
                     assignment: setlist.assignment(for: block),
                     isEditing: editingBlockId == block.id,
                     onStartEdit: { editingBlockId = block.id },
-                    onEndEdit: { text in
-                        setlist.updateFreeformBlock(id: block.id, text: text)
+                    onEndEdit: { rtfData in
+                        setlist.updateFreeformBlock(id: block.id, rtfData: rtfData)
                         editingBlockId = nil
                     },
                     onInsertAbove: {
@@ -334,7 +334,7 @@ struct SetlistBuilderView: View {
     }
     
     private func addFreeformBlock(at index: Int?) {
-        setlist.addFreeformBlock(text: "", at: index)
+        setlist.addFreeformBlock(rtfData: TFRTFTheme.body(""), at: index)
         if let idx = index ?? (setlist.scriptBlocks.count - 1) as Int?,
            idx < setlist.scriptBlocks.count {
             editingBlockId = setlist.scriptBlocks[idx].id
@@ -349,18 +349,18 @@ private struct ScriptBlockRowView: View {
     let assignment: SetlistAssignment?
     let isEditing: Bool
     let onStartEdit: () -> Void
-    let onEndEdit: (String) -> Void
+    let onEndEdit: (Data) -> Void
     let onInsertAbove: () -> Void
     let onAddTextAbove: () -> Void
-    
-    @State private var editText: String = ""
+
+    @State private var editRTF: Data = TFRTFTheme.body("")
     @FocusState private var isFocused: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             switch block {
-            case .freeform(_, let text):
-                freeformContent(text: text)
+            case .freeform(_, let rtfData):
+                freeformContent(rtfData: rtfData)
             case .bit:
                 bitContent
             }
@@ -375,7 +375,7 @@ private struct ScriptBlockRowView: View {
         }
     }
     
-    private func freeformContent(text: String) -> some View {
+    private func freeformContent(rtfData: Data) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "pencil.circle.fill")
@@ -388,39 +388,32 @@ private struct ScriptBlockRowView: View {
             }
             
             if isEditing {
-                TextEditor(text: $editText)
-                    .scrollContentBackground(.hidden)
-                    .font(.body)
-                    .foregroundStyle(.white)
-                    .frame(minHeight: 100)
-                    .padding(8)
+                RichTextEditor(rtfData: $editRTF)
+                    .frame(minHeight: 140)
+                    .padding(6)
                     .background(Color.black.opacity(0.3))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .focused($isFocused)
                     .onAppear {
-                        editText = text
-                        isFocused = true
-                    }
-                    .onChange(of: isFocused) { _, focused in
-                        if !focused {
-                            onEndEdit(editText)
-                        }
+                        editRTF = rtfData
+                        // RichTextEditor manages its own focus;
+                        // we keep the Done button for a predictable commit.
                     }
                     .toolbar {
                         ToolbarItemGroup(placement: .keyboard) {
                             Spacer()
                             Button("Done") {
-                                onEndEdit(editText)
+                                onEndEdit(editRTF)
                                 isFocused = false
                             }
                             .foregroundStyle(TFTheme.yellow)
                         }
                     }
             } else {
-                Text(text.isEmpty ? "Tap to write..." : text)
+                let plain = NSAttributedString.fromRTF(rtfData)?.string ?? ""
+                Text(plain.isEmpty ? "Tap to write..." : plain)
                     .font(.body)
-                    .foregroundStyle(text.isEmpty ? .white.opacity(0.4) : .white.opacity(0.9))
-                    .italic(text.isEmpty)
+                    .foregroundStyle(plain.isEmpty ? .white.opacity(0.4) : .white.opacity(0.9))
+                    .italic(plain.isEmpty)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture { onStartEdit() }
