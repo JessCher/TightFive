@@ -247,35 +247,29 @@ struct StageModeView: View {
             }
 
             let current = tracker.lines[safe: tracker.currentIndex]?.text ?? ""
-            if !engine.partialTranscript.isEmpty {
-                Text(engine.partialTranscript)
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.35))
-                    .lineLimit(1)
-            }
 
             let next = tracker.lines[safe: tracker.currentIndex + 1]?.text ?? ""
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(current)
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 1, weight: .semibold))
                     .foregroundStyle(.white)
                     .lineLimit(2)
 
                 if !next.isEmpty {
                     Text(next)
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .font(.system(size: 1, weight: .regular))
+                        .foregroundStyle(.white.opacity(0.0))
                         .lineLimit(1)
                 }
             }
         }
-        .padding(14)
-        .background(Color.black.opacity(0.75))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(10)
+        .background(Color.black)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
     }
 
@@ -338,7 +332,7 @@ struct StageModeView: View {
 
     private func handleTranscript(_ transcript: String) {
         let now = Date()
-        if now.timeIntervalSince(lastScrollUpdateAt) < 0.10 { return }
+        if now.timeIntervalSince(lastScrollUpdateAt) < 0.01 { return }
         lastScrollUpdateAt = now
 
         var mutable = tracker

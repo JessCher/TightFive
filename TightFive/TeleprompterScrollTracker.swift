@@ -24,21 +24,21 @@ struct TeleprompterScrollTracker {
     private var pendingFirstSeen: Date?
 
     // Tunables (stage-safe defaults)
-    private let windowForward: Int = 24
-    private let confirmWindow: TimeInterval = 0.45
+    private let windowForward: Int = 28
+    private let confirmWindow: TimeInterval = 0.25
 
     /// Only match against the last N words spoken (prevents matching older content).
-    private let transcriptTailWords: Int = 24
+    private let transcriptTailWords: Int = 32
 
     /// Require at least this many "prefix" words of the line to be found in order.
     /// (matching the opening words of a line is the best signal for progression)
-    private let requiredPrefixMatches: Int = 4
+    private let requiredPrefixMatches: Int = 3
 
     /// How many words from the beginning of a line we consider for matching.
-    private let linePrefixCap: Int = 8
+    private let linePrefixCap: Int = 5
 
     /// Minimum confidence to accept a candidate (lower because we use confirmation).
-    private let minScore: Double = 0.55
+    private let minScore: Double = 0.35
 
     init(lines: [Line]) {
         self.lines = lines
