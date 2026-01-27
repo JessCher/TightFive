@@ -1,6 +1,7 @@
 import Foundation
 import Speech
 import AVFoundation
+import Combine
 
 /// Continuous speech recognition engine for Teleprompter Stage Mode.
 /// - Publishes partial transcripts continuously (no restarts).

@@ -1,10 +1,12 @@
 import Foundation
 
 /// Converts partial speech transcript into a stable "current line index".
-/// Designed for live performance stability:
-/// - Only searches forward (prevents jumping backward).
-/// - Uses "ordered word match" so common overlap doesn't cause false jumps.
-/// - Uses lightweight confirmation to prevent jitter.
+///
+/// Fixes vs previous version:
+/// - Uses ONLY the last N transcript words (tail) to match current speech.
+/// - Scores based on matching the FIRST few words of each line (what you say when you start that line).
+/// - Confirmation to prevent jitter.
+/// - Designed for short line chunks (8–14 words) built by StageModeView.
 struct TeleprompterScrollTracker {
 
     struct Line: Identifiable, Hashable {
@@ -16,19 +18,27 @@ struct TeleprompterScrollTracker {
     }
 
     private(set) var lines: [Line] = []
-
-    /// Current "spoken" line index
     private(set) var currentIndex: Int = 0
 
-    // Jitter control
     private var pendingIndex: Int?
     private var pendingFirstSeen: Date?
 
-    // Tunables
-    private let windowForward: Int = 18
-    private let minAdvance: Int = 0
+    // Tunables (stage-safe defaults)
+    private let windowForward: Int = 24
     private let confirmWindow: TimeInterval = 0.45
-    private let minScore: Double = 0.70
+
+    /// Only match against the last N words spoken (prevents matching older content).
+    private let transcriptTailWords: Int = 24
+
+    /// Require at least this many "prefix" words of the line to be found in order.
+    /// (matching the opening words of a line is the best signal for progression)
+    private let requiredPrefixMatches: Int = 4
+
+    /// How many words from the beginning of a line we consider for matching.
+    private let linePrefixCap: Int = 8
+
+    /// Minimum confidence to accept a candidate (lower because we use confirmation).
+    private let minScore: Double = 0.55
 
     init(lines: [Line]) {
         self.lines = lines
@@ -36,7 +46,7 @@ struct TeleprompterScrollTracker {
     }
 
     mutating func reset(to index: Int = 0) {
-        currentIndex = max(0, min(index, lines.count - 1))
+        currentIndex = max(0, min(index, max(lines.count - 1, 0)))
         pendingIndex = nil
         pendingFirstSeen = nil
     }
@@ -49,8 +59,14 @@ struct TeleprompterScrollTracker {
     mutating func ingestTranscript(_ transcript: String, now: Date = Date()) -> Int? {
         guard !lines.isEmpty else { return nil }
 
-        let transcriptWords = Self.normalize(transcript).split(separator: " ").map(String.init)
+        let normalized = Self.normalize(transcript)
+        var transcriptWords = normalized.split(separator: " ").map(String.init)
         guard !transcriptWords.isEmpty else { return nil }
+
+        // Only look at the tail
+        if transcriptWords.count > transcriptTailWords {
+            transcriptWords = Array(transcriptWords.suffix(transcriptTailWords))
+        }
 
         let start = currentIndex
         let end = min(lines.count - 1, currentIndex + windowForward)
@@ -59,7 +75,13 @@ struct TeleprompterScrollTracker {
         var bestScore: Double = 0
 
         for idx in start...end {
-            let score = Self.score(lineWords: lines[idx].normalizedWords, transcriptWords: transcriptWords)
+            let lineWords = lines[idx].normalizedWords
+            if lineWords.isEmpty { continue }
+
+            let score = Self.score(lineWords: lineWords, transcriptWords: transcriptWords,
+                                   requiredPrefixMatches: requiredPrefixMatches,
+                                   linePrefixCap: linePrefixCap)
+
             if score > bestScore {
                 bestScore = score
                 bestIndex = idx
@@ -67,68 +89,72 @@ struct TeleprompterScrollTracker {
         }
 
         guard let candidate = bestIndex, bestScore >= minScore else {
-            // clear stale pending
-            if let pendingFirstSeen, now.timeIntervalSince(pendingFirstSeen) > confirmWindow {
+            // Clear stale pending
+            if let t = pendingFirstSeen, now.timeIntervalSince(t) > confirmWindow {
                 pendingIndex = nil
-                self.pendingFirstSeen = nil
+                pendingFirstSeen = nil
             }
             return nil
         }
 
-        // Never jump backwards during live scroll tracking
+        // Never jump backwards
         if candidate < currentIndex { return nil }
 
-        // Require at least minAdvance forward movement (usually 0, but we keep knob)
-        if candidate < currentIndex + minAdvance { return nil }
-
-        // Confirmation against jitter: same candidate should repeat across partial updates
-        if let pendingIndex, let pendingFirstSeen {
-            if pendingIndex == candidate, now.timeIntervalSince(pendingFirstSeen) <= confirmWindow {
+        // Confirmation (anti-jitter)
+        if let p = pendingIndex, let t = pendingFirstSeen {
+            if p == candidate, now.timeIntervalSince(t) <= confirmWindow {
                 if candidate != currentIndex {
                     currentIndex = candidate
-                    self.pendingIndex = nil
-                    self.pendingFirstSeen = nil
+                    pendingIndex = nil
+                    pendingFirstSeen = nil
                     return currentIndex
                 } else {
-                    // already there
-                    self.pendingIndex = nil
-                    self.pendingFirstSeen = nil
+                    pendingIndex = nil
+                    pendingFirstSeen = nil
                     return nil
                 }
             } else {
-                self.pendingIndex = candidate
-                self.pendingFirstSeen = now
+                pendingIndex = candidate
+                pendingFirstSeen = now
                 return nil
             }
         } else {
-            self.pendingIndex = candidate
-            self.pendingFirstSeen = now
+            pendingIndex = candidate
+            pendingFirstSeen = now
             return nil
         }
     }
 
     // MARK: - Matching
 
-    private static func score(lineWords: [String], transcriptWords: [String]) -> Double {
-        guard !lineWords.isEmpty else { return 0 }
+    private static func score(
+        lineWords: [String],
+        transcriptWords: [String],
+        requiredPrefixMatches: Int,
+        linePrefixCap: Int
+    ) -> Double {
 
-        let matchedOrdered = orderedMatchCount(needle: lineWords, haystack: transcriptWords)
-        let orderedRatio = Double(matchedOrdered) / Double(lineWords.count)
+        // Focus on the beginning of the line (what you say when you “arrive” here)
+        let prefixCount = min(max(1, linePrefixCap), lineWords.count)
+        let prefix = Array(lineWords.prefix(prefixCount))
 
-        if orderedRatio < 0.70 { return 0 }
+        let orderedMatches = orderedMatchCount(needle: prefix, haystack: transcriptWords)
+        if orderedMatches < min(requiredPrefixMatches, prefix.count) {
+            return 0
+        }
 
-        let consecutive = longestConsecutiveMatch(needle: lineWords, haystack: transcriptWords)
-        let consecutiveRatio = Double(consecutive) / Double(lineWords.count)
+        let consecutive = longestConsecutiveMatch(needle: prefix, haystack: transcriptWords)
 
-        // Blend: ordered does most work, consecutive adds precision
-        let blended = (orderedRatio * 0.75) + (consecutiveRatio * 0.25)
-        return min(0.95, blended)
+        // Score emphasizes ordered matches, with a bump for consecutive runs
+        let orderedRatio = Double(orderedMatches) / Double(prefix.count)
+        let consecutiveRatio = Double(consecutive) / Double(prefix.count)
+
+        return min(0.95, (orderedRatio * 0.75) + (consecutiveRatio * 0.25))
     }
 
     private static func orderedMatchCount(needle: [String], haystack: [String]) -> Int {
         var matched = 0
         var i = 0
-
         for w in haystack {
             if i >= needle.count { break }
             if w == needle[i] {

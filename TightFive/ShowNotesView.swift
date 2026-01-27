@@ -16,6 +16,9 @@ struct ShowNotesView: View {
     @State private var selectedPerformance: Performance?
     @State private var showStorageInfo = false
     
+    @State private var isSelecting = false
+    @State private var selectedIDs: Set<UUID> = []
+    
     var body: some View {
         NavigationStack {
             Group {
@@ -28,6 +31,16 @@ struct ShowNotesView: View {
             .navigationTitle("Show Notes")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if !performances.isEmpty {
+                        Button(isSelecting ? "Done" : "Select") {
+                            isSelecting.toggle()
+                            if !isSelecting { selectedIDs.removeAll() }
+                        }
+                        .foregroundStyle(TFTheme.yellow)
+                    }
+                }
+                
                 ToolbarItem(placement: .principal) {
                     TFWordmarkTitle(title: "Show Notes", size: 22)
                 }
@@ -36,6 +49,16 @@ struct ShowNotesView: View {
                     Button { showStorageInfo = true } label: {
                         Image(systemName: "internaldrive")
                             .foregroundStyle(.white.opacity(0.7))
+                    }
+                }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    if isSelecting && !selectedIDs.isEmpty {
+                        Button(role: .destructive) {
+                            deleteSelectedPerformances()
+                        } label: {
+                            Text("Delete Selected")
+                        }
                     }
                 }
             }
@@ -73,8 +96,16 @@ struct ShowNotesView: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(performances) { performance in
-                    PerformanceRowView(performance: performance) {
-                        selectedPerformance = performance
+                    PerformanceRowView(
+                        performance: performance,
+                        isSelected: selectedIDs.contains(performance.id),
+                        isSelecting: isSelecting
+                    ) {
+                        if isSelecting {
+                            toggleSelection(performance)
+                        } else {
+                            selectedPerformance = performance
+                        }
                     }
                 }
             }
@@ -82,12 +113,36 @@ struct ShowNotesView: View {
             .padding(.vertical, 16)
         }
     }
+    
+    private func toggleSelection(_ performance: Performance) {
+        if selectedIDs.contains(performance.id) {
+            selectedIDs.remove(performance.id)
+        } else {
+            selectedIDs.insert(performance.id)
+        }
+    }
+    
+    private func deleteSelectedPerformances() {
+        // Stop and clear selection before deletion
+        let ids = selectedIDs
+        selectedIDs.removeAll()
+        isSelecting = false
+
+        // Delete audio files and models
+        for perf in performances where ids.contains(perf.id) {
+            perf.deleteAudioFile()
+            modelContext.delete(perf)
+        }
+        try? modelContext.save()
+    }
 }
 
 // MARK: - Performance Row
 
 private struct PerformanceRowView: View {
     let performance: Performance
+    let isSelected: Bool
+    let isSelecting: Bool
     let onTap: () -> Void
     
     var body: some View {
@@ -141,9 +196,15 @@ private struct PerformanceRowView: View {
                 
                 Spacer()
                 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.3))
+                if isSelecting {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 22))
+                        .foregroundStyle(isSelected ? TFTheme.yellow : .white.opacity(0.4))
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.3))
+                }
             }
             .padding(16)
             .background(Color("TFCard"))

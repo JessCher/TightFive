@@ -1,13 +1,12 @@
 import SwiftUI
 import Combine
-import CoreMotion
 
 struct DynamicChalkboardBackground: View {
     /// When false, renders a static snapshot of the exact same background.
     /// (No TimelineView + no motion sampling)
     var isAnimated: Bool = true
 
-    @StateObject private var motion = MotionSampler()
+    // Motion disabled; static background only
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // MARK: - Tunables (PERFORMANCE OPTIMIZED)
@@ -31,28 +30,6 @@ struct DynamicChalkboardBackground: View {
             }
         }
         .ignoresSafeArea()
-        .onAppear {
-            if isAnimated && !reduceMotion {
-                motion.start(reduceMotion: reduceMotion)
-            } else {
-                motion.stop()
-            }
-        }
-        .onChange(of: isAnimated) { _, newValue in
-            if newValue && !reduceMotion {
-                motion.start(reduceMotion: reduceMotion)
-            } else {
-                motion.stop()
-            }
-        }
-        .onChange(of: reduceMotion) { _, newValue in
-            if isAnimated && !newValue {
-                motion.start(reduceMotion: newValue)
-            } else {
-                motion.stop()
-            }
-        }
-        .onDisappear { motion.stop() }
     }
 
     @ViewBuilder
@@ -60,8 +37,8 @@ struct DynamicChalkboardBackground: View {
         let t = date.timeIntervalSinceReferenceDate
         let breathe = (isAnimated && !reduceMotion) ? (breatheAmplitude * CGFloat(sin(2 * .pi * breatheSpeed * t))) : 0
 
-        // Smoothed tilt
-        let tilt: CGPoint = (isAnimated && !reduceMotion) ? motion.normalizedTilt : .zero
+        // Smoothed tilt removed; static background only
+        let tilt: CGPoint = .zero
 
         // Glow opacity (kept identical to animated version)
         let topGlowOpacity = 0.30 + Double(max(0, breathe) * CGFloat(0.06))
@@ -165,48 +142,6 @@ struct DynamicChalkboardBackground: View {
         }
         .scaleEffect(1.1)
         .animation(.easeOut(duration: 0.2), value: tilt)
-    }
-}
-
-// MARK: - Motion Manager (Optimized)
-
-private final class MotionSampler: ObservableObject {
-    @Published var normalizedTilt: CGPoint = .zero
-
-    private let manager = CMMotionManager()
-    private let queue = OperationQueue()
-    private let maxTilt: Double = 0.35
-
-    func start(reduceMotion: Bool) {
-        #if targetEnvironment(simulator)
-        return
-        #endif
-        
-        guard !reduceMotion, manager.isDeviceMotionAvailable else { return }
-        
-        // PERFORMANCE: 20Hz update rate (was 30Hz) saves battery
-        manager.deviceMotionUpdateInterval = 1.0 / 20.0
-        
-        manager.startDeviceMotionUpdates(to: queue) { [weak self] motion, _ in
-            guard let self = self, let m = motion else { return }
-            
-            let pitch = max(-self.maxTilt, min(self.maxTilt, m.attitude.pitch))
-            let roll  = max(-self.maxTilt, min(self.maxTilt, m.attitude.roll))
-            
-            let nx = roll / self.maxTilt
-            let ny = pitch / self.maxTilt
-            
-            DispatchQueue.main.async {
-                withAnimation(.linear(duration: 0.15)) { // Slightly longer animation
-                    self.normalizedTilt = CGPoint(x: CGFloat(nx), y: CGFloat(ny))
-                }
-            }
-        }
-    }
-
-    func stop() {
-        manager.stopDeviceMotionUpdates()
-        normalizedTilt = .zero // Reset when stopped
     }
 }
 

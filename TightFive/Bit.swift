@@ -26,6 +26,12 @@ final class Bit {
     /// Plain text content - the master copy
     var text: String
     
+    /// Optional user-provided title for easier identification
+    var title: String = ""
+    
+    /// Free-form tags for quick filtering/search
+    var tags: [String] = []
+    
     var createdAt: Date
     var updatedAt: Date
     
@@ -58,6 +64,8 @@ final class Bit {
         self.createdAt = now
         self.updatedAt = now
         self.statusRaw = status.rawValue
+        self.title = ""
+        self.tags = []
     }
 }
 
@@ -75,8 +83,10 @@ extension Bit {
 
 extension Bit {
     
-    /// First line of text for display in lists
+    /// Preferred display title: explicit `title` if set; otherwise first line of text
     var titleLine: String {
+        let explicit = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !explicit.isEmpty { return explicit }
         let first = text
             .split(whereSeparator: \.isNewline)
             .first

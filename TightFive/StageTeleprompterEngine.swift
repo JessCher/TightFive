@@ -1,20 +1,22 @@
 import Foundation
-import SwiftUI
+import Combine
 import Speech
 import AVFoundation
 
-/// Single-pipeline engine for Stage Mode:
+/// Single-pipeline Stage Mode engine:
 /// - Captures mic ONCE via AVAudioEngine
-/// - Feeds Speech recognition (partial transcripts)
+/// - Feeds Speech recognition partial transcripts
 /// - Detects Stage Anchors (StageAnchorMatcher)
-/// - Records audio to disk (CAF PCM - reliable + fast)
+/// - Records audio to disk (CAF PCM - reliable for real-time writing)
 ///
-/// Why CAF? It's the most reliable format to write from AVAudioEngine in real-time.
-/// (You can add an export-to-M4A step later if you want smaller files.)
+/// Fixes vs prior version:
+/// - Forces on-device recognition when supported (huge reliability win)
+/// - Supplies contextualStrings (anchor phrases) to improve recognition
+/// - Adds a watchdog: if audio is present but transcript stays empty, restart recognition
 @MainActor
 final class StageTeleprompterEngine: ObservableObject {
 
-    // MARK: - Published state (UI)
+    // MARK: - Published (UI)
 
     @Published private(set) var isRunning: Bool = false
     @Published private(set) var isListening: Bool = false
@@ -28,6 +30,7 @@ final class StageTeleprompterEngine: ObservableObject {
     // MARK: - Internals
 
     private let speechRecognizer: SFSpeechRecognizer?
+
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
 
@@ -36,12 +39,16 @@ final class StageTeleprompterEngine: ObservableObject {
 
     private var levelTimer: Timer?
     private var timeTimer: Timer?
+    private var watchdogTimer: Timer?
     private var startDate: Date?
 
     private var matcher = StageAnchorMatcher(anchors: [])
+    private var contextualStrings: [String] = []
 
     private var recordingURL: URL?
-    private var currentFilename: String?
+
+    /// Tap writes audio + appends to recognition request. We may swap the request during watchdog restarts.
+    private let requestLock = NSLock()
 
     init(localeIdentifier: String = "en-US") {
         self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: localeIdentifier))
@@ -60,30 +67,19 @@ final class StageTeleprompterEngine: ObservableObject {
         }
     }
 
-    func requestMicPermissionIfNeeded() async -> Bool {
-        let status = AVAudioApplication.shared.recordPermission
-        if status == .granted { return true }
-
-        return await withCheckedContinuation { continuation in
-            AVAudioApplication.requestRecordPermission { granted in
-                continuation.resume(returning: granted)
-            }
-        }
-    }
-
     // MARK: - Public API
 
     func configureAnchors(_ anchors: [StageAnchor]) {
         matcher = StageAnchorMatcher(anchors: anchors)
+        contextualStrings = anchors
+            .filter { $0.isEnabled && $0.isValid }
+            .map { $0.phrase }
     }
 
     func resetAnchorState() {
         matcher.reset()
     }
 
-    /// Start Stage Mode engine:
-    /// - begins speech recognition + recording
-    /// - writes audio to recordings directory
     func start(filenameBase: String) async {
         errorMessage = nil
 
@@ -92,8 +88,9 @@ final class StageTeleprompterEngine: ObservableObject {
             return
         }
 
-        let speechOK = await requestSpeechPermissionIfNeeded()
-        let micOK = await requestMicPermissionIfNeeded()
+        let speechOK = await Permissions.requestSpeechIfNeeded()
+        let micOK = await Permissions.requestMicrophoneIfNeeded()
+
         guard speechOK && micOK else {
             errorMessage = "Speech or microphone permission not granted."
             return
@@ -101,21 +98,21 @@ final class StageTeleprompterEngine: ObservableObject {
 
         do {
             try configureAudioSession()
-            try startPipeline(filenameBase: filenameBase)
+            try startPipeline(filenameBase: filenameBase, recognizer: recognizer)
+
             isRunning = true
+            isListening = false
         } catch {
             errorMessage = "Stage engine start failed: \(error.localizedDescription)"
             stop()
         }
     }
 
-    /// Stop and return recording metadata (if any).
     func stopAndFinalize() -> (url: URL, duration: TimeInterval, fileSize: Int64)? {
         defer { stop() }
 
         guard let url = recordingURL else { return nil }
 
-        // finalize file
         audioFile = nil
 
         let duration = currentTime
@@ -133,15 +130,11 @@ final class StageTeleprompterEngine: ObservableObject {
         isRunning = false
         isListening = false
 
-        levelTimer?.invalidate()
-        levelTimer = nil
-        timeTimer?.invalidate()
-        timeTimer = nil
+        levelTimer?.invalidate(); levelTimer = nil
+        timeTimer?.invalidate(); timeTimer = nil
+        watchdogTimer?.invalidate(); watchdogTimer = nil
 
-        recognitionTask?.cancel()
-        recognitionTask = nil
-        recognitionRequest?.endAudio()
-        recognitionRequest = nil
+        cancelRecognitionOnly()
 
         if let engine = audioEngine {
             engine.stop()
@@ -151,70 +144,73 @@ final class StageTeleprompterEngine: ObservableObject {
 
         audioFile = nil
         recordingURL = nil
-        currentFilename = nil
         startDate = nil
+
         audioLevel = 0
         currentTime = 0
+        partialTranscript = ""
     }
 
-    // MARK: - Setup
+    // MARK: - Audio Session
 
     private func configureAudioSession() throws {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(
             .playAndRecord,
-            mode: .measurement,
-            options: [.defaultToSpeaker, .allowBluetoothHFP, .mixWithOthers]
+            mode: .spokenAudio, // better for speech recognition than .measurement here
+            options: [.defaultToSpeaker, .allowBluetoothHFP]
         )
         try session.setActive(true, options: .notifyOthersOnDeactivation)
     }
 
-    private func startPipeline(filenameBase: String) throws {
-        // Clean any old pipeline
-        stop()
+    // MARK: - Pipeline
 
-        // Fresh engine
+    private func startPipeline(filenameBase: String, recognizer: SFSpeechRecognizer) throws {
+        teardownPipelineOnly()
+
+        try FileManager.default.createDirectory(
+            at: Performance.recordingsDirectory,
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+
         let engine = AVAudioEngine()
         self.audioEngine = engine
 
-        // Recording destination
-        let filename = Performance.generateFilename(for: filenameBase)
-            .replacingOccurrences(of: ".m4a", with: ".caf") // engine writes CAF reliably
-        self.currentFilename = filename
+        let safeBase = filenameBase.isEmpty ? "Performance" : filenameBase
+        let filename = Performance.generateFilename(for: safeBase)
+            .replacingOccurrences(of: ".m4a", with: ".caf")
 
         let url = Performance.recordingsDirectory.appendingPathComponent(filename)
         self.recordingURL = url
 
-        // Speech request
-        let request = SFSpeechAudioBufferRecognitionRequest()
-        request.shouldReportPartialResults = true
-        request.requiresOnDeviceRecognition = false
-        if #available(iOS 16.0, *) { request.taskHint = .dictation }
-        self.recognitionRequest = request
-
-        // Prepare file settings using the engine's input format
+        // Prepare file using input format settings
         let inputNode = engine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
 
-        // Write uncompressed PCM to CAF (very reliable under load)
-        let file = try AVAudioFile(forWriting: url, settings: format.settings)
-        self.audioFile = file
+        self.audioFile = try AVAudioFile(forWriting: url, settings: format.settings)
 
-        // Tap mic ONCE: feed both speech recognition + recording + metering
+        // Start recognition (request + task)
+        startRecognitionOnly(recognizer: recognizer)
+
+        // Tap mic once: record + speech + meter
+        inputNode.removeTap(onBus: 0)
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
             guard let self else { return }
 
-            // Write audio
-            do {
-                try self.audioFile?.write(from: buffer)
-            } catch {
+            // Record
+            do { try self.audioFile?.write(from: buffer) }
+            catch {
                 Task { @MainActor in
                     self.errorMessage = "Recording write failed: \(error.localizedDescription)"
                 }
             }
 
-            // Feed speech
-            self.recognitionRequest?.append(buffer)
+            // Feed speech (thread-safe if request is swapped by watchdog)
+            self.requestLock.lock()
+            let req = self.recognitionRequest
+            self.requestLock.unlock()
+            req?.append(buffer)
 
             // Meter
             let level = Self.computeLevel(from: buffer)
@@ -227,24 +223,84 @@ final class StageTeleprompterEngine: ObservableObject {
         try engine.start()
 
         startDate = Date()
-        startTimers()
+        startTimers(recognizer: recognizer)
+    }
 
-        // Start recognition task
-        recognitionTask = speechRecognizer?.recognitionTask(with: request) { [weak self] result, error in
+    private func teardownPipelineOnly() {
+        levelTimer?.invalidate(); levelTimer = nil
+        timeTimer?.invalidate(); timeTimer = nil
+        watchdogTimer?.invalidate(); watchdogTimer = nil
+
+        cancelRecognitionOnly()
+
+        if let engine = audioEngine {
+            engine.stop()
+            engine.inputNode.removeTap(onBus: 0)
+        }
+        audioEngine = nil
+
+        audioFile = nil
+        recordingURL = nil
+        startDate = nil
+    }
+
+    // MARK: - Recognition control (restartable)
+
+    private func startRecognitionOnly(recognizer: SFSpeechRecognizer) {
+        cancelRecognitionOnly()
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+
+        // BIG reliability win: on-device when supported
+        if recognizer.supportsOnDeviceRecognition {
+            request.requiresOnDeviceRecognition = true
+        } else {
+            request.requiresOnDeviceRecognition = false
+        }
+
+        if #available(iOS 16.0, *) {
+            request.taskHint = .dictation
+        }
+
+        // Bias recognition toward your anchor phrases
+        if !contextualStrings.isEmpty {
+            request.contextualStrings = contextualStrings
+        }
+
+        requestLock.lock()
+        recognitionRequest = request
+        requestLock.unlock()
+
+        recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self else { return }
             Task { @MainActor in
                 if let error {
-                    // Don't hard-stop; surface message
+                    let ns = error as NSError
+
+                    // Common benign errors:
+                    // - "no speech detected"
+                    // - timeouts/cancellations while still producing partials
+                    if ns.domain == "kAFAssistantErrorDomain", ns.code == 1110 {
+                        // Ignore. We often still get partial transcripts.
+                        return
+                    }
+                    if ns.domain == "kLSRErrorDomain", ns.code == 301 {
+                        // Canceled (often during transitions). Ignore.
+                        return
+                    }
+
                     self.errorMessage = error.localizedDescription
                     return
                 }
+
                 guard let result else { return }
 
                 self.isListening = true
+
                 let text = result.bestTranscription.formattedString
                 self.partialTranscript = text
 
-                // Anchors
                 if let match = self.matcher.ingest(transcript: text) {
                     self.onAnchor?(match.anchor, match.confidence)
                 }
@@ -252,49 +308,72 @@ final class StageTeleprompterEngine: ObservableObject {
         }
     }
 
-    private func startTimers() {
-        weak var weakSelf = self
+    private func cancelRecognitionOnly() {
+        recognitionTask?.cancel()
+        recognitionTask = nil
 
-        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
-            guard let self = weakSelf else { return }
-            Task { @MainActor in
-                // audioLevel updates in tap; this timer just keeps UI cadence stable
-                _ = self.audioLevel
-            }
-        }
-        if let timer = levelTimer { RunLoop.main.add(timer, forMode: .common) }
+        requestLock.lock()
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
+        requestLock.unlock()
 
-        timeTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            guard let self = weakSelf else { return }
+        isListening = false
+    }
+
+    // MARK: - Timers
+
+    private func startTimers(recognizer: SFSpeechRecognizer) {
+        levelTimer?.invalidate()
+        timeTimer?.invalidate()
+        watchdogTimer?.invalidate()
+
+        nonisolated(unsafe) let safeRecognizer = recognizer
+
+        // Time
+        timeTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
             Task { @MainActor in
                 if let start = self.startDate, self.isRunning {
                     self.currentTime = Date().timeIntervalSince(start)
                 }
             }
         }
-        if let timer = timeTimer { RunLoop.main.add(timer, forMode: .common) }
+        if let t = timeTimer { RunLoop.main.add(t, forMode: .common) }
+
+        // Watchdog: if we clearly have audio but transcript stays empty, restart recognition only.
+        watchdogTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self, safeRecognizer] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                guard self.isRunning else { return }
+                guard let start = self.startDate else { return }
+
+                let age = Date().timeIntervalSince(start)
+
+                // If after 2 seconds we have audio but still no transcript, restart recognition.
+                if age > 2.0, self.partialTranscript.isEmpty, self.audioLevel > 0.05 {
+                    self.errorMessage = "Restarting speech…"
+                    self.startRecognitionOnly(recognizer: safeRecognizer)
+                }
+            }
+        }
+        if let t = watchdogTimer { RunLoop.main.add(t, forMode: .common) }
     }
 
     // MARK: - Metering
 
     private static func computeLevel(from buffer: AVAudioPCMBuffer) -> Float {
         guard let channelData = buffer.floatChannelData?[0] else { return 0 }
-
         let frameLength = Int(buffer.frameLength)
         guard frameLength > 0 else { return 0 }
 
-        // RMS
         var sumSquares: Float = 0
         for i in 0..<frameLength {
-            let sample = channelData[i]
-            sumSquares += sample * sample
+            let s = channelData[i]
+            sumSquares += s * s
         }
-        let rms = sqrt(sumSquares / Float(frameLength))
 
-        // Map RMS to 0...1
-        // (tuned to feel similar to the old recorder meter)
-        let clamped = min(max(rms * 6.0, 0), 1)
-        return clamped
+        let rms = sqrt(sumSquares / Float(frameLength))
+        return min(max(rms * 6.0, 0), 1)
     }
 
     // MARK: - Formatting

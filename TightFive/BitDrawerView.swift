@@ -20,6 +20,9 @@ struct BitDrawerView: View {
     @State private var searchQuery: String = ""
     @State private var showAllBits: Bool = false
     
+    @State private var isSelecting: Bool = false
+    @State private var selectedBitIDs: Set<UUID> = []
+    
     /// Filter: non-deleted, optionally finished-only, search query
     private var filteredBits: [Bit] {
         var bits = allBits.filter { !$0.isDeleted }
@@ -41,6 +44,26 @@ struct BitDrawerView: View {
     /// Check if a bit is already in this setlist
     private func isInSetlist(_ bit: Bit) -> Bool {
         setlist.containsBit(withId: bit.id)
+    }
+    
+    private func toggleSelection(for bit: Bit) {
+        if selectedBitIDs.contains(bit.id) {
+            selectedBitIDs.remove(bit.id)
+        } else {
+            selectedBitIDs.insert(bit.id)
+        }
+    }
+
+    private func addSelectedBits() {
+        let selected = filteredBits.filter { selectedBitIDs.contains($0.id) }
+        guard !selected.isEmpty else { return }
+        // Append in current visible order
+        for bit in selected {
+            onSelect(bit)
+        }
+        selectedBitIDs.removeAll()
+        isSelecting = false
+        dismiss()
     }
     
     var body: some View {
@@ -68,9 +91,14 @@ struct BitDrawerView: View {
                                 BitDrawerRow(
                                     bit: bit,
                                     isInSetlist: isInSetlist(bit),
+                                    isSelected: selectedBitIDs.contains(bit.id),
                                     onTap: {
-                                        onSelect(bit)
-                                        dismiss()
+                                        if isSelecting {
+                                            toggleSelection(for: bit)
+                                        } else {
+                                            onSelect(bit)
+                                            dismiss()
+                                        }
                                     }
                                 )
                             }
@@ -85,14 +113,33 @@ struct BitDrawerView: View {
             .searchable(text: $searchQuery, prompt: "Search bits")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
+                    if isSelecting {
+                        Button("Cancel") {
+                            isSelecting = false
+                            selectedBitIDs.removeAll()
+                        }
+                        .foregroundStyle(TFTheme.yellow)
+                    } else {
+                        Button("Cancel") {
+                            dismiss()
+                        }
+                        .foregroundStyle(TFTheme.yellow)
                     }
-                    .foregroundStyle(TFTheme.yellow)
                 }
                 
                 ToolbarItem(placement: .principal) {
                     TFWordmarkTitle(title: "Add Bit", size: 20)
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    if isSelecting {
+                        Button("Add Selected") { addSelectedBits() }
+                            .foregroundStyle(TFTheme.yellow)
+                            .disabled(selectedBitIDs.isEmpty)
+                    } else {
+                        Button("Select") { isSelecting = true }
+                            .foregroundStyle(TFTheme.yellow)
+                    }
                 }
             }
             .tfBackground()
@@ -138,6 +185,7 @@ struct BitDrawerView: View {
 private struct BitDrawerRow: View {
     let bit: Bit
     let isInSetlist: Bool
+    let isSelected: Bool
     let onTap: () -> Void
     
     var body: some View {
@@ -181,10 +229,16 @@ private struct BitDrawerRow: View {
                 
                 Spacer()
                 
-                // Add indicator
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(TFTheme.yellow)
+                // Add or Selected indicator
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(Color.green)
+                } else {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(TFTheme.yellow)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)

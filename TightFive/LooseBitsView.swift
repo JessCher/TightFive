@@ -17,6 +17,12 @@ struct LooseBitsView: View {
         !bit.isDeleted
     }, sort: \Bit.updatedAt, order: .reverse) private var allBits: [Bit]
 
+    @Query(sort: \Setlist.updatedAt, order: .reverse) private var allSetlists: [Setlist]
+
+    private var inProgressSetlists: [Setlist] {
+        allSetlists.filter { $0.isDraft }
+    }
+
     @State private var query: String = ""
     @State private var showQuickBit = false
     
@@ -45,7 +51,11 @@ struct LooseBitsView: View {
         // Second: apply search filter
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return modeFiltered }
-        return modeFiltered.filter { $0.text.localizedCaseInsensitiveContains(q) }
+        return modeFiltered.filter { bit in
+            bit.text.localizedCaseInsensitiveContains(q)
+            || bit.title.localizedCaseInsensitiveContains(q)
+            || bit.tags.contains(where: { $0.localizedCaseInsensitiveContains(q) })
+        }
     }
 
     var body: some View {
@@ -74,6 +84,21 @@ struct LooseBitsView: View {
                                 // The Card Itself
                                 BitCardRow(bit: bit)
                                     .contentShape(Rectangle())
+                                    .contextMenu {
+                                        if bit.status == .finished {
+                                            if inProgressSetlists.isEmpty {
+                                                Text("No in-progress setlists")
+                                            } else {
+                                                Menu("Add to setlist…") {
+                                                    ForEach(inProgressSetlists) { setlist in
+                                                        Button(setlist.title.isEmpty ? "Untitled Set" : setlist.title) {
+                                                            add(bit: bit, to: setlist)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                             }
                         }
                     }
@@ -159,6 +184,12 @@ struct LooseBitsView: View {
     private func softDeleteBit(_ bit: Bit) {
         bit.softDelete(context: modelContext)
         // Explicitly save to ensure the deletion persists immediately
+        try? modelContext.save()
+    }
+
+    private func add(bit: Bit, to setlist: Setlist) {
+        setlist.insertBit(bit, at: nil, context: modelContext)
+        setlist.updatedAt = Date()
         try? modelContext.save()
     }
 }
@@ -298,6 +329,22 @@ private struct BitCardRow: View {
             Text(bit.updatedAt, style: .date)
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.55))
+            
+            if !bit.tags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(bit.tags, id: \.self) { tag in
+                            Text(tag)
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(TFTheme.yellow.opacity(0.9))
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
@@ -376,6 +423,14 @@ private struct BitDetailView: View {
     
     var body: some View {
         Form {
+            Section("Title") {
+                TextField("Enter a title", text: $bit.title)
+                    .onChange(of: bit.title) { _, _ in
+                        bit.updatedAt = Date()
+                        try? modelContext.save()
+                    }
+            }
+            
             Section("Text") {
                 UndoableTextEditor(
                     text: $bit.text,
@@ -393,6 +448,14 @@ private struct BitDetailView: View {
                 }
                 .pickerStyle(.segmented)
                 .onChange(of: bit.status) { oldValue, newValue in
+                    bit.updatedAt = Date()
+                    try? modelContext.save()
+                }
+            }
+            
+            Section("Tags") {
+                TagEditor(tags: $bit.tags) { updated in
+                    bit.tags = updated
                     bit.updatedAt = Date()
                     try? modelContext.save()
                 }
@@ -440,5 +503,60 @@ private struct BitDetailView: View {
     }
 }
 
+private struct TagEditor: View {
+    @Binding var tags: [String]
+    var onChange: ([String]) -> Void
+    @State private var input: String = ""
 
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !tags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(tags, id: \.self) { tag in
+                            HStack(spacing: 6) {
+                                Text(tag)
+                                    .font(.caption2.weight(.medium))
+                                    .foregroundStyle(.black)
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.black.opacity(0.7))
+                                    .onTapGesture {
+                                        var copy = tags
+                                        copy.removeAll { $0.caseInsensitiveCompare(tag) == .orderedSame }
+                                        onChange(copy)
+                                    }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(TFTheme.yellow.opacity(0.9))
+                            .clipShape(Capsule())
+                        }
+                    }
+                }
+            }
+
+            HStack {
+                TextField("Add tag", text: $input)
+                    .textInputAutocapitalization(.words)
+                    .onSubmit(addTag)
+                Button("Add") { addTag() }
+                    .buttonStyle(.borderedProminent)
+                    .tint(TFTheme.yellow)
+                    .foregroundStyle(.black)
+            }
+        }
+    }
+    private func addTag() {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let set = Set(tags.map { $0.lowercased() })
+        let key = trimmed.lowercased()
+        guard !set.contains(key) else { input = ""; return }
+        var copy = tags
+        copy.append(trimmed)
+        onChange(copy)
+        input = ""
+    }
+}
 

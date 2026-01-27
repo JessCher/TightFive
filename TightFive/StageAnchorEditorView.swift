@@ -339,17 +339,22 @@ struct AnchorTestView: View {
                         .foregroundStyle(.white.opacity(0.5))
                         .kerning(1.5)
                     
-                    ForEach(anchors) { anchor in
-                        HStack(spacing: 8) {
-                            Image(systemName: matchedAnchor?.id == anchor.id ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(matchedAnchor?.id == anchor.id ? .green : .white.opacity(0.3))
-                            
-                            Text(anchor.shortPhrase)
-                                .font(.subheadline)
-                                .foregroundStyle(.white.opacity(0.8))
-                                .lineLimit(1)
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 8) {
+                            ForEach(anchors) { anchor in
+                                HStack(spacing: 8) {
+                                    Image(systemName: matchedAnchor?.id == anchor.id ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle(matchedAnchor?.id == anchor.id ? .green : .white.opacity(0.3))
+                                    
+                                    Text(anchor.shortPhrase)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.white.opacity(0.8))
+                                        .lineLimit(1)
+                                }
+                            }
                         }
                     }
+                    .frame(height: 200)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)

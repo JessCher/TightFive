@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import SwiftData
+import UIKit
 
 /// The Setlist Builder - a performance script editor with modular bit insertion.
 ///
@@ -38,6 +39,13 @@ struct SetlistBuilderView: View {
 
     @ObservedObject private var keyboard = TFKeyboardState.shared
     
+    @State private var showCopyChoice = false
+    @State private var exportItems: [Any] = []
+    @State private var showShareSheet = false
+    
+    @State private var showExportChoice = false
+    @State private var exportURL: URL?
+    
     var body: some View {
         VStack(spacing: 0) {
             titleField
@@ -70,6 +78,19 @@ struct SetlistBuilderView: View {
         }
         .fullScreenCover(isPresented: $showRunMode) {
             RunModeView(setlist: setlist)
+        }
+        .confirmationDialog("Copy", isPresented: $showCopyChoice, titleVisibility: .visible) {
+            Button("Copy Script") { copyScriptToClipboard() }
+            Button("Copy Notes") { copyNotesToClipboard() }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog("Export", isPresented: $showExportChoice, titleVisibility: .visible) {
+            Button("Export Script") { exportSetlist(as: .script) }
+            Button("Export Notes") { exportSetlist(as: .notes) }
+            Button("Cancel", role: .cancel) {}
+        }
+        .sheet(item: $exportURL) { url in
+            ShareSheet(items: [url]) { _ in }
         }
     }
     
@@ -323,6 +344,29 @@ struct SetlistBuilderView: View {
                 
                 Divider()
                 
+                // Export
+                Button {
+                    showExportChoice = true
+                } label: {
+                    Label("Export", systemImage: "square.and.arrow.up")
+                }
+                
+                // Duplicate
+                Button {
+                    duplicateSetlist()
+                } label: {
+                    Label("Duplicate", systemImage: "plus.square.on.square")
+                }
+                
+                // Copy
+                Button {
+                    showCopyChoice = true
+                } label: {
+                    Label("Copy", systemImage: "doc.on.doc")
+                }
+                
+                Divider()
+                
                 Button(role: .destructive) {
                     modelContext.delete(setlist)
                     try? modelContext.save()
@@ -350,6 +394,44 @@ struct SetlistBuilderView: View {
            idx < setlist.scriptBlocks.count {
             editingBlockId = setlist.scriptBlocks[idx].id
         }
+    }
+    
+    private enum ExportKind { case script, notes }
+
+    private func exportSetlist(as kind: ExportKind) {
+        let text: String
+        switch kind {
+        case .script:
+            text = setlist.exportPlainText()
+        case .notes:
+            text = NSAttributedString.fromRTF(setlist.notesRTF)?.string ?? ""
+        }
+        let filenameBase = setlist.title.isEmpty ? "Setlist" : setlist.title
+        let safe = filenameBase.replacingOccurrences(of: "/", with: "-")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).txt")
+        do {
+            try text.data(using: .utf8)?.write(to: url, options: .atomic)
+            exportURL = url
+        } catch {
+            print("Export failed: \(error)")
+            exportURL = nil
+        }
+    }
+    
+    private func duplicateSetlist() {
+        let clone = setlist.duplicate()
+        clone.updatedAt = Date()
+        try? modelContext.save()
+    }
+    
+    private func copyScriptToClipboard() {
+        let plain = setlist.exportPlainText()
+        UIPasteboard.general.string = plain
+    }
+    
+    private func copyNotesToClipboard() {
+        let notes = NSAttributedString.fromRTF(setlist.notesRTF)?.string ?? ""
+        UIPasteboard.general.string = notes
     }
 }
 
@@ -730,3 +812,62 @@ private struct BitDrawerRowView: View {
     return SetlistBuilderView(setlist: setlist)
 }
 
+// MARK: - Setlist Extensions
+extension Setlist {
+    func exportPlainText() -> String {
+        var lines: [String] = []
+        for block in scriptBlocks {
+            switch block {
+            case .freeform(_, let rtf):
+                let text = NSAttributedString.fromRTF(rtf)?.string ?? ""
+                if !text.isEmpty { lines.append(text) }
+            case .bit:
+                if let assignment = assignment(for: block) {
+                    let text = NSAttributedString.fromRTF(assignment.performedRTF)?.string ?? ""
+                    if !text.isEmpty { lines.append(text) }
+                }
+            }
+        }
+        return lines.joined(separator: "\n\n")
+    }
+
+    func duplicate() -> Setlist {
+        let copy = Setlist(title: self.title + " Copy")
+        copy.isDraft = self.isDraft
+        copy.notesRTF = self.notesRTF
+        // Duplicate blocks and assignments
+        for block in self.scriptBlocks {
+            switch block {
+            case .freeform(_, let rtf):
+                copy.addFreeformBlock(rtfData: rtf, at: nil)
+            case .bit:
+                if let assign = self.assignment(for: block) {
+                    // Preserve performed content when duplicating even if we can't re-link the Bit here.
+                    copy.addFreeformBlock(rtfData: assign.performedRTF, at: nil)
+                }
+            }
+        }
+        return copy
+    }
+}
+
+// MARK: - Share Sheet
+
+struct ShareSheet: UIViewControllerRepresentable {
+    var items: [Any]
+    var completion: ((Bool) -> Void)?
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        controller.completionWithItemsHandler = { _, completed, _, _ in
+            completion?(completed)
+        }
+        return controller
+    }
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// Allow using URL with .sheet(item:)
+extension URL: Identifiable {
+    public var id: String { absoluteString }
+}
