@@ -8,15 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		883A78622F21E89E00FFA78E /* DELETION_NOTES.md in Resources */ = {isa = PBXBuildFile; fileRef = 883A78612F21E89E00FFA78E /* DELETION_NOTES.md */; };
-		88AA9A242F29DF9F00110227 /* ContinuousScrollEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88AA9A232F29DF9F00110227 /* ContinuousScrollEngine.swift */; };
-		88AA9A262F29DFAB00110227 /* VoiceAwareScrollController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88AA9A252F29DFAB00110227 /* VoiceAwareScrollController.swift */; };
 		88AA9A282F29E05F00110227 /* CONTINUOUS_SCROLL_ARCHITECTURE.md in Resources */ = {isa = PBXBuildFile; fileRef = 88AA9A272F29E05F00110227 /* CONTINUOUS_SCROLL_ARCHITECTURE.md */; };
 		88AA9A2A2F29E3A700110227 /* WORLD_CLASS_ENHANCEMENTS.md in Resources */ = {isa = PBXBuildFile; fileRef = 88AA9A292F29E3A700110227 /* WORLD_CLASS_ENHANCEMENTS.md */; };
 		88AA9A2C2F29E40100110227 /* CODE_CHANGES_SUMMARY.md in Resources */ = {isa = PBXBuildFile; fileRef = 88AA9A2B2F29E40100110227 /* CODE_CHANGES_SUMMARY.md */; };
-		88AA9A2E2F29EA9700110227 /* PerformanceAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88AA9A2D2F29EA9700110227 /* PerformanceAnalytics.swift */; };
-		88AA9A302F29EAC800110227 /* AcousticAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88AA9A2F2F29EAC800110227 /* AcousticAnalyzer.swift */; };
 		88AA9A322F29EB9F00110227 /* AI_INTEGRATION_COMPLETE.md in Resources */ = {isa = PBXBuildFile; fileRef = 88AA9A312F29EB9F00110227 /* AI_INTEGRATION_COMPLETE.md */; };
-		88AA9A342F29F12600110227 /* AnalyticsDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88AA9A332F29F12600110227 /* AnalyticsDashboardView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -298,11 +293,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				88AA9A2E2F29EA9700110227 /* PerformanceAnalytics.swift in Sources */,
-				88AA9A242F29DF9F00110227 /* ContinuousScrollEngine.swift in Sources */,
-				88AA9A342F29F12600110227 /* AnalyticsDashboardView.swift in Sources */,
-				88AA9A302F29EAC800110227 /* AcousticAnalyzer.swift in Sources */,
-				88AA9A262F29DFAB00110227 /* VoiceAwareScrollController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

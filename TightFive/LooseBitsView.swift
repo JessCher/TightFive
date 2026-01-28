@@ -8,6 +8,7 @@ struct LooseBitsView: View {
         case all
         case loose
         case finished
+        case favorites
     }
 
     let mode: Mode
@@ -34,6 +35,7 @@ struct LooseBitsView: View {
         case .all: return "Bits"
         case .loose: return "Loose ideas"
         case .finished: return "Finished Bits"
+        case .favorites: return "Favorites"
         }
     }
 
@@ -45,6 +47,7 @@ struct LooseBitsView: View {
             case .all: return allBits
             case .loose: return allBits.filter { $0.status == .loose }
             case .finished: return allBits.filter { $0.status == .finished }
+            case .favorites: return allBits.filter { $0.isFavorite }
             }
         }()
 
@@ -85,6 +88,29 @@ struct LooseBitsView: View {
                                 BitCardRow(bit: bit)
                                     .contentShape(Rectangle())
                                     .contextMenu {
+                                        // Favorite/Unfavorite action
+                                        Button {
+                                            withAnimation {
+                                                bit.isFavorite.toggle()
+                                                bit.updatedAt = Date()
+                                                try? modelContext.save()
+                                            }
+                                        } label: {
+                                            Label(
+                                                bit.isFavorite ? "Unfavorite" : "Favorite",
+                                                systemImage: bit.isFavorite ? "star.slash" : "star.fill"
+                                            )
+                                        }
+                                        
+                                        // Share action (finished bits only)
+                                        if bit.status == .finished {
+                                            Button {
+                                                shareBit(bit)
+                                            } label: {
+                                                Label("Share", systemImage: "square.and.arrow.up")
+                                            }
+                                        }
+                                        
                                         if bit.status == .finished {
                                             if inProgressSetlists.isEmpty {
                                                 Text("No in-progress setlists")
@@ -148,30 +174,49 @@ struct LooseBitsView: View {
 
     private var emptyState: some View {
         VStack(spacing: 14) {
-            Text(mode == .finished ? "No finished bits yet" : "No loose ideas yet")
+            Text(emptyStateTitle)
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(.white)
 
-            Text(mode == .finished
-                 ? "Move a bit to Finished when it's stage-ready."
-                 : "Tap + to capture an idea and it'll show up here.")
+            Text(emptyStateMessage)
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.65))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 26)
 
-            Button {
-                showQuickBit = true
-            } label: {
-                Text("Quick Bit")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .background(TFTheme.yellow)
-                    .clipShape(Capsule())
+            if mode != .favorites {
+                Button {
+                    showQuickBit = true
+                } label: {
+                    Text("Quick Bit")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .background(TFTheme.yellow)
+                        .clipShape(Capsule())
+                }
+                .padding(.top, 6)
             }
-            .padding(.top, 6)
+        }
+    }
+    
+    private var emptyStateTitle: String {
+        switch mode {
+        case .finished: return "No finished bits yet"
+        case .favorites: return "No favorites yet"
+        default: return "No loose ideas yet"
+        }
+    }
+    
+    private var emptyStateMessage: String {
+        switch mode {
+        case .finished:
+            return "Move a bit to Finished when it's stage-ready."
+        case .favorites:
+            return "Favorite bits will appear here for quick access."
+        default:
+            return "Tap + to capture an idea and it'll show up here."
         }
     }
 
@@ -191,6 +236,26 @@ struct LooseBitsView: View {
         setlist.insertBit(bit, at: nil, context: modelContext)
         setlist.updatedAt = Date()
         try? modelContext.save()
+    }
+    
+    private func shareBit(_ bit: Bit) {
+        let renderer = ImageRenderer(content: BitShareCard(bit: bit))
+        renderer.scale = 3.0 // High resolution for sharing
+        
+        if let image = renderer.uiImage {
+            let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+            
+            // Present the share sheet
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootVC = windowScene.windows.first?.rootViewController {
+                var topVC = rootVC
+                while let presentedVC = topVC.presentedViewController {
+                    topVC = presentedVC
+                }
+                activityVC.popoverPresentationController?.sourceView = topVC.view
+                topVC.present(activityVC, animated: true)
+            }
+        }
     }
 }
 
@@ -314,15 +379,24 @@ private struct BitCardRow: View {
                 
                 Spacer()
                 
-                // Show variation count badge if any
-                if bit.variationCount > 0 {
-                    Text("\(bit.variationCount)")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(TFTheme.yellow)
-                        .clipShape(Capsule())
+                HStack(spacing: 8) {
+                    // Favorite indicator
+                    if bit.isFavorite {
+                        Image(systemName: "star.fill")
+                            .font(.caption)
+                            .foregroundStyle(TFTheme.yellow)
+                    }
+                    
+                    // Show variation count badge if any
+                    if bit.variationCount > 0 {
+                        Text("\(bit.variationCount)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(TFTheme.yellow)
+                            .clipShape(Capsule())
+                    }
                 }
             }
 
@@ -497,6 +571,18 @@ private struct BitDetailView: View {
         .tfUndoRedoToolbar(isVisible: keyboard.isVisible)
         .navigationTitle("Bit")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    bit.isFavorite.toggle()
+                    bit.updatedAt = Date()
+                    try? modelContext.save()
+                } label: {
+                    Image(systemName: bit.isFavorite ? "star.fill" : "star")
+                        .foregroundStyle(TFTheme.yellow)
+                }
+            }
+        }
         .sheet(isPresented: $showVariationComparison) {
             VariationComparisonView(bit: bit)
         }
@@ -559,4 +645,50 @@ private struct TagEditor: View {
         input = ""
     }
 }
+
+// MARK: - Share Card
+
+/// A beautifully styled card for sharing bits externally
+private struct BitShareCard: View {
+    let bit: Bit
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            contentArea
+            bottomBar
+        }
+        .frame(width: 500)
+        .background(Color("TFCard"))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
+    }
+    
+    private var contentArea: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Bit text only (no title or tags)
+            Text(bit.text)
+                .font(.system(size: 18))
+                .foregroundStyle(.white.opacity(0.95))
+                .fixedSize(horizontal: false, vertical: true)
+                .lineSpacing(4)
+        }
+        .frame(maxWidth: 500)
+        .padding(32)
+        .tfDynamicCard(cornerRadius: 0)
+    }
+    
+    private var bottomBar: some View {
+        HStack(spacing: 8) {
+            Spacer()
+            TFWordmarkTitle(title: "written in TightFive", size: 16)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .background(Color("TFCard"))
+    }
+}
+
+
+
 

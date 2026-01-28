@@ -677,6 +677,8 @@ private struct BitDrawerSheet: View {
     @Query(sort: \Bit.updatedAt, order: .reverse) private var allBits: [Bit]
     @State private var searchQuery = ""
     @State private var showAllBits = false
+    @State private var isMultiSelectMode = false
+    @State private var selectedBits: Set<UUID> = []
     
     private var filteredBits: [Bit] {
         var bits = allBits.filter { !$0.isDeleted }
@@ -685,7 +687,11 @@ private struct BitDrawerSheet: View {
         }
         let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         if !q.isEmpty {
-            bits = bits.filter { $0.text.localizedCaseInsensitiveContains(q) }
+            bits = bits.filter { bit in
+                bit.text.localizedCaseInsensitiveContains(q)
+                || bit.title.localizedCaseInsensitiveContains(q)
+                || bit.tags.contains(where: { $0.localizedCaseInsensitiveContains(q) })
+            }
         }
         return bits
     }
@@ -693,6 +699,7 @@ private struct BitDrawerSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                // Filter picker
                 Picker("Filter", selection: $showAllBits) {
                     Text("Finished").tag(false)
                     Text("All Bits").tag(true)
@@ -710,9 +717,18 @@ private struct BitDrawerSheet: View {
                     ScrollView {
                         LazyVStack(spacing: 10) {
                             ForEach(filteredBits) { bit in
-                                BitDrawerRowView(bit: bit, isInSetlist: setlist.containsBit(withId: bit.id)) {
-                                    onInsert(bit, insertionIndex)
-                                    dismiss()
+                                BitDrawerRowView(
+                                    bit: bit,
+                                    isInSetlist: setlist.containsBit(withId: bit.id),
+                                    isMultiSelectMode: isMultiSelectMode,
+                                    isSelected: selectedBits.contains(bit.id)
+                                ) {
+                                    if isMultiSelectMode {
+                                        toggleSelection(bit)
+                                    } else {
+                                        onInsert(bit, insertionIndex)
+                                        dismiss()
+                                    }
                                 }
                             }
                         }
@@ -723,11 +739,39 @@ private struct BitDrawerSheet: View {
             }
             .navigationTitle("Insert Bit")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $searchQuery, prompt: "Search bits")
+            .searchable(text: $searchQuery, prompt: "Search by text or tag")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundStyle(TFTheme.yellow)
+                    Button(isMultiSelectMode ? "Cancel" : "Close") {
+                        if isMultiSelectMode {
+                            isMultiSelectMode = false
+                            selectedBits.removeAll()
+                        } else {
+                            dismiss()
+                        }
+                    }
+                    .foregroundStyle(TFTheme.yellow)
+                }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    if !filteredBits.isEmpty {
+                        if isMultiSelectMode {
+                            Button {
+                                insertSelectedBits()
+                            } label: {
+                                Text("Add (\(selectedBits.count))")
+                                    .foregroundStyle(TFTheme.yellow)
+                            }
+                            .disabled(selectedBits.isEmpty)
+                        } else {
+                            Button {
+                                isMultiSelectMode = true
+                            } label: {
+                                Image(systemName: "checkmark.circle")
+                                    .foregroundStyle(TFTheme.yellow)
+                            }
+                        }
+                    }
                 }
             }
             .tfBackground()
@@ -750,20 +794,52 @@ private struct BitDrawerSheet: View {
             Spacer()
         }
     }
+    
+    private func toggleSelection(_ bit: Bit) {
+        if selectedBits.contains(bit.id) {
+            selectedBits.remove(bit.id)
+        } else {
+            selectedBits.insert(bit.id)
+        }
+    }
+    
+    private func insertSelectedBits() {
+        let bitsToInsert = filteredBits.filter { selectedBits.contains($0.id) }
+        var currentIndex = insertionIndex
+        
+        for bit in bitsToInsert {
+            onInsert(bit, currentIndex)
+            if let index = currentIndex {
+                currentIndex = index + 1
+            }
+        }
+        
+        dismiss()
+    }
 }
 
 private struct BitDrawerRowView: View {
     let bit: Bit
     let isInSetlist: Bool
+    let isMultiSelectMode: Bool
+    let isSelected: Bool
     let onTap: () -> Void
     
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 14) {
-                Image(systemName: bit.status == .finished ? "checkmark.seal.fill" : "pencil.circle")
-                    .font(.system(size: 20))
-                    .foregroundStyle(bit.status == .finished ? TFTheme.yellow : .white.opacity(0.5))
-                    .frame(width: 28)
+                // Multi-select checkbox or status icon
+                if isMultiSelectMode {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 24))
+                        .foregroundStyle(isSelected ? TFTheme.yellow : .white.opacity(0.3))
+                        .frame(width: 28)
+                } else {
+                    Image(systemName: bit.status == .finished ? "checkmark.seal.fill" : "pencil.circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(bit.status == .finished ? TFTheme.yellow : .white.opacity(0.5))
+                        .frame(width: 28)
+                }
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(bit.titleLine)
@@ -785,22 +861,41 @@ private struct BitDrawerRowView: View {
                                 .background(TFTheme.yellow.opacity(0.8))
                                 .clipShape(Capsule())
                         }
+                        
+                        // Show tags if any
+                        if !bit.tags.isEmpty {
+                            ForEach(bit.tags.prefix(2), id: \.self) { tag in
+                                Text(tag)
+                                    .font(.caption2.weight(.medium))
+                                    .foregroundStyle(.black)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(TFTheme.yellow.opacity(0.6))
+                                    .clipShape(Capsule())
+                            }
+                        }
                     }
                 }
                 
                 Spacer()
                 
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 24))
-                    .foregroundStyle(TFTheme.yellow)
+                // Show + icon or nothing in multi-select mode
+                if !isMultiSelectMode {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(TFTheme.yellow)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(Color("TFCard"))
+            .background(isSelected && isMultiSelectMode ? Color("TFCard").opacity(0.7) : Color("TFCard"))
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(Color("TFCardStroke").opacity(0.6), lineWidth: 1)
+                    .strokeBorder(
+                        isSelected && isMultiSelectMode ? TFTheme.yellow.opacity(0.6) : Color("TFCardStroke").opacity(0.6),
+                        lineWidth: isSelected && isMultiSelectMode ? 2 : 1
+                    )
             )
         }
         .buttonStyle(.plain)

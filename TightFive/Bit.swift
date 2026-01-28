@@ -48,6 +48,11 @@ final class Bit {
     /// Timestamp of deletion (nil if not deleted)
     var deletedAt: Date?
     
+    // MARK: - Favorites
+    
+    /// Whether this bit is marked as a favorite
+    var isFavorite: Bool = false
+    
     // MARK: - Relationships
     
     /// All variations of this bit across setlists.

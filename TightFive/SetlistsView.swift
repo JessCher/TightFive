@@ -288,6 +288,17 @@ struct FinishedSetlistsView: View {
             }
             
             HStack(spacing: 8) {
+                // Duration estimate
+                if s.hasScriptContent {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock")
+                            .font(.caption2)
+                        Text(s.formattedDuration)
+                    }
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(TFTheme.yellow)
+                }
+                
                 Text(s.updatedAt, style: .date)
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.5))

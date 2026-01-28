@@ -134,6 +134,33 @@ extension Setlist {
     var hasNotes: Bool {
         !notesPlainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
+    
+    /// Estimated duration in seconds based on word count.
+    /// Uses a speaking rate of ~150 words per minute (standard comedy pace).
+    var estimatedDuration: TimeInterval {
+        let text = scriptPlainText
+        let words = text.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+        let wordCount = words.count
+        
+        // 150 words per minute = 2.5 words per second
+        let seconds = Double(wordCount) / 2.5
+        
+        // Round to nearest 15 seconds for cleaner display
+        return (seconds / 15.0).rounded() * 15.0
+    }
+    
+    /// Formatted duration string (e.g., "5m 30s" or "12m")
+    var formattedDuration: String {
+        let totalSeconds = Int(estimatedDuration)
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        
+        if seconds == 0 {
+            return "\(minutes)m"
+        } else {
+            return "\(minutes)m \(seconds)s"
+        }
+    }
 }
 
 // MARK: - Migration Support

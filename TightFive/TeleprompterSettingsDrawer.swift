@@ -1,49 +1,49 @@
 import SwiftUI
 
-struct TeleprompterSettingsDrawerHandle: View {
+struct TeleprompterSettingsDrawer: View {
     @Binding var isPresented: Bool
-    @State private var isOpen: Bool = false
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            if isOpen {
-                HStack(spacing: 8) {
-                    Button {
-                        isPresented = true
-                    } label: {
-                        Label("Teleprompter Settings", systemImage: "slider.horizontal.3")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.black)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                            .background(TFTheme.yellow)
-                            .clipShape(Capsule())
-                    }
-                }
-                .transition(.move(edge: .trailing).combined(with: .opacity))
-                .padding(.trailing, 46)
-                .padding(.bottom, 6)
+        Button {
+            isPresented = true
+        } label: {
+            VStack(spacing: 6) {
+                Circle()
+                    .fill(Color.white.opacity(0.7))
+                    .frame(width: 6, height: 6)
+                Circle()
+                    .fill(Color.white.opacity(0.7))
+                    .frame(width: 6, height: 6)
+                Circle()
+                    .fill(Color.white.opacity(0.7))
+                    .frame(width: 6, height: 6)
             }
-
-            Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    isOpen.toggle()
-                }
-            } label: {
-                Image(systemName: isOpen ? "chevron.right" : "chevron.left")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.black)
-                    .frame(width: 44, height: 44)
-                    .background(TFTheme.yellow)
-                    .clipShape(Circle())
-                    .shadow(color: .black.opacity(0.3), radius: 6, x: 0, y: 3)
-            }
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.white.opacity(0.12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+            )
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Teleprompter Settings")
     }
 }
 
 #Preview {
-    TeleprompterSettingsDrawerHandle(isPresented: .constant(false))
-        .padding()
-        .background(Color.black)
+    ZStack {
+        Color.black.ignoresSafeArea()
+        VStack {
+            Spacer()
+            HStack {
+                Spacer()
+                TeleprompterSettingsDrawer(isPresented: .constant(false))
+                    .padding()
+            }
+        }
+    }
 }
