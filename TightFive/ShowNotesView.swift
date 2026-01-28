@@ -1185,53 +1185,61 @@ struct CreateShowNoteView: View {
         isImporting = true
         errorMessage = nil
         
-        // Start accessing security-scoped resource
-        guard sourceURL.startAccessingSecurityScopedResource() else {
-            errorMessage = "Cannot access the audio file"
-            isImporting = false
-            return
-        }
-        
-        defer {
-            sourceURL.stopAccessingSecurityScopedResource()
-        }
-        
-        do {
-            // Generate filename and destination
-            let filename = Performance.generateFilename(for: setlist.title)
-            let destination = Performance.recordingsDirectory.appendingPathComponent(filename)
+        Task {
+            // Start accessing security-scoped resource
+            guard sourceURL.startAccessingSecurityScopedResource() else {
+                await MainActor.run {
+                    errorMessage = "Cannot access the audio file"
+                    isImporting = false
+                }
+                return
+            }
             
-            // Copy the file
-            try FileManager.default.copyItem(at: sourceURL, to: destination)
+            defer {
+                sourceURL.stopAccessingSecurityScopedResource()
+            }
             
-            // Get file attributes
-            let attributes = try FileManager.default.attributesOfItem(atPath: destination.path)
-            let fileSize = attributes[.size] as? Int64 ?? 0
-            
-            // Get audio duration
-            let asset = AVURLAsset(url: destination)
-            let duration = asset.duration.seconds
-            
-            // Create performance
-            let performance = Performance(
-                setlistId: setlist.id,
-                setlistTitle: setlist.title,
-                datePerformed: datePerformed,
-                city: city,
-                venue: venue,
-                audioFilename: filename,
-                duration: duration,
-                fileSize: fileSize
-            )
-            
-            modelContext.insert(performance)
-            try modelContext.save()
-            
-            isImporting = false
-            dismiss()
-        } catch {
-            errorMessage = "Failed to import audio: \(error.localizedDescription)"
-            isImporting = false
+            do {
+                // Generate filename and destination
+                let filename = Performance.generateFilename(for: setlist.title)
+                let destination = Performance.recordingsDirectory.appendingPathComponent(filename)
+                
+                // Copy the file
+                try FileManager.default.copyItem(at: sourceURL, to: destination)
+                
+                // Get file attributes
+                let attributes = try FileManager.default.attributesOfItem(atPath: destination.path)
+                let fileSize = attributes[.size] as? Int64 ?? 0
+                
+                // Get audio duration using modern async API
+                let asset = AVURLAsset(url: destination)
+                let duration = try await asset.load(.duration).seconds
+                
+                // Create performance
+                let performance = Performance(
+                    setlistId: setlist.id,
+                    setlistTitle: setlist.title,
+                    datePerformed: datePerformed,
+                    city: city,
+                    venue: venue,
+                    audioFilename: filename,
+                    duration: duration,
+                    fileSize: fileSize
+                )
+                
+                await MainActor.run {
+                    modelContext.insert(performance)
+                    try? modelContext.save()
+                    
+                    isImporting = false
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Failed to import audio: \(error.localizedDescription)"
+                    isImporting = false
+                }
+            }
         }
     }
 }

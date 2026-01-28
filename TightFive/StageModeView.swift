@@ -17,7 +17,6 @@ struct StageModeView: View {
     @State private var isInitialized = false
 
     @State private var isAutoScrollEnabled: Bool = true
-    @State private var lastScrollUpdateAt: Date = .distantPast
 
     init(setlist: Setlist, venue: String = "") {
         self.setlist = setlist
@@ -192,7 +191,7 @@ struct StageModeView: View {
             }
             .onChange(of: tracker.currentIndex) { _, _ in
                 guard tracker.currentIndex >= 0, tracker.currentIndex < tracker.lines.count else { return }
-                withAnimation(.easeOut(duration: 0.25)) {
+                withAnimation(.easeOut(duration: 0.12)) {
                     proxy.scrollTo(tracker.lines[tracker.currentIndex].id, anchor: .center)
                 }
                 hapticFeedback()
@@ -236,6 +235,14 @@ struct StageModeView: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(engine.isListening ? .green : .white.opacity(0.4))
 
+                // Real-time confidence indicator
+                if tracker.currentConfidence > 0.5 {
+                    Circle()
+                        .fill(confidenceColor)
+                        .frame(width: 6, height: 6)
+                        .opacity(0.8 + (tracker.currentConfidence * 0.2))
+                }
+
                 Spacer()
 
                 if let msg = engine.errorMessage, !msg.isEmpty {
@@ -269,8 +276,26 @@ struct StageModeView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                .stroke(overlayStrokeColor, lineWidth: 1)
         )
+    }
+
+    private var confidenceColor: Color {
+        if tracker.currentConfidence >= 0.75 {
+            return .green
+        } else if tracker.currentConfidence >= 0.5 {
+            return .yellow
+        } else {
+            return .orange
+        }
+    }
+
+    private var overlayStrokeColor: Color {
+        if tracker.currentConfidence >= 0.7 {
+            return Color.green.opacity(0.15 + (tracker.currentConfidence * 0.15))
+        } else {
+            return Color.white.opacity(0.08)
+        }
     }
 
     private var bottomBar: some View {
@@ -331,10 +356,6 @@ struct StageModeView: View {
     // MARK: - Logic
 
     private func handleTranscript(_ transcript: String) {
-        let now = Date()
-        if now.timeIntervalSince(lastScrollUpdateAt) < 0.01 { return }
-        lastScrollUpdateAt = now
-
         var mutable = tracker
         _ = mutable.ingestTranscript(transcript)
         tracker = mutable
@@ -474,14 +495,14 @@ struct StageModeView: View {
                 .replacingOccurrences(of: "\r", with: "\n")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
 
-            // Break into chunks that are easy to match in speech (8–14 words)
+            // Break into chunks that are easy to match in speech (6–10 words for faster recognition)
             let rawUnits = cleaned
                 .components(separatedBy: .newlines)
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
 
             for unit in rawUnits {
-                let chunks = chunkText(unit, targetWordsPerChunk: 12)
+                let chunks = chunkText(unit, targetWordsPerChunk: 8)
                 for chunk in chunks {
                     let words = normalizeWords(chunk)
                     if words.isEmpty { continue }
