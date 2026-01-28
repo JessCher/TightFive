@@ -1,6 +1,6 @@
 import Foundation
 import Combine
-import Speech
+@preconcurrency import Speech
 import AVFoundation
 
 /// Single-pipeline Stage Mode engine:

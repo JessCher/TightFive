@@ -40,6 +40,9 @@
 			membershipExceptions = (
 				Info.plist,
 			);
+			platformFiltersByRelativePath = {
+				TeleprompterTextView.swift = (ios, );
+			};
 			target = 888E3FD72F20526900678706 /* TightFive */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
