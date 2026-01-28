@@ -14,7 +14,7 @@ struct HomeView: View {
                             LooseBitsView(mode: .loose)
                         } label: {
                             HomeTile(title: "Loose Ideas",
-                                     subtitle: "Save joke ideas for later…",
+                                     subtitle: "Save joke ideas for later.",
                                      iconName: "IconLooseBits")
                         }
 
@@ -32,6 +32,14 @@ struct HomeView: View {
                             HomeTile(title: "Setlists",
                                      subtitle: "Build and run tight sets.",
                                      iconName: "IconSetlists")
+                        }
+
+                        NavigationLink {
+                            RunModeLauncherView()
+                        } label: {
+                            HomeTile(title: "Run Through",
+                                     subtitle: "Practice makes perfect.",
+                                     iconName: "IconRunMode")
                         }
 
                         NavigationLink {
@@ -64,16 +72,16 @@ struct HomeView: View {
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showQuickBit = true
+                    NavigationLink {
+                        MorePlaceholderView()
                     } label: {
-                        Image(systemName: "plus")
+                        Image(systemName: "gearshape")
                             .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(Color("TFYellow"))
                             .frame(width: 40, height: 40)
                             .background(Color.white.opacity(0.0))
                     }
-                    .accessibilityLabel("New Bit")
+                    .accessibilityLabel("Settings")
                 }
             }
             .tfBackground()
@@ -142,7 +150,7 @@ private struct HomeTile: View {
                 .renderingMode(.original)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 34, height: 34)
+                .frame(width: 40, height: 40)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -158,9 +166,9 @@ private struct HomeTile: View {
             
             Image(systemName: "chevron.right")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.28))
+                .foregroundStyle(.tfYellow.opacity(0.34))
         }
-        .padding(.vertical, 18)
+        .padding(.vertical, 29)
         .padding(.horizontal, 16)
         .tfDynamicCard(cornerRadius: 20) // New dynamic generator
     }

@@ -29,14 +29,14 @@ struct RunModeView: View {
     @State private var isTeleprompterSettingsPresented = false
     @State private var isRunModeSettingsPresented = false
 
-    // Default settings (we can wire these to user Settings later)
+    // Teleprompter state synced with settings
     @State private var teleprompterFontSize: CGFloat = 34
-    @State private var teleprompterSpeed: CGFloat = 40      // points/sec
+    @State private var teleprompterSpeed: CGFloat = 40
     @State private var teleprompterWindowHeight: CGFloat = 180
     @State private var isTeleprompterPlaying: Bool = false
     @State private var teleprompterResetCounter: Int = 0
 
-    @StateObject private var settings = RunModeSettingsStore.shared
+    @ObservedObject private var settings = RunModeSettingsStore.shared
 
     private func handleDismiss() {
         stopTimer()
@@ -70,21 +70,39 @@ struct RunModeView: View {
         }
         .statusBarHidden(true)
         .navigationBarHidden(true)
-        .onDisappear { stopTimer() }
+        .onAppear {
+            // Initialize from settings on appear - these are the defaults
+            teleprompterFontSize = CGFloat(settings.defaultFontSize)
+            teleprompterSpeed = CGFloat(settings.defaultSpeed)
+            readingMode = (settings.defaultMode == .script) ? .script : .teleprompter
+            
+            // Auto-start timer if enabled
+            if settings.autoStartTimer && !isTimerRunning {
+                startTimer()
+            }
+            
+            // Auto-start teleprompter if enabled and in teleprompter mode
+            if settings.autoStartTeleprompter && readingMode == .teleprompter {
+                isTeleprompterPlaying = true
+            }
+        }
+        .onDisappear { 
+            stopTimer()
+            // Don't save session adjustments - let settings page control defaults
+        }
         .sheet(isPresented: $isTeleprompterSettingsPresented) {
             teleprompterSettingsSheet
         }
-        .sheet(isPresented: $isRunModeSettingsPresented) {
+        .fullScreenCover(isPresented: $isRunModeSettingsPresented) {
             RunModeSettingsView()
         }
         .onChange(of: settings.defaultFontSize) { _, newValue in
+            // When settings change, update the current session immediately
             teleprompterFontSize = CGFloat(newValue)
         }
         .onChange(of: settings.defaultSpeed) { _, newValue in
+            // When settings change, update the current session immediately
             teleprompterSpeed = CGFloat(newValue)
-        }
-        .onChange(of: settings.defaultMode) { _, newValue in
-            readingMode = (newValue == .script) ? .script : .teleprompter
         }
         .environment(\._teleprompterFontColor, settings.teleprompterFontColor.color)
     }
@@ -93,18 +111,21 @@ struct RunModeView: View {
 
     private func topBar(geometry: GeometryProxy) -> some View {
         VStack(spacing: 12) {
-            HStack {
-                Button { handleDismiss() } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.7))
-                        .frame(width: 36, height: 36)
-                        .background(Color.white.opacity(0.1))
-                        .clipShape(Circle())
+            ZStack {
+                // Left side - Close button
+                HStack {
+                    Button { handleDismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.7))
+                            .frame(width: 36, height: 36)
+                            .background(Color.white.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                    Spacer()
                 }
-
-                Spacer()
-
+                
+                // Center - Timer and Reset
                 HStack(spacing: 10) {
                     timerDisplay
                     Button {
@@ -118,20 +139,11 @@ struct RunModeView: View {
                             .clipShape(Circle())
                     }
                 }
-
-                Spacer()
-
-                // Right-side controls
-                HStack(spacing: 10) {
-                    if readingMode == .teleprompter {
-                        // Removed teleprompter settings slider button from here
-                        // Keep layout stable when not in teleprompter
-                        Color.clear.frame(width: 36, height: 36)
-                    } else {
-                        // Keep layout stable when not in teleprompter
-                        Color.clear.frame(width: 36, height: 36)
-                    }
-
+                .frame(maxWidth: .infinity)
+                
+                // Right side - Settings button
+                HStack {
+                    Spacer()
                     Button {
                         isRunModeSettingsPresented = true
                     } label: {
@@ -309,20 +321,20 @@ struct RunModeView: View {
     private func teleprompterWindowOverlay(height: CGFloat) -> some View {
         GeometryReader { geo in
             let fullH = geo.size.height
-            let midY = fullH / 2
+            let midY = fullH / 2-40
             let topDimH = max(0, midY - height / 2)
             let bottomDimH = max(0, fullH - (midY + height / 2))
 
             ZStack {
-                // Dim regions (guaranteed full coverage)
+                // Dim regions (guaranteed full coverage) - made darker
                 VStack(spacing: 0) {
-                    settings.contextWindowColor.color.opacity(0.55)
+                    settings.contextWindowColor.color.opacity(0.75)
                         .frame(height: topDimH)
 
                     Color.clear
                         .frame(height: height)
 
-                    settings.contextWindowColor.color.opacity(0.55)
+                    settings.contextWindowColor.color.opacity(0.75)
                         .frame(height: bottomDimH)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -332,13 +344,13 @@ struct RunModeView: View {
                     Spacer().frame(height: topDimH)
 
                     Rectangle()
-                        .fill(settings.contextWindowColor.color.opacity(0.8))
+                        .fill(settings.contextWindowColor.color.opacity(0.9))
                         .frame(height: 1)
 
                     Spacer().frame(height: height)
 
                     Rectangle()
-                        .fill(settings.contextWindowColor.color.opacity(0.8))
+                        .fill(settings.contextWindowColor.color.opacity(0.9))
                         .frame(height: 1)
 
                     Spacer().frame(height: bottomDimH)
@@ -346,7 +358,7 @@ struct RunModeView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
-        .ignoresSafeArea()                 // <- key
+        .ignoresSafeArea()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -478,22 +490,6 @@ struct RunModeLauncherView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    VStack(spacing: 8) {
-                        Image(systemName: "timer")
-                            .font(.system(size: 48))
-                            .foregroundStyle(TFTheme.yellow)
-
-                        Text("Run Through")
-                            .font(.title.weight(.bold))
-                            .foregroundStyle(.white)
-
-                        Text("Practice your set with a timer")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.6))
-                    }
-                    .padding(.top, 20)
-                    .padding(.bottom, 10)
-
                     if !finishedSetlists.isEmpty {
                         setlistSection(title: "Stage Ready", setlists: finishedSetlists, icon: "checkmark.seal.fill")
                     }
@@ -507,6 +503,7 @@ struct RunModeLauncherView: View {
                     }
                 }
                 .padding(.horizontal, 16)
+                .padding(.top, 12)
                 .padding(.bottom, 40)
             }
             .navigationTitle("Run Through")

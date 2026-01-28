@@ -8,22 +8,7 @@ enum RunModeDefaultMode: String, CaseIterable, Identifiable {
 }
 
 enum TeleprompterFontColor: String, CaseIterable, Identifiable {
-    case red, green, yellow, white, cyan
-    var id: String { rawValue }
-
-    var color: Color {
-        switch self {
-        case .red: return .red
-        case .green: return .green
-        case .yellow: return TFTheme.yellow
-        case .white: return .white
-        case .cyan: return .cyan
-        }
-    }
-}
-
-enum ContextWindowColor: String, CaseIterable, Identifiable {
-    case yellow, green, blue, black
+    case yellow, green, blue, white, red, cyan, purple
     var id: String { rawValue }
 
     var color: Color {
@@ -31,6 +16,26 @@ enum ContextWindowColor: String, CaseIterable, Identifiable {
         case .yellow: return TFTheme.yellow
         case .green: return .green
         case .blue: return .blue
+        case .white: return .white
+        case .red: return .red
+        case .cyan: return .cyan
+        case .purple: return .purple
+        }
+    }
+}
+
+enum ContextWindowColor: String, CaseIterable, Identifiable {
+    case yellow, green, blue, white, red, cyan, black
+    var id: String { rawValue }
+
+    var color: Color {
+        switch self {
+        case .yellow: return TFTheme.yellow
+        case .green: return .green
+        case .blue: return .blue
+        case .white: return .white
+        case .red: return .red
+        case .cyan: return .cyan
         case .black: return .black
         }
     }
@@ -54,42 +59,78 @@ enum TimerColor: String, CaseIterable, Identifiable {
 final class RunModeSettingsStore: ObservableObject {
     static let shared = RunModeSettingsStore()
 
-    @AppStorage("run_autoStartTimer") var autoStartTimer: Bool = false
-    @AppStorage("run_autoStartTeleprompter") var autoStartTeleprompter: Bool = false
+    @AppStorage("run_autoStartTimer") var autoStartTimer: Bool = false {
+        willSet { objectWillChange.send() }
+    }
+    
+    @AppStorage("run_autoStartTeleprompter") var autoStartTeleprompter: Bool = false {
+        willSet { objectWillChange.send() }
+    }
 
-    @AppStorage("run_defaultFontSize") var defaultFontSize: Double = 34
-    @AppStorage("run_defaultSpeed") var defaultSpeed: Double = 40
+    @AppStorage("run_defaultFontSize") var defaultFontSize: Double = 34 {
+        willSet { objectWillChange.send() }
+    }
+    
+    @AppStorage("run_defaultSpeed") var defaultSpeed: Double = 40 {
+        willSet { objectWillChange.send() }
+    }
 
-    @AppStorage("run_scriptFontColor") var scriptFontColorRaw: String = TeleprompterFontColor.white.rawValue
-    @AppStorage("run_teleprompterFontColor") var teleprompterFontColorRaw: String = TeleprompterFontColor.white.rawValue
-    @AppStorage("run_contextWindowColor") private var contextWindowColorRaw: String = ContextWindowColor.yellow.rawValue
-    @AppStorage("run_defaultMode") private var defaultModeRaw: String = RunModeDefaultMode.script.rawValue
+    @AppStorage("run_scriptFontColor") var scriptFontColorRaw: String = TeleprompterFontColor.white.rawValue {
+        willSet { objectWillChange.send() }
+    }
+    
+    @AppStorage("run_teleprompterFontColor") var teleprompterFontColorRaw: String = TeleprompterFontColor.white.rawValue {
+        willSet { objectWillChange.send() }
+    }
+    
+    @AppStorage("run_contextWindowColor") var contextWindowColorRaw: String = ContextWindowColor.yellow.rawValue {
+        willSet { objectWillChange.send() }
+    }
+    
+    @AppStorage("run_defaultMode") var defaultModeRaw: String = RunModeDefaultMode.script.rawValue {
+        willSet { objectWillChange.send() }
+    }
 
-    @AppStorage("run_timerColor") var timerColorRaw: String = TimerColor.yellow.rawValue
-    @AppStorage("run_timerSize") var timerSize: Double = 32
+    @AppStorage("run_timerColor") var timerColorRaw: String = TimerColor.yellow.rawValue {
+        willSet { objectWillChange.send() }
+    }
+    
+    @AppStorage("run_timerSize") var timerSize: Double = 32 {
+        willSet { objectWillChange.send() }
+    }
 
     var scriptFontColor: TeleprompterFontColor {
         get { TeleprompterFontColor(rawValue: scriptFontColorRaw) ?? .white }
-        set { scriptFontColorRaw = newValue.rawValue }
+        set { 
+            scriptFontColorRaw = newValue.rawValue
+        }
     }
 
     var teleprompterFontColor: TeleprompterFontColor {
         get { TeleprompterFontColor(rawValue: teleprompterFontColorRaw) ?? .white }
-        set { teleprompterFontColorRaw = newValue.rawValue }
+        set { 
+            teleprompterFontColorRaw = newValue.rawValue
+        }
     }
 
     var contextWindowColor: ContextWindowColor {
         get { ContextWindowColor(rawValue: contextWindowColorRaw) ?? .yellow }
-        set { contextWindowColorRaw = newValue.rawValue }
+        set { 
+            contextWindowColorRaw = newValue.rawValue
+        }
     }
 
     var defaultMode: RunModeDefaultMode {
         get { RunModeDefaultMode(rawValue: defaultModeRaw) ?? .script }
-        set { defaultModeRaw = newValue.rawValue }
+        set { 
+            defaultModeRaw = newValue.rawValue
+        }
     }
 
     var timerColor: TimerColor {
         get { TimerColor(rawValue: timerColorRaw) ?? .yellow }
-        set { timerColorRaw = newValue.rawValue }
+        set { 
+            timerColorRaw = newValue.rawValue
+        }
     }
 }

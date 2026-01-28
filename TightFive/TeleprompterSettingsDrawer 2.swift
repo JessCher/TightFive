@@ -5,18 +5,29 @@ struct TeleprompterSettingsDrawer: View {
 
     var body: some View {
         Button {
-            isPresented.toggle()
+            isPresented = true
         } label: {
-            Image(systemName: "slider.horizontal.3")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(Color.white.opacity(0.9))
-                .frame(width: 36, height: 36)
-                .background(Color.white.opacity(0.1))
-                .clipShape(Circle())
-                .overlay(
-                    Circle().strokeBorder(Color.white.opacity(0.15), lineWidth: 1)
-                )
-                .contentShape(Circle())
+            VStack(spacing: 6) {
+                Circle()
+                    .fill(Color.white.opacity(0.7))
+                    .frame(width: 6, height: 6)
+                Circle()
+                    .fill(Color.white.opacity(0.7))
+                    .frame(width: 6, height: 6)
+                Circle()
+                    .fill(Color.white.opacity(0.7))
+                    .frame(width: 6, height: 6)
+            }
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.white.opacity(0.12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+            )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Teleprompter Settings")
@@ -26,8 +37,13 @@ struct TeleprompterSettingsDrawer: View {
 #Preview {
     ZStack {
         Color.black.ignoresSafeArea()
-        TeleprompterSettingsDrawer(isPresented: .constant(false))
-            .padding()
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+        VStack {
+            Spacer()
+            HStack {
+                Spacer()
+                TeleprompterSettingsDrawer(isPresented: .constant(false))
+                    .padding()
+            }
+        }
     }
 }

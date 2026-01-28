@@ -7,8 +7,11 @@ final class Performance {
     
     var id: UUID
     var createdAt: Date
+    var datePerformed: Date
     var setlistId: UUID
     var setlistTitle: String
+    var customTitle: String?
+    var city: String
     var venue: String
     var audioFilename: String
     var duration: TimeInterval
@@ -19,6 +22,9 @@ final class Performance {
     init(
         setlistId: UUID,
         setlistTitle: String,
+        customTitle: String? = nil,
+        datePerformed: Date? = nil,
+        city: String = "",
         venue: String = "",
         audioFilename: String,
         duration: TimeInterval = 0,
@@ -26,8 +32,11 @@ final class Performance {
     ) {
         self.id = UUID()
         self.createdAt = Date()
+        self.datePerformed = datePerformed ?? Date()
         self.setlistId = setlistId
         self.setlistTitle = setlistTitle
+        self.customTitle = customTitle
+        self.city = city
         self.venue = venue
         self.audioFilename = audioFilename
         self.duration = duration
@@ -38,6 +47,10 @@ final class Performance {
 }
 
 extension Performance {
+    
+    var displayTitle: String {
+        customTitle?.isEmpty == false ? customTitle! : setlistTitle
+    }
     
     var audioURL: URL? {
         guard !audioFilename.isEmpty else { return nil }
@@ -62,6 +75,13 @@ extension Performance {
     }
     
     var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: datePerformed)
+    }
+    
+    var formattedDateWithTime: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short

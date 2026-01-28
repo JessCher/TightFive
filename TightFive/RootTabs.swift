@@ -9,67 +9,60 @@ struct RootTabs: View {
             LooseBitsView(mode: .all)
                 .tabItem { Label("Bits", systemImage: "square.stack.3d.up.fill") }
 
+            SetlistsView()
+                .tabItem { Label("Setlists", systemImage: "list.bullet") }
+            
             RunModeLauncherView()
                 .tabItem { Label("Run Through", systemImage: "timer") }
             
             ShowNotesView()
                 .tabItem { Label("Show Notes", systemImage: "note.text") }
-
-            MorePlaceholderView()
-                .tabItem { Label("More", systemImage: "ellipsis") }
         }
+        .tint(TFTheme.yellow)
     }
 }
 
-private struct MorePlaceholderView: View {
+struct MorePlaceholderView: View {
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                VStack(spacing: 8) {
-                    Image("IconLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 80, height: 80)
+            ScrollView {
+                VStack(spacing: 24) {
+                    VStack(spacing: 8) {
+                        Image("IconLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 80, height: 80)
+                        
+                        TightFiveWordmark(size: 20)
+                        
+                        Text("Version 1.0")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                    .padding(.top, 20)
                     
-                    TightFiveWordmark(size: 20)
+                    VStack(spacing: 12) {
+                        settingsCard(icon: "gear", title: "Settings", subtitle: "Coming soon")
+                        settingsCard(icon: "externaldrive", title: "Storage", subtitle: Performance.formattedTotalStorage)
+                        settingsCard(icon: "questionmark.circle", title: "Help", subtitle: "Probably not coming")
+                    }
+                    .padding(.horizontal, 16)
                     
-                    Text("Version 1.0")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.5))
+                    Spacer()
+                    
+                    VStack(spacing: 4) {
+                        Text("Made for comedians with love")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.4))
+                        
+                        Text("2026 Jesse Cherry")
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.3))
+                    }
+                    .padding(.bottom, 20)
                 }
-                .padding(.top, 20)
-                
-                VStack(spacing: 0) {
-                    settingsRow(icon: "gear", title: "Settings", subtitle: "Coming soon")
-                    
-                    Divider().opacity(0.2)
-                    
-                    settingsRow(icon: "externaldrive", title: "Storage", subtitle: Performance.formattedTotalStorage)
-                    
-                    Divider().opacity(0.2)
-                    
-                    settingsRow(icon: "questionmark.circle", title: "Help", subtitle: "Probably not coming")
-                }
-                .background(Color("TFCard"))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .strokeBorder(Color("TFCardStroke").opacity(0.6), lineWidth: 1)
-                )
-                .padding(.horizontal, 16)
-                
-                Spacer()
-                
-                VStack(spacing: 4) {
-                    Text("Made for comedians with love")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.4))
-                    
-                    Text("2026 Jesse Cherry")
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.3))
-                }
-                .padding(.bottom, 20)
+                .padding(.top, 14)
+                .padding(.bottom, 28)
             }
             .navigationTitle("More")
             .navigationBarTitleDisplayMode(.inline)
@@ -82,31 +75,34 @@ private struct MorePlaceholderView: View {
         }
     }
     
-    private func settingsRow(icon: String, title: String, subtitle: String) -> some View {
+    private func settingsCard(icon: String, title: String, subtitle: String) -> some View {
         HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-                .foregroundStyle(TFTheme.yellow)
-                .frame(width: 28)
+            ZStack {
+                Circle()
+                    .fill(TFTheme.yellow.opacity(0.15))
+                    .frame(width: 44, height: 44)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(TFTheme.yellow)
+            }
             
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.subheadline.weight(.medium))
+                    .font(.headline)
                     .foregroundStyle(.white)
                 
                 Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.5))
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.6))
             }
             
             Spacer()
-            
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.3))
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+        .tfDynamicCard(cornerRadius: 18)
     }
 }
 

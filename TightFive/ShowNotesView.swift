@@ -15,6 +15,7 @@ struct ShowNotesView: View {
     
     @State private var selectedPerformance: Performance?
     @State private var showStorageInfo = false
+    @State private var showCreateNote = false
     
     @State private var isSelecting = false
     @State private var selectedIDs: Set<UUID> = []
@@ -59,6 +60,14 @@ struct ShowNotesView: View {
                         } label: {
                             Text("Delete Selected")
                         }
+                    } else if !isSelecting {
+                        Button {
+                            showCreateNote = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(TFTheme.yellow)
+                        }
                     }
                 }
             }
@@ -71,6 +80,9 @@ struct ShowNotesView: View {
             }
             .sheet(isPresented: $showStorageInfo) {
                 StorageInfoView()
+            }
+            .sheet(isPresented: $showCreateNote) {
+                CreateShowNoteView()
             }
         }
     }
@@ -159,7 +171,7 @@ private struct PerformanceRowView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(performance.setlistTitle)
+                    Text(performance.displayTitle)
                         .font(.headline)
                         .foregroundStyle(.white)
                         .lineLimit(1)
@@ -169,7 +181,12 @@ private struct PerformanceRowView: View {
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.5))
                         
-                        if !performance.venue.isEmpty {
+                        if !performance.city.isEmpty {
+                            Text(performance.city)
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.5))
+                                .lineLimit(1)
+                        } else if !performance.venue.isEmpty {
                             Text(performance.venue)
                                 .font(.caption)
                                 .foregroundStyle(.white.opacity(0.5))
@@ -207,12 +224,7 @@ private struct PerformanceRowView: View {
                 }
             }
             .padding(16)
-            .background(Color("TFCard"))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(Color("TFCardStroke").opacity(0.6), lineWidth: 1)
-            )
+            .tfDynamicCard(cornerRadius: 14)
         }
         .buttonStyle(.plain)
     }
@@ -231,14 +243,19 @@ struct PerformanceDetailView: View {
     @State private var showDeleteConfirmation = false
     @State private var isDeleting = false
     
+    @State private var editableTitle: String = ""
+    @State private var setlist: Setlist?
+    
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
                     headerSection
+                    performanceDetailsSection
                     
                     if performance.audioFileExists {
                         audioPlayerSection
+                        setlistSection
                     } else {
                         audioMissingSection
                     }
@@ -269,28 +286,28 @@ struct PerformanceDetailView: View {
             } message: {
                 Text("This will delete the recording and cannot be undone.")
             }
+            .onAppear {
+                editableTitle = performance.customTitle ?? ""
+                loadSetlist()
+            }
             .onDisappear {
                 player.stop()
             }
         }
     }
     
+    private func loadSetlist() {
+        let setlistId = performance.setlistId
+        let descriptor = FetchDescriptor<Setlist>(predicate: #Predicate { $0.id == setlistId })
+        setlist = try? modelContext.fetch(descriptor).first
+    }
+    
     private var headerSection: some View {
         VStack(spacing: 8) {
-            Text(performance.setlistTitle)
+            Text(performance.displayTitle)
                 .font(.title2.weight(.bold))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
-            
-            HStack(spacing: 16) {
-                Label(performance.formattedDate, systemImage: "calendar")
-                
-                if !performance.venue.isEmpty {
-                    Label(performance.venue, systemImage: "mappin")
-                }
-            }
-            .font(.subheadline)
-            .foregroundStyle(.white.opacity(0.6))
             
             HStack(spacing: 16) {
                 Label(performance.formattedDuration, systemImage: "clock")
@@ -298,6 +315,163 @@ struct PerformanceDetailView: View {
             }
             .font(.caption)
             .foregroundStyle(.white.opacity(0.5))
+        }
+    }
+    
+    private var setlistSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Setlist")
+                .font(.headline)
+                .foregroundStyle(.white)
+            
+            if let setlist = setlist {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        ForEach(setlist.scriptBlocks) { block in
+                            scriptBlockContent(block, assignments: setlist.assignments)
+                        }
+                    }
+                    .padding(16)
+                }
+                .frame(maxHeight: 300)
+                .background(Color.black.opacity(0.3))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            } else {
+                Text("Setlist not found")
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.5))
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.black.opacity(0.3))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+        }
+        .padding(16)
+        .tfDynamicCard(cornerRadius: 14)
+    }
+    
+    @ViewBuilder
+    private func scriptBlockContent(_ block: ScriptBlock, assignments: [SetlistAssignment]) -> some View {
+        let content = blockContentText(block, assignments: assignments)
+        if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(content)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineSpacing(6)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                // Divider between blocks
+                Rectangle()
+                    .fill(.white.opacity(0.1))
+                    .frame(height: 1)
+                    .padding(.top, 4)
+            }
+        }
+    }
+    
+    private func blockContentText(_ block: ScriptBlock, assignments: [SetlistAssignment]) -> String {
+        switch block {
+        case .freeform(_, let rtfData):
+            return NSAttributedString.fromRTF(rtfData)?.string ?? ""
+        case .bit(_, let assignmentId):
+            guard let assignment = assignments.first(where: { $0.id == assignmentId }) else {
+                return ""
+            }
+            return assignment.plainText
+        }
+    }
+    
+    private var performanceDetailsSection: some View {
+        VStack(spacing: 12) {
+            // Custom Title
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Show Title")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .textCase(.uppercase)
+                    .kerning(0.5)
+                
+                TextField("Use setlist name", text: Binding(
+                    get: { editableTitle },
+                    set: { newValue in
+                        editableTitle = newValue
+                        performance.customTitle = newValue.isEmpty ? nil : newValue
+                    }
+                ))
+                    .textFieldStyle(.plain)
+                    .font(.body)
+                    .foregroundStyle(.white)
+                    .padding(12)
+                    .background(Color.black.opacity(0.3))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                
+                if !editableTitle.isEmpty {
+                    Text("Original: \(performance.setlistTitle)")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .tfDynamicCard(cornerRadius: 14)
+            
+            // Date Performed
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Date Performed")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .textCase(.uppercase)
+                    .kerning(0.5)
+                
+                DatePicker("", selection: $performance.datePerformed, displayedComponents: [.date])
+                    .datePickerStyle(.compact)
+                    .labelsHidden()
+                    .tint(TFTheme.yellow)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .tfDynamicCard(cornerRadius: 14)
+            
+            // City
+            VStack(alignment: .leading, spacing: 8) {
+                Text("City")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .textCase(.uppercase)
+                    .kerning(0.5)
+                
+                TextField("Enter city", text: $performance.city)
+                    .textFieldStyle(.plain)
+                    .font(.body)
+                    .foregroundStyle(.white)
+                    .padding(12)
+                    .background(Color.black.opacity(0.3))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .tfDynamicCard(cornerRadius: 14)
+            
+            // Venue
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Venue")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .textCase(.uppercase)
+                    .kerning(0.5)
+                
+                TextField("Enter venue name", text: $performance.venue)
+                    .textFieldStyle(.plain)
+                    .font(.body)
+                    .foregroundStyle(.white)
+                    .padding(12)
+                    .background(Color.black.opacity(0.3))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .tfDynamicCard(cornerRadius: 14)
         }
     }
     
@@ -371,12 +545,7 @@ struct PerformanceDetailView: View {
             }
         }
         .padding(20)
-        .background(Color("TFCard"))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color("TFCardStroke").opacity(0.6), lineWidth: 1)
-        )
+        .tfDynamicCard(cornerRadius: 16)
     }
     
     /// FIXED: Proper play/pause toggle
@@ -406,8 +575,7 @@ struct PerformanceDetailView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity)
-        .background(Color("TFCard"))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .tfDynamicCard(cornerRadius: 16)
     }
     
     private var ratingSection: some View {
@@ -430,12 +598,7 @@ struct PerformanceDetailView: View {
             .frame(maxWidth: .infinity)
         }
         .padding(16)
-        .background(Color("TFCard"))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(Color("TFCardStroke").opacity(0.6), lineWidth: 1)
-        )
+        .tfDynamicCard(cornerRadius: 14)
     }
     
     private var notesSection: some View {
@@ -458,12 +621,7 @@ struct PerformanceDetailView: View {
                 )
         }
         .padding(16)
-        .background(Color("TFCard"))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(Color("TFCardStroke").opacity(0.6), lineWidth: 1)
-        )
+        .tfDynamicCard(cornerRadius: 14)
     }
     
     private var actionsSection: some View {
@@ -748,8 +906,7 @@ struct StorageInfoView: View {
                         }
                     }
                     .padding(16)
-                    .background(Color("TFCard"))
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .tfDynamicCard(cornerRadius: 14)
                     .padding(.horizontal, 16)
                 }
                 
@@ -809,5 +966,273 @@ struct StorageInfoView: View {
 
 #Preview {
     ShowNotesView()
+}
+
+// MARK: - Create Show Note View
+struct CreateShowNoteView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Query(filter: #Predicate<Setlist> { $0.isDraft == false }, sort: \Setlist.updatedAt, order: .reverse) private var finishedSetlists: [Setlist]
+    
+    @State private var selectedSetlist: Setlist?
+    @State private var datePerformed = Date()
+    @State private var city = ""
+    @State private var venue = ""
+    @State private var showAudioPicker = false
+    @State private var selectedAudioURL: URL?
+    @State private var isImporting = false
+    @State private var errorMessage: String?
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Setlist Selection
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Setlist")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        
+                        if finishedSetlists.isEmpty {
+                            Text("No finished setlists available")
+                                .font(.subheadline)
+                                .foregroundStyle(.white.opacity(0.5))
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(Color.white.opacity(0.05))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        } else {
+                            Menu {
+                                ForEach(finishedSetlists) { setlist in
+                                    Button(setlist.title) {
+                                        selectedSetlist = setlist
+                                    }
+                                }
+                            } label: {
+                                HStack {
+                                    Text(selectedSetlist?.title ?? "Select a setlist")
+                                        .foregroundStyle(selectedSetlist == nil ? .white.opacity(0.5) : .white)
+                                    Spacer()
+                                    Image(systemName: "chevron.down")
+                                        .font(.caption)
+                                        .foregroundStyle(.white.opacity(0.5))
+                                }
+                                .padding()
+                                .background(Color.white.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                            }
+                        }
+                    }
+                    .padding(16)
+                    .tfDynamicCard(cornerRadius: 14)
+                    
+                    // Audio File
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Audio Recording")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        
+                        Button {
+                            showAudioPicker = true
+                        } label: {
+                            HStack {
+                                Image(systemName: selectedAudioURL == nil ? "music.note" : "checkmark.circle.fill")
+                                    .foregroundStyle(selectedAudioURL == nil ? .white.opacity(0.5) : TFTheme.yellow)
+                                
+                                Text(selectedAudioURL?.lastPathComponent ?? "Select audio file")
+                                    .foregroundStyle(selectedAudioURL == nil ? .white.opacity(0.5) : .white)
+                                    .lineLimit(1)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "folder")
+                                    .font(.caption)
+                                    .foregroundStyle(.white.opacity(0.5))
+                            }
+                            .padding()
+                            .background(Color.white.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
+                    .padding(16)
+                    .tfDynamicCard(cornerRadius: 14)
+                    
+                    // Date Performed
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Date Performed")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        
+                        DatePicker("", selection: $datePerformed, displayedComponents: [.date])
+                            .datePickerStyle(.compact)
+                            .labelsHidden()
+                            .tint(TFTheme.yellow)
+                    }
+                    .padding(16)
+                    .tfDynamicCard(cornerRadius: 14)
+                    
+                    // City
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("City")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        
+                        TextField("Enter city", text: $city)
+                            .textFieldStyle(.plain)
+                            .font(.body)
+                            .foregroundStyle(.white)
+                            .padding(12)
+                            .background(Color.black.opacity(0.3))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .padding(16)
+                    .tfDynamicCard(cornerRadius: 14)
+                    
+                    // Venue
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Venue")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        
+                        TextField("Enter venue name", text: $venue)
+                            .textFieldStyle(.plain)
+                            .font(.body)
+                            .foregroundStyle(.white)
+                            .padding(12)
+                            .background(Color.black.opacity(0.3))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .padding(16)
+                    .tfDynamicCard(cornerRadius: 14)
+                    
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .padding()
+                    }
+                    
+                    // Create Button
+                    Button {
+                        createShowNote()
+                    } label: {
+                        if isImporting {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                        } else {
+                            Text("Create Show Note")
+                                .font(.headline)
+                                .foregroundStyle(.black)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(canCreate ? TFTheme.yellow : Color.gray)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .disabled(!canCreate || isImporting)
+                    .padding(.horizontal, 16)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 20)
+            }
+            .navigationTitle("New Show Note")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(TFTheme.yellow)
+                }
+            }
+            .tfBackground()
+            .fileImporter(
+                isPresented: $showAudioPicker,
+                allowedContentTypes: [.audio],
+                allowsMultipleSelection: false
+            ) { result in
+                handleAudioSelection(result)
+            }
+        }
+    }
+    
+    private var canCreate: Bool {
+        selectedSetlist != nil && selectedAudioURL != nil
+    }
+    
+    private func handleAudioSelection(_ result: Result<[URL], Error>) {
+        do {
+            guard let url = try result.get().first else { return }
+            
+            // Start accessing security-scoped resource
+            guard url.startAccessingSecurityScopedResource() else {
+                errorMessage = "Cannot access the selected file"
+                return
+            }
+            
+            selectedAudioURL = url
+            errorMessage = nil
+            
+            // Stop accessing after storing
+            url.stopAccessingSecurityScopedResource()
+        } catch {
+            errorMessage = "Failed to select audio file: \(error.localizedDescription)"
+        }
+    }
+    
+    private func createShowNote() {
+        guard let setlist = selectedSetlist,
+              let sourceURL = selectedAudioURL else { return }
+        
+        isImporting = true
+        errorMessage = nil
+        
+        // Start accessing security-scoped resource
+        guard sourceURL.startAccessingSecurityScopedResource() else {
+            errorMessage = "Cannot access the audio file"
+            isImporting = false
+            return
+        }
+        
+        defer {
+            sourceURL.stopAccessingSecurityScopedResource()
+        }
+        
+        do {
+            // Generate filename and destination
+            let filename = Performance.generateFilename(for: setlist.title)
+            let destination = Performance.recordingsDirectory.appendingPathComponent(filename)
+            
+            // Copy the file
+            try FileManager.default.copyItem(at: sourceURL, to: destination)
+            
+            // Get file attributes
+            let attributes = try FileManager.default.attributesOfItem(atPath: destination.path)
+            let fileSize = attributes[.size] as? Int64 ?? 0
+            
+            // Get audio duration
+            let asset = AVURLAsset(url: destination)
+            let duration = asset.duration.seconds
+            
+            // Create performance
+            let performance = Performance(
+                setlistId: setlist.id,
+                setlistTitle: setlist.title,
+                datePerformed: datePerformed,
+                city: city,
+                venue: venue,
+                audioFilename: filename,
+                duration: duration,
+                fileSize: fileSize
+            )
+            
+            modelContext.insert(performance)
+            try modelContext.save()
+            
+            isImporting = false
+            dismiss()
+        } catch {
+            errorMessage = "Failed to import audio: \(error.localizedDescription)"
+            isImporting = false
+        }
+    }
 }
 

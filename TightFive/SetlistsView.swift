@@ -120,17 +120,21 @@ struct InProgressSetlistsView: View {
             if setlists.isEmpty {
                 emptyState
             } else {
-                List {
-                    ForEach(setlists) { s in
-                        NavigationLink { SetlistBuilderView(setlist: s) } label: { row(s) }
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ForEach(setlists) { s in
+                            NavigationLink { 
+                                SetlistBuilderView(setlist: s) 
+                            } label: {
+                                row(s)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .onDelete { indexSet in
-                        for i in indexSet { modelContext.delete(setlists[i]) }
-                    }
-                    .listRowBackground(Color.clear)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
             }
         }
         .navigationTitle("In Progress")
@@ -161,41 +165,43 @@ struct InProgressSetlistsView: View {
     }
 
     private func row(_ s: Setlist) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(s.title)
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                    
-                    if s.hasConfiguredAnchors {
-                        Image(systemName: "waveform")
-                            .font(.caption)
-                            .foregroundStyle(TFTheme.yellow)
-                    }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(s.title)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                
+                if s.hasConfiguredAnchors {
+                    Image(systemName: "waveform")
+                        .font(.caption)
+                        .foregroundStyle(TFTheme.yellow)
                 }
                 
-                HStack(spacing: 8) {
-                    Text(s.updatedAt, style: .date)
+                Spacer()
+            }
+            
+            HStack(spacing: 8) {
+                Text(s.updatedAt, style: .date)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.5))
+                
+                if s.bitCount > 0 {
+                    Text("\(s.bitCount) bits")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.5))
-                    
-                    if s.bitCount > 0 {
-                        Text("\(s.bitCount) bits")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.5))
-                    }
-                    
-                    if s.blockCount > s.bitCount {
-                        Text("\(s.blockCount - s.bitCount) text")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.4))
-                    }
+                }
+                
+                if s.blockCount > s.bitCount {
+                    Text("\(s.blockCount - s.bitCount) text")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.4))
                 }
             }
-            Spacer()
         }
-        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+        .tfDynamicCard(cornerRadius: 18)
     }
 }
 
@@ -210,17 +216,21 @@ struct FinishedSetlistsView: View {
             if setlists.isEmpty {
                 emptyState
             } else {
-                List {
-                    ForEach(setlists) { s in
-                        NavigationLink { SetlistBuilderView(setlist: s) } label: { row(s) }
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ForEach(setlists) { s in
+                            NavigationLink { 
+                                SetlistBuilderView(setlist: s) 
+                            } label: {
+                                row(s)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .onDelete { indexSet in
-                        for i in indexSet { modelContext.delete(setlists[i]) }
-                    }
-                    .listRowBackground(Color.clear)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
             }
         }
         .navigationTitle("Finished")
@@ -251,46 +261,48 @@ struct FinishedSetlistsView: View {
     }
 
     private func row(_ s: Setlist) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(s.title)
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                    
-                    if s.isStageReady {
-                        HStack(spacing: 4) {
-                            Image(systemName: "play.fill")
-                            Text("Stage Ready")
-                        }
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(TFTheme.yellow)
-                        .clipShape(Capsule())
-                    } else if s.hasConfiguredAnchors {
-                        Image(systemName: "waveform")
-                            .font(.caption)
-                            .foregroundStyle(TFTheme.yellow)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(s.title)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                
+                if s.isStageReady {
+                    HStack(spacing: 4) {
+                        Image(systemName: "play.fill")
+                        Text("Stage Ready")
                     }
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(TFTheme.yellow)
+                    .clipShape(Capsule())
+                } else if s.hasConfiguredAnchors {
+                    Image(systemName: "waveform")
+                        .font(.caption)
+                        .foregroundStyle(TFTheme.yellow)
                 }
                 
-                HStack(spacing: 8) {
-                    Text(s.updatedAt, style: .date)
+                Spacer()
+            }
+            
+            HStack(spacing: 8) {
+                Text(s.updatedAt, style: .date)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.5))
+                
+                if s.bitCount > 0 {
+                    Text("\(s.bitCount) bits")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.5))
-                    
-                    if s.bitCount > 0 {
-                        Text("\(s.bitCount) bits")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.5))
-                    }
                 }
             }
-            Spacer()
         }
-        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+        .tfDynamicCard(cornerRadius: 18)
     }
 }
 
