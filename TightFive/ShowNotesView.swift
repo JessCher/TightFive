@@ -107,6 +107,7 @@ struct ShowNotesView: View {
     private var performanceList: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
+                // MARK: - Performances List
                 ForEach(performances) { performance in
                     PerformanceRowView(
                         performance: performance,

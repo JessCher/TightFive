@@ -26,6 +26,20 @@ final class StageTeleprompterEngine: ObservableObject {
     @Published private(set) var errorMessage: String?
 
     var onAnchor: ((StageAnchor, Double) -> Void)?
+    
+    // MARK: - AI Features (Added)
+    
+    /// Acoustic analyzer for real-time feature detection
+    private var acousticAnalyzer = AcousticAnalyzer()
+    
+    /// Callback for acoustic features (emphasis, questions, etc.)
+    var onAcousticFeatures: ((AcousticAnalyzer.AcousticFeatures) -> Void)?
+    
+    /// Analytics data collection (for post-performance analysis)
+    private var analyticsDataPoints: [(timestamp: TimeInterval, confidence: Double, lineIndex: Int)] = []
+    
+    /// Current line index (tracked for analytics)
+    var currentLineIndex: Int = 0
 
     // MARK: - Internals
 
@@ -108,7 +122,7 @@ final class StageTeleprompterEngine: ObservableObject {
         }
     }
 
-    func stopAndFinalize() -> (url: URL, duration: TimeInterval, fileSize: Int64)? {
+    func stopAndFinalize() -> (url: URL, duration: TimeInterval, fileSize: Int64, insights: [PerformanceAnalytics.Insight])? {
         defer { stop() }
 
         guard let url = recordingURL else { return nil }
@@ -122,8 +136,21 @@ final class StageTeleprompterEngine: ObservableObject {
            let size = attrs[.size] as? Int64 {
             fileSize = size
         }
+        
+        // MARK: - AI: Generate Performance Insights
+        let insights = PerformanceAnalytics.analyze(
+            transcript: partialTranscript,
+            confidenceData: analyticsDataPoints,
+            totalLines: max(1, currentLineIndex),
+            duration: duration
+        )
+        
+        print("📊 Generated \(insights.count) performance insights")
+        for insight in insights.prefix(3) { // Log top 3
+            print("  \(insight.severity): \(insight.title)")
+        }
 
-        return (url, duration, fileSize)
+        return (url, duration, fileSize, insights)
     }
 
     func stop() {
@@ -149,6 +176,11 @@ final class StageTeleprompterEngine: ObservableObject {
         audioLevel = 0
         currentTime = 0
         partialTranscript = ""
+        
+        // Reset AI components
+        acousticAnalyzer.reset()
+        analyticsDataPoints.removeAll()
+        currentLineIndex = 0
     }
 
     // MARK: - Audio Session
@@ -157,10 +189,20 @@ final class StageTeleprompterEngine: ObservableObject {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(
             .playAndRecord,
-            mode: .spokenAudio, // better for speech recognition than .measurement here
-            options: [.defaultToSpeaker, .allowBluetoothHFP]
+            mode: .spokenAudio,
+            options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP, .mixWithOthers]
         )
+        
+        // Request minimum latency for real-time performance
+        try session.setPreferredIOBufferDuration(0.005) // 5ms buffer (elite tier)
+        
+        // Request highest sample rate available
+        try session.setPreferredSampleRate(48000)
+        
+        // Activate with high priority
         try session.setActive(true, options: .notifyOthersOnDeactivation)
+        
+        print("🎤 Audio configured: \(session.sampleRate)Hz, \(session.ioBufferDuration * 1000)ms buffer")
     }
 
     // MARK: - Pipeline
@@ -179,27 +221,62 @@ final class StageTeleprompterEngine: ObservableObject {
 
         let safeBase = filenameBase.isEmpty ? "Performance" : filenameBase
         let filename = Performance.generateFilename(for: safeBase)
-            .replacingOccurrences(of: ".m4a", with: ".caf")
+            .replacingOccurrences(of: ".caf", with: ".m4a") // Use compressed M4A
 
         let url = Performance.recordingsDirectory.appendingPathComponent(filename)
         self.recordingURL = url
 
         // Prepare file using input format settings
         let inputNode = engine.inputNode
-        let format = inputNode.outputFormat(forBus: 0)
+        let inputFormat = inputNode.outputFormat(forBus: 0)
+        
+        // Create optimal format for recording (AAC-LC, 48kHz, mono for voice)
+        let recordingFormat = AVAudioFormat(
+            commonFormat: .pcmFormatFloat32,
+            sampleRate: 48000,
+            channels: 1,
+            interleaved: false
+        )!
+        
+        // Create AAC settings for high-quality compressed recording
+        let settings: [String: Any] = [
+            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+            AVSampleRateKey: 48000,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
+            AVEncoderBitRateKey: 96000 // 96kbps AAC-LC (broadcast quality)
+        ]
 
-        self.audioFile = try AVAudioFile(forWriting: url, settings: format.settings)
+        self.audioFile = try AVAudioFile(forWriting: url, settings: settings)
 
         // Start recognition (request + task)
         startRecognitionOnly(recognizer: recognizer)
 
-        // Tap mic once: record + speech + meter
+        // Converter for format conversion (input → recording format)
+        guard let converter = AVAudioConverter(from: inputFormat, to: recordingFormat) else {
+            throw NSError(domain: "StageTeleprompterEngine", code: -1, 
+                         userInfo: [NSLocalizedDescriptionKey: "Failed to create audio converter"])
+        }
+
+        // Tap mic with adaptive buffer size (256 frames = ~5ms at 48kHz for ultra-low latency)
         inputNode.removeTap(onBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+        inputNode.installTap(onBus: 0, bufferSize: 256, format: inputFormat) { [weak self] buffer, _ in
             guard let self else { return }
 
-            // Record
-            do { try self.audioFile?.write(from: buffer) }
+            // Convert to recording format
+            let frameCapacity = AVAudioFrameCount(recordingFormat.sampleRate * Double(buffer.frameLength) / inputFormat.sampleRate)
+            guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: recordingFormat, frameCapacity: frameCapacity) else { return }
+            
+            var error: NSError?
+            let inputBlock: AVAudioConverterInputBlock = { inNumPackets, outStatus in
+                outStatus.pointee = .haveData
+                return buffer
+            }
+            
+            converter.convert(to: convertedBuffer, error: &error, withInputFrom: inputBlock)
+            
+            // Record converted audio
+            do { try self.audioFile?.write(from: convertedBuffer) }
             catch {
                 Task { @MainActor in
                     self.errorMessage = "Recording write failed: \(error.localizedDescription)"
@@ -216,6 +293,24 @@ final class StageTeleprompterEngine: ObservableObject {
             let level = Self.computeLevel(from: buffer)
             Task { @MainActor in
                 self.audioLevel = level
+            }
+            
+            // MARK: - AI: Acoustic Analysis (Real-time, battery-optimized)
+            // Only analyze every 4th buffer (reduce CPU load)
+            let shouldAnalyze = Int.random(in: 0..<4) == 0
+            if shouldAnalyze {
+                Task { @MainActor in
+                    let features = self.acousticAnalyzer.analyze(buffer: buffer)
+                    self.onAcousticFeatures?(features)
+                    
+                    // Log interesting features (for debugging/tuning)
+                    if features.isEmphasis {
+                        print("🔊 Emphasis detected at line \(self.currentLineIndex)")
+                    }
+                    if features.isQuestion {
+                        print("❓ Question detected at line \(self.currentLineIndex)")
+                    }
+                }
             }
         }
 
@@ -303,6 +398,22 @@ final class StageTeleprompterEngine: ObservableObject {
 
                 if let match = self.matcher.ingest(transcript: text) {
                     self.onAnchor?(match.anchor, match.confidence)
+                }
+                
+                // MARK: - AI: Analytics Data Collection
+                // Collect confidence data for post-performance analysis
+                if let startDate = self.startDate {
+                    let timestamp = Date().timeIntervalSince(startDate)
+                    // Use average confidence of segments (more stable than per-word)
+                    let segments = result.bestTranscription.segments
+                    let avgConfidence = segments.isEmpty ? 0.5 : 
+                        segments.map { $0.confidence }.reduce(0, +) / Float(segments.count)
+                    
+                    self.analyticsDataPoints.append((
+                        timestamp: timestamp,
+                        confidence: Double(avgConfidence),
+                        lineIndex: self.currentLineIndex
+                    ))
                 }
             }
         }

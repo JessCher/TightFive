@@ -17,6 +17,9 @@ struct RootTabs: View {
             
             ShowNotesView()
                 .tabItem { Label("Show Notes", systemImage: "note.text") }
+            
+            MorePlaceholderView()
+                .tabItem { Label("More", systemImage: "ellipsis.circle.fill") }
         }
         .tint(TFTheme.yellow)
     }
@@ -42,6 +45,12 @@ struct MorePlaceholderView: View {
                     .padding(.top, 20)
                     
                     VStack(spacing: 12) {
+                        NavigationLink {
+                            AnalyticsDashboardView()
+                        } label: {
+                            settingsCard(icon: "brain.head.profile", title: "Analytics", subtitle: "AI-powered insights")
+                        }
+                        
                         settingsCard(icon: "gear", title: "Settings", subtitle: "Coming soon")
                         settingsCard(icon: "externaldrive", title: "Storage", subtitle: Performance.formattedTotalStorage)
                         settingsCard(icon: "questionmark.circle", title: "Help", subtitle: "Probably not coming")

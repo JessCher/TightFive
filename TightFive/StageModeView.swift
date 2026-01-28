@@ -10,7 +10,7 @@ struct StageModeView: View {
     var venue: String = ""
 
     @StateObject private var engine = StageTeleprompterEngine()
-    @State private var tracker: TeleprompterScrollTracker
+    @State private var scrollController: VoiceAwareScrollController
 
     @State private var showExitConfirmation = false
     @State private var showSaveConfirmation = false
@@ -22,7 +22,7 @@ struct StageModeView: View {
         self.setlist = setlist
         self.venue = venue
         let lines = StageModeView.buildLines(from: setlist)
-        _tracker = State(initialValue: TeleprompterScrollTracker(lines: lines))
+        _scrollController = State(initialValue: VoiceAwareScrollController(lines: lines))
     }
 
     private var anchors: [StageAnchor] {
@@ -30,7 +30,7 @@ struct StageModeView: View {
     }
 
     private var hasContent: Bool {
-        !tracker.lines.isEmpty
+        !scrollController.lines.isEmpty
     }
 
     var body: some View {
@@ -75,9 +75,14 @@ struct StageModeView: View {
         engine.onAnchor = { anchor, confidence in
             handleAnchor(anchor, confidence: confidence)
         }
+        
+        // MARK: - AI: Track scroll position for analytics
+        engine.currentLineIndex = scrollController.currentLineIndex
 
         Task {
             await engine.start(filenameBase: setlist.title)
+            // Start continuous scrolling once audio is ready
+            scrollController.start()
         }
     }
 
@@ -91,6 +96,10 @@ struct StageModeView: View {
                 duration: result.duration,
                 fileSize: result.fileSize
             )
+            
+            // MARK: - AI: Save performance insights
+            performance.insights = result.insights
+            
             modelContext.insert(performance)
             try? modelContext.save()
             showSaveConfirmation = true
@@ -173,7 +182,7 @@ struct StageModeView: View {
                         .frame(maxWidth: 120)
                         .padding(.bottom, 14)
 
-                    ForEach(Array(tracker.lines.enumerated()), id: \.element.id) { index, line in
+                    ForEach(Array(scrollController.lines.enumerated()), id: \.element.id) { index, line in
                         lineRow(line, index: index)
                             .id(line.id)
                     }
@@ -189,10 +198,10 @@ struct StageModeView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 14)
             }
-            .onChange(of: tracker.currentIndex) { _, _ in
-                guard tracker.currentIndex >= 0, tracker.currentIndex < tracker.lines.count else { return }
-                withAnimation(.easeOut(duration: 0.12)) {
-                    proxy.scrollTo(tracker.lines[tracker.currentIndex].id, anchor: .center)
+            .onChange(of: scrollController.currentIndex) { _, _ in
+                guard scrollController.currentIndex >= 0, scrollController.currentIndex < scrollController.lines.count else { return }
+                withAnimation(.easeOut(duration: 0.25)) {
+                    proxy.scrollTo(scrollController.lines[scrollController.currentIndex].id, anchor: .center)
                 }
                 hapticFeedback()
             }
@@ -200,7 +209,7 @@ struct StageModeView: View {
     }
 
     private func lineRow(_ line: TeleprompterScrollTracker.Line, index: Int) -> some View {
-        let isCurrent = index == tracker.currentIndex
+        let isCurrent = index == scrollController.currentIndex
 
         if line.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return AnyView(Spacer().frame(height: 10))
@@ -235,14 +244,6 @@ struct StageModeView: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(engine.isListening ? .green : .white.opacity(0.4))
 
-                // Real-time confidence indicator
-                if tracker.currentConfidence > 0.5 {
-                    Circle()
-                        .fill(confidenceColor)
-                        .frame(width: 6, height: 6)
-                        .opacity(0.8 + (tracker.currentConfidence * 0.2))
-                }
-
                 Spacer()
 
                 if let msg = engine.errorMessage, !msg.isEmpty {
@@ -253,9 +254,9 @@ struct StageModeView: View {
                 }
             }
 
-            let current = tracker.lines[safe: tracker.currentIndex]?.text ?? ""
+            let current = scrollController.lines[safe: scrollController.currentIndex]?.text ?? ""
 
-            let next = tracker.lines[safe: tracker.currentIndex + 1]?.text ?? ""
+            let next = scrollController.lines[safe: scrollController.currentIndex + 1]?.text ?? ""
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(current)
@@ -276,26 +277,8 @@ struct StageModeView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(overlayStrokeColor, lineWidth: 1)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
-    }
-
-    private var confidenceColor: Color {
-        if tracker.currentConfidence >= 0.75 {
-            return .green
-        } else if tracker.currentConfidence >= 0.5 {
-            return .yellow
-        } else {
-            return .orange
-        }
-    }
-
-    private var overlayStrokeColor: Color {
-        if tracker.currentConfidence >= 0.7 {
-            return Color.green.opacity(0.15 + (tracker.currentConfidence * 0.15))
-        } else {
-            return Color.white.opacity(0.08)
-        }
     }
 
     private var bottomBar: some View {
@@ -317,9 +300,7 @@ struct StageModeView: View {
             Spacer()
 
             Button {
-                var mutable = tracker
-                mutable.reset(to: max(0, tracker.currentIndex - 1))
-                tracker = mutable
+                scrollController.jumpToPrevious()
             } label: {
                 Image(systemName: "chevron.up")
                     .font(.system(size: 16, weight: .semibold))
@@ -330,9 +311,7 @@ struct StageModeView: View {
             }
 
             Button {
-                var mutable = tracker
-                mutable.reset(to: min(tracker.lines.count - 1, tracker.currentIndex + 1))
-                tracker = mutable
+                scrollController.jumpToNext()
             } label: {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 16, weight: .semibold))
@@ -356,16 +335,15 @@ struct StageModeView: View {
     // MARK: - Logic
 
     private func handleTranscript(_ transcript: String) {
-        var mutable = tracker
-        _ = mutable.ingestTranscript(transcript)
-        tracker = mutable
+        scrollController.ingestTranscript(transcript)
+        
+        // MARK: - AI: Sync line index for analytics
+        engine.currentLineIndex = scrollController.currentLineIndex
     }
 
     private func handleAnchor(_ anchor: StageAnchor, confidence: Double) {
         let targetBlockId = anchor.blockReference.id
-        var mutable = tracker
-        mutable.jumpToBlock(blockId: targetBlockId)
-        tracker = mutable
+        scrollController.jumpToBlock(blockId: targetBlockId)
 
         engine.resetAnchorState()
         hapticFeedback()
@@ -495,14 +473,14 @@ struct StageModeView: View {
                 .replacingOccurrences(of: "\r", with: "\n")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
 
-            // Break into chunks that are easy to match in speech (6–10 words for faster recognition)
+            // Break into chunks that are easy to match in speech (8–14 words)
             let rawUnits = cleaned
                 .components(separatedBy: .newlines)
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
 
             for unit in rawUnits {
-                let chunks = chunkText(unit, targetWordsPerChunk: 8)
+                let chunks = chunkText(unit, targetWordsPerChunk: 12)
                 for chunk in chunks {
                     let words = normalizeWords(chunk)
                     if words.isEmpty { continue }

@@ -19,6 +19,27 @@ final class Performance {
     var notes: String
     var rating: Int
     
+    // MARK: - AI Analytics (Added)
+    
+    /// Serialized performance insights (JSON)
+    var analyticsData: Data?
+    
+    /// Cached insights (computed property, lazy)
+    var insights: [PerformanceAnalytics.Insight]? {
+        get {
+            guard let data = analyticsData else { return nil }
+            return try? JSONDecoder().decode([PerformanceAnalytics.Insight].self, from: data)
+        }
+        set {
+            analyticsData = try? JSONEncoder().encode(newValue)
+        }
+    }
+    
+    /// Has AI analysis been performed?
+    var hasAnalytics: Bool {
+        analyticsData != nil
+    }
+    
     init(
         setlistId: UUID,
         setlistTitle: String,
