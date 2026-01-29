@@ -7,10 +7,13 @@ import SwiftData
 /// allowing comedians to see how their material has evolved.
 struct VariationComparisonView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     
     let bit: Bit
     
     @State private var selectedVariationId: UUID?
+    @State private var variationToDelete: BitVariation?
+    @State private var showDeleteConfirmation = false
     
     private var sortedVariations: [BitVariation] {
         bit.variations.sorted { $0.createdAt > $1.createdAt }
@@ -47,6 +50,22 @@ struct VariationComparisonView: View {
                         // Variation cards
                         ForEach(sortedVariations) { variation in
                             variationCard(variation)
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        variationToDelete = variation
+                                        showDeleteConfirmation = true
+                                    } label: {
+                                        Label("Delete Variation", systemImage: "trash")
+                                    }
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        variationToDelete = variation
+                                        showDeleteConfirmation = true
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
                         }
                     } else {
                         noVariationsState
@@ -70,6 +89,16 @@ struct VariationComparisonView: View {
                 }
             }
             .tfBackground()
+            .alert("Delete Variation?", isPresented: $showDeleteConfirmation, presenting: variationToDelete) { variation in
+                Button("Cancel", role: .cancel) {
+                    variationToDelete = nil
+                }
+                Button("Delete", role: .destructive) {
+                    deleteVariation(variation)
+                }
+            } message: { variation in
+                Text("This will permanently delete the variation from \"\(variation.setlistTitle)\". This cannot be undone.")
+            }
         }
     }
     
@@ -386,6 +415,29 @@ struct VariationComparisonView: View {
                 .multilineTextAlignment(.center)
         }
         .padding(.vertical, 40)
+    }
+    
+    // MARK: - Delete Action
+    
+    private func deleteVariation(_ variation: BitVariation) {
+        withAnimation {
+            // Remove from bit's variations array
+            bit.variations.removeAll { $0.id == variation.id }
+            
+            // Delete from context
+            modelContext.delete(variation)
+            
+            // Save changes
+            try? modelContext.save()
+            
+            // Clear selection if deleting the currently selected variation
+            if selectedVariationId == variation.id {
+                selectedVariationId = nil
+            }
+            
+            // Clear the deletion state
+            variationToDelete = nil
+        }
     }
 }
 

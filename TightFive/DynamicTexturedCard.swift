@@ -56,7 +56,7 @@ struct DynamicCardModifier: ViewModifier {
                     
                     // SAFETY FIX: Reduced density from 800 -> 120
                     DynamicGritLayer(
-                        density: 120,
+                        density: 500,
                         opacity: 0.15,
                         speedMultiplier: 0.5,
                         seed: 1234
@@ -64,7 +64,7 @@ struct DynamicCardModifier: ViewModifier {
                     
                     // SAFETY FIX: Reduced density from 300 -> 60
                     DynamicGritLayer(
-                        density: 60,
+                        density: 150,
                         opacity: 0.35,
                         speedMultiplier: 1.2,
                         seed: 5678

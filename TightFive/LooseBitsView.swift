@@ -239,7 +239,11 @@ struct LooseBitsView: View {
     }
     
     private func shareBit(_ bit: Bit) {
-        let renderer = ImageRenderer(content: BitShareCard(bit: bit))
+        // Fetch user profile name
+        let descriptor = FetchDescriptor<UserProfile>()
+        let userName = (try? modelContext.fetch(descriptor).first?.name) ?? ""
+        
+        let renderer = ImageRenderer(content: BitShareCard(bit: bit, userName: userName))
         renderer.scale = 3.0 // High resolution for sharing
         
         if let image = renderer.uiImage {
@@ -651,6 +655,7 @@ private struct TagEditor: View {
 /// A beautifully styled card for sharing bits externally
 private struct BitShareCard: View {
     let bit: Bit
+    let userName: String
     
     var body: some View {
         VStack(spacing: 0) {
@@ -678,10 +683,13 @@ private struct BitShareCard: View {
     }
     
     private var bottomBar: some View {
-        HStack(spacing: 8) {
-            Spacer()
+        VStack(spacing: 4) {
             TFWordmarkTitle(title: "written in TightFive", size: 16)
-            Spacer()
+            if !userName.isEmpty {
+                Text("by \(userName)")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.white.opacity(0.7))
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)

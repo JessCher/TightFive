@@ -114,13 +114,46 @@ extension Bit {
     /// **What happens:**
     /// - `isDeleted` set to true (hides from library)
     /// - `deletedAt` set to current timestamp
+    /// - All ScriptBlocks referencing this bit are converted to freeform text (preserves script content)
+    /// - Setlist assignments are deleted (no longer needed after conversion)
     /// - All variations are deleted from context (analytics cleanup)
-    /// - Setlist assignments remain intact (they have their own RTF snapshots)
     ///
     /// - Parameter context: The ModelContext to delete variations from
     func softDelete(context: ModelContext) {
         isDeleted = true
         deletedAt = Date()
+        
+        // Fetch all setlists that contain this bit
+        let bitId = self.id
+        let descriptor = FetchDescriptor<Setlist>()
+        
+        if let allSetlists = try? context.fetch(descriptor) {
+            for setlist in allSetlists {
+                // Find all assignments for this bit in the setlist
+                let assignmentsToConvert = setlist.assignments.filter { $0.bitId == bitId }
+                
+                // Convert each bit block to freeform block
+                for assignment in assignmentsToConvert {
+                    // Find the corresponding ScriptBlock
+                    if let blockIndex = setlist.scriptBlocks.firstIndex(where: { 
+                        $0.assignmentId == assignment.id 
+                    }) {
+                        // Convert bit block to freeform block, preserving the RTF content
+                        var blocks = setlist.scriptBlocks
+                        let blockId = blocks[blockIndex].id
+                        blocks[blockIndex] = .freeform(id: blockId, rtfData: assignment.performedRTF)
+                        setlist.scriptBlocks = blocks
+                        setlist.updatedAt = Date()
+                    }
+                    
+                    // Remove the assignment from the setlist
+                    setlist.assignments.removeAll { $0.id == assignment.id }
+                    
+                    // Delete the assignment from context
+                    context.delete(assignment)
+                }
+            }
+        }
         
         // Hard-delete all variations (analytics cleanup)
         for variation in variations {
@@ -133,9 +166,11 @@ extension Bit {
     ///
     /// **Note:** Variations are permanently lost - this is by design.
     /// The bit returns to the library but its evolution history is cleared.
+    /// Converted script blocks remain as freeform text and are not reconnected.
     func restore() {
         isDeleted = false
         deletedAt = nil
         // variations remain empty - they were hard-deleted
+        // converted script blocks remain freeform - they are not reconnected
     }
 }
