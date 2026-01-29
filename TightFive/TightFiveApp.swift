@@ -17,7 +17,8 @@ struct TightFiveApp: App {
             Setlist.self,
             BitVariation.self,
             SetlistAssignment.self,
-            Performance.self
+            Performance.self,
+            UserProfile.self
         ])
     }
 }

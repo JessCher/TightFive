@@ -21,6 +21,12 @@ struct MoreView: View {
                     
                     VStack(spacing: 12) {
                         NavigationLink {
+                            ProfileView()
+                        } label: {
+                            settingsCard(icon: "person.circle.fill", title: "Profile", subtitle: "Your comedian profile")
+                        }
+                        
+                        NavigationLink {
                             AnalyticsDashboardView()
                         } label: {
                             settingsCard(icon: "brain.head.profile", title: "Analytics", subtitle: "AI-powered insights")
