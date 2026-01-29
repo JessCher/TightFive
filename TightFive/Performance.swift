@@ -19,6 +19,14 @@ final class Performance {
     var notes: String
     var rating: Int
     
+    // MARK: - Soft Delete
+    
+    /// When true, performance is hidden from main views but recoverable from Trashcan
+    var isDeleted: Bool = false
+    
+    /// Timestamp of deletion (nil if not deleted)
+    var deletedAt: Date?
+    
     // MARK: - AI Analytics (Added)
     
     /// Serialized performance insights (JSON)
@@ -160,3 +168,32 @@ extension Performance {
         return formatter.string(fromByteCount: totalStorageUsed)
     }
 }
+// MARK: - Soft Delete Operations
+
+extension Performance {
+    
+    /// Soft delete the performance.
+    ///
+    /// **What happens:**
+    /// - `isDeleted` set to true (hides from main views)
+    /// - `deletedAt` set to current timestamp
+    /// - Performance becomes recoverable from Trashcan
+    /// - Audio file remains on disk
+    func softDelete() {
+        isDeleted = true
+        deletedAt = Date()
+    }
+    
+    /// Restore a soft-deleted performance.
+    func restore() {
+        isDeleted = false
+        deletedAt = nil
+    }
+    
+    /// Hard delete: completely remove performance and audio file.
+    func hardDelete(context: ModelContext) {
+        deleteAudioFile()
+        context.delete(self)
+    }
+}
+

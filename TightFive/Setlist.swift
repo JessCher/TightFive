@@ -40,6 +40,14 @@ final class Setlist {
     /// True = still being developed, False = ready for stage
     var isDraft: Bool
     
+    // MARK: - Soft Delete
+    
+    /// When true, setlist is hidden from main views but recoverable from Trashcan
+    var isDeleted: Bool = false
+    
+    /// Timestamp of deletion (nil if not deleted)
+    var deletedAt: Date?
+    
     // MARK: - Relationships
     
     /// Bit snapshots referenced by ScriptBlock.bit entries.
@@ -181,3 +189,33 @@ extension Setlist {
         updatedAt = Date()
     }
 }
+// MARK: - Soft Delete Operations
+
+extension Setlist {
+    
+    /// Soft delete the setlist.
+    ///
+    /// **What happens:**
+    /// - `isDeleted` set to true (hides from main views)
+    /// - `deletedAt` set to current timestamp
+    /// - Setlist becomes recoverable from Trashcan
+    /// - All assignments and script content remain intact
+    func softDelete() {
+        isDeleted = true
+        deletedAt = Date()
+    }
+    
+    /// Restore a soft-deleted setlist.
+    func restore() {
+        isDeleted = false
+        deletedAt = nil
+    }
+    
+    /// Hard delete: completely remove setlist and all related data.
+    /// This also deletes all assignments (cascade delete configured on relationship).
+    func hardDelete(context: ModelContext) {
+        // Assignments will be deleted automatically via cascade rule
+        context.delete(self)
+    }
+}
+

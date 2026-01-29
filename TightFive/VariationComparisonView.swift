@@ -21,13 +21,40 @@ struct VariationComparisonView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Master (original) card
+            List {
+                // Master (original) card section
+                Section {
                     masterCard
-                    
-                    if !sortedVariations.isEmpty {
-                        // Variations header
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                }
+                
+                // Variations section
+                if !sortedVariations.isEmpty {
+                    Section {
+                        ForEach(sortedVariations) { variation in
+                            variationCard(variation)
+                                .listRowBackground(Color.clear)
+                                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                                .listRowSeparator(.hidden)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        variationToDelete = variation
+                                        showDeleteConfirmation = true
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        variationToDelete = variation
+                                        showDeleteConfirmation = true
+                                    } label: {
+                                        Label("Delete Variation", systemImage: "trash")
+                                    }
+                                }
+                        }
+                    } header: {
                         HStack {
                             Text("VARIATIONS")
                                 .font(.caption.weight(.bold))
@@ -44,36 +71,18 @@ struct VariationComparisonView: View {
                                 .background(TFTheme.yellow)
                                 .clipShape(Capsule())
                         }
-                        .padding(.horizontal, 4)
-                        .padding(.top, 8)
-                        
-                        // Variation cards
-                        ForEach(sortedVariations) { variation in
-                            variationCard(variation)
-                                .contextMenu {
-                                    Button(role: .destructive) {
-                                        variationToDelete = variation
-                                        showDeleteConfirmation = true
-                                    } label: {
-                                        Label("Delete Variation", systemImage: "trash")
-                                    }
-                                }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    Button(role: .destructive) {
-                                        variationToDelete = variation
-                                        showDeleteConfirmation = true
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
-                        }
-                    } else {
+                        .textCase(nil)
+                    }
+                } else {
+                    Section {
                         noVariationsState
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets(top: 20, leading: 16, bottom: 20, trailing: 16))
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 20)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
             .navigationTitle("Compare Variations")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

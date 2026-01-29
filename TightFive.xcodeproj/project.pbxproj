@@ -12,6 +12,7 @@
 		88AA9A2A2F29E3A700110227 /* WORLD_CLASS_ENHANCEMENTS.md in Resources */ = {isa = PBXBuildFile; fileRef = 88AA9A292F29E3A700110227 /* WORLD_CLASS_ENHANCEMENTS.md */; };
 		88AA9A2C2F29E40100110227 /* CODE_CHANGES_SUMMARY.md in Resources */ = {isa = PBXBuildFile; fileRef = 88AA9A2B2F29E40100110227 /* CODE_CHANGES_SUMMARY.md */; };
 		88AA9A322F29EB9F00110227 /* AI_INTEGRATION_COMPLETE.md in Resources */ = {isa = PBXBuildFile; fileRef = 88AA9A312F29EB9F00110227 /* AI_INTEGRATION_COMPLETE.md */; };
+		88D7EEE92F2B3A2B001D2097 /* TrashcanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88D7EEE82F2B3A2B001D2097 /* TrashcanView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,6 +46,7 @@
 		88AA9A2F2F29EAC800110227 /* AcousticAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcousticAnalyzer.swift; sourceTree = "<group>"; };
 		88AA9A312F29EB9F00110227 /* AI_INTEGRATION_COMPLETE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AI_INTEGRATION_COMPLETE.md; sourceTree = "<group>"; };
 		88AA9A332F29F12600110227 /* AnalyticsDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsDashboardView.swift; sourceTree = "<group>"; };
+		88D7EEE82F2B3A2B001D2097 /* TrashcanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrashcanView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -129,6 +131,7 @@
 				88AA9A2F2F29EAC800110227 /* AcousticAnalyzer.swift */,
 				88AA9A312F29EB9F00110227 /* AI_INTEGRATION_COMPLETE.md */,
 				88AA9A332F29F12600110227 /* AnalyticsDashboardView.swift */,
+				88D7EEE82F2B3A2B001D2097 /* TrashcanView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -293,6 +296,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				88D7EEE92F2B3A2B001D2097 /* TrashcanView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -32,6 +32,12 @@ struct MoreView: View {
                             settingsCard(icon: "brain.head.profile", title: "Analytics", subtitle: "AI-powered insights")
                         }
                         
+                        NavigationLink {
+                            TrashcanView()
+                        } label: {
+                            settingsCard(icon: "trash", title: "Trashcan", subtitle: "Recover deleted items")
+                        }
+                        
                         settingsCard(icon: "gear", title: "Settings", subtitle: "Coming soon")
                         settingsCard(icon: "externaldrive", title: "Storage", subtitle: Performance.formattedTotalStorage)
                         settingsCard(icon: "questionmark.circle", title: "Help", subtitle: "Probably not coming")

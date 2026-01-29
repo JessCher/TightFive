@@ -11,7 +11,11 @@ import Combine
 /// - Deletion no longer crashes (proper cleanup, state clearing, timing)
 struct ShowNotesView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Performance.createdAt, order: .reverse) private var performances: [Performance]
+    @Query(
+        filter: #Predicate<Performance> { !$0.isDeleted },
+        sort: \Performance.createdAt,
+        order: .reverse
+    ) private var performances: [Performance]
     
     @State private var selectedPerformance: Performance?
     @State private var showStorageInfo = false
@@ -141,10 +145,9 @@ struct ShowNotesView: View {
         selectedIDs.removeAll()
         isSelecting = false
 
-        // Delete audio files and models
+        // Soft delete performances (moves to trashcan)
         for perf in performances where ids.contains(perf.id) {
-            perf.deleteAudioFile()
-            modelContext.delete(perf)
+            perf.softDelete()
         }
         try? modelContext.save()
     }
@@ -285,7 +288,7 @@ struct PerformanceDetailView: View {
                     deletePerformance()
                 }
             } message: {
-                Text("This will delete the recording and cannot be undone.")
+                Text("This will move the recording to the trashcan. You can restore it or delete it permanently later.")
             }
             .onAppear {
                 editableTitle = performance.customTitle ?? ""
@@ -662,7 +665,7 @@ struct PerformanceDetailView: View {
         }
     }
     
-    /// FIXED: Proper deletion with crash prevention
+    /// FIXED: Proper deletion with crash prevention (now uses soft delete)
     private func deletePerformance() {
         // Prevent double-deletion
         guard !isDeleting else { return }
@@ -674,23 +677,20 @@ struct PerformanceDetailView: View {
         // 2. Capture callback before any state changes
         let callback = onDelete
         
-        // 3. Delete the audio file first
-        performance.deleteAudioFile()
+        // 3. Soft delete (move to trashcan)
+        performance.softDelete()
         
-        // 4. Delete from context
-        modelContext.delete(performance)
-        
-        // 5. Save immediately
+        // 4. Save immediately
         do {
             try modelContext.save()
         } catch {
             print("Failed to save after deletion: \(error)")
         }
         
-        // 6. Dismiss sheet
+        // 5. Dismiss sheet
         dismiss()
         
-        // 7. Clear parent's selection after dismissal
+        // 6. Clear parent's selection after dismissal
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             callback?()
         }

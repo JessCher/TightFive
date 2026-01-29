@@ -113,7 +113,11 @@ private struct SetlistMenuTile: View {
 
 struct InProgressSetlistsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(filter: #Predicate<Setlist> { $0.isDraft == true }, sort: \Setlist.updatedAt, order: .reverse) private var setlists: [Setlist]
+    @Query(
+        filter: #Predicate<Setlist> { $0.isDraft == true && !$0.isDeleted },
+        sort: \Setlist.updatedAt,
+        order: .reverse
+    ) private var setlists: [Setlist]
 
     var body: some View {
         Group {
@@ -209,7 +213,11 @@ struct InProgressSetlistsView: View {
 
 struct FinishedSetlistsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(filter: #Predicate<Setlist> { $0.isDraft == false }, sort: \Setlist.updatedAt, order: .reverse) private var setlists: [Setlist]
+    @Query(
+        filter: #Predicate<Setlist> { $0.isDraft == false && !$0.isDeleted },
+        sort: \Setlist.updatedAt,
+        order: .reverse
+    ) private var setlists: [Setlist]
 
     var body: some View {
         Group {

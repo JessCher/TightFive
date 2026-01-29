@@ -368,7 +368,7 @@ struct SetlistBuilderView: View {
                 Divider()
                 
                 Button(role: .destructive) {
-                    modelContext.delete(setlist)
+                    setlist.softDelete()
                     try? modelContext.save()
                     dismiss()
                 } label: {
@@ -674,14 +674,20 @@ private struct BitDrawerSheet: View {
     let insertionIndex: Int?
     let onInsert: (Bit, Int?) -> Void
     
-    @Query(sort: \Bit.updatedAt, order: .reverse) private var allBits: [Bit]
+    // Filter out deleted bits at the query level for immediate UI updates
+    @Query(
+        filter: #Predicate<Bit> { !$0.isDeleted },
+        sort: \Bit.updatedAt,
+        order: .reverse
+    ) private var allBits: [Bit]
+    
     @State private var searchQuery = ""
     @State private var showAllBits = false
     @State private var isMultiSelectMode = false
     @State private var selectedBits: Set<UUID> = []
     
     private var filteredBits: [Bit] {
-        var bits = allBits.filter { !$0.isDeleted }
+        var bits = allBits
         if !showAllBits {
             bits = bits.filter { $0.status == .finished }
         }
