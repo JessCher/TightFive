@@ -6,15 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		883A78622F21E89E00FFA78E /* DELETION_NOTES.md in Resources */ = {isa = PBXBuildFile; fileRef = 883A78612F21E89E00FFA78E /* DELETION_NOTES.md */; };
-		88AA9A282F29E05F00110227 /* CONTINUOUS_SCROLL_ARCHITECTURE.md in Resources */ = {isa = PBXBuildFile; fileRef = 88AA9A272F29E05F00110227 /* CONTINUOUS_SCROLL_ARCHITECTURE.md */; };
-		88AA9A2A2F29E3A700110227 /* WORLD_CLASS_ENHANCEMENTS.md in Resources */ = {isa = PBXBuildFile; fileRef = 88AA9A292F29E3A700110227 /* WORLD_CLASS_ENHANCEMENTS.md */; };
-		88AA9A2C2F29E40100110227 /* CODE_CHANGES_SUMMARY.md in Resources */ = {isa = PBXBuildFile; fileRef = 88AA9A2B2F29E40100110227 /* CODE_CHANGES_SUMMARY.md */; };
-		88AA9A322F29EB9F00110227 /* AI_INTEGRATION_COMPLETE.md in Resources */ = {isa = PBXBuildFile; fileRef = 88AA9A312F29EB9F00110227 /* AI_INTEGRATION_COMPLETE.md */; };
-		88D7EEE92F2B3A2B001D2097 /* TrashcanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88D7EEE82F2B3A2B001D2097 /* TrashcanView.swift */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXContainerItemProxy section */
 		888E3FE82F20526B00678706 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -33,20 +24,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		883A78612F21E89E00FFA78E /* DELETION_NOTES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DELETION_NOTES.md; sourceTree = "<group>"; };
 		888E3FD82F20526900678706 /* TightFive.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TightFive.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		888E3FE72F20526B00678706 /* TightFiveTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TightFiveTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		888E3FF12F20526B00678706 /* TightFiveUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TightFiveUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		88AA9A232F29DF9F00110227 /* ContinuousScrollEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContinuousScrollEngine.swift; sourceTree = "<group>"; };
-		88AA9A252F29DFAB00110227 /* VoiceAwareScrollController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceAwareScrollController.swift; sourceTree = "<group>"; };
-		88AA9A272F29E05F00110227 /* CONTINUOUS_SCROLL_ARCHITECTURE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONTINUOUS_SCROLL_ARCHITECTURE.md; sourceTree = "<group>"; };
-		88AA9A292F29E3A700110227 /* WORLD_CLASS_ENHANCEMENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = WORLD_CLASS_ENHANCEMENTS.md; sourceTree = "<group>"; };
-		88AA9A2B2F29E40100110227 /* CODE_CHANGES_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CODE_CHANGES_SUMMARY.md; sourceTree = "<group>"; };
-		88AA9A2D2F29EA9700110227 /* PerformanceAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceAnalytics.swift; sourceTree = "<group>"; };
-		88AA9A2F2F29EAC800110227 /* AcousticAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AcousticAnalyzer.swift; sourceTree = "<group>"; };
-		88AA9A312F29EB9F00110227 /* AI_INTEGRATION_COMPLETE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AI_INTEGRATION_COMPLETE.md; sourceTree = "<group>"; };
-		88AA9A332F29F12600110227 /* AnalyticsDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsDashboardView.swift; sourceTree = "<group>"; };
-		88D7EEE82F2B3A2B001D2097 /* TrashcanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrashcanView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -56,7 +36,63 @@
 				Info.plist,
 			);
 			platformFiltersByRelativePath = {
+				AcousticAnalyzer.swift = (ios, );
+				AnalyticsDashboardView.swift = (ios, );
+				Bit.swift = (ios, );
+				BitDrawerView.swift = (ios, );
+				BitVariation.swift = (ios, );
+				ContentView.swift = (ios, );
+				ContinuousScrollEngine.swift = (ios, );
+				DynamicChalkboardBackground.swift = (ios, );
+				DynamicTexturedCard.swift = (ios, );
+				HomeView.swift = (ios, );
+				LooseBitsView.swift = (ios, );
+				MoreView.swift = (ios, );
+				NavigationGestureDisabler.swift = (ios, );
+				Performance.swift = (ios, );
+				PerformanceAnalytics.swift = (ios, );
+				PerformanceRecorder.swift = (ios, );
+				Permissions.swift = (ios, );
+				ProfileView.swift = (ios, );
+				QuickBitEditor.swift = (ios, );
+				RTFHelpers.swift = (ios, );
+				RichTextEditor.swift = (ios, );
+				RootTabs.swift = (ios, );
+				RunModeSettingsStore.swift = (ios, );
+				RunModeSettingsView.swift = (ios, );
+				RunModeView.swift = (ios, );
+				ScriptBlock.swift = (ios, );
+				"Setlist+BitManagement.swift" = (ios, );
+				Setlist.swift = (ios, );
+				SetlistAssignment.swift = (ios, );
+				SetlistBuilderView.swift = (ios, );
+				"SetlistsView+StageMode.swift" = (ios, );
+				SetlistsView.swift = (ios, );
+				ShowNotesView.swift = (ios, );
+				SpeechRecognizer.swift = (ios, );
+				StageAnchor.swift = (ios, );
+				StageAnchorEditorView.swift = (ios, );
+				StageAnchorMatcher.swift = (ios, );
+				StageAnchorRecognizer.swift = (ios, );
+				StageModeView.swift = (ios, );
+				StageTeleprompterEngine.swift = (ios, );
+				TFBackground.swift = (ios, );
+				TFBackgroundView.swift = (ios, );
+				TFIcons.swift = (ios, );
+				TFTheme.swift = (ios, );
+				TFWordmarkTitle.swift = (ios, );
+				TeleprompterScrollTracker.swift = (ios, );
+				TeleprompterSettingsDrawer.swift = (ios, );
+				TeleprompterSettingsDrawerHandle.swift = (ios, );
+				TeleprompterSpeechEngine.swift = (ios, );
 				TeleprompterTextView.swift = (ios, );
+				TightFiveApp.swift = (ios, );
+				TightFiveWordmark.swift = (ios, );
+				TrashcanView.swift = (ios, );
+				UserProfile.swift = (ios, );
+				VariationComparisonView.swift = (ios, );
+				"View+Extensions.swift" = (ios, );
+				VoiceAwareScrollController.swift = (ios, );
 			};
 			target = 888E3FD72F20526900678706 /* TightFive */;
 		};
@@ -121,17 +157,6 @@
 				888E3FEA2F20526B00678706 /* TightFiveTests */,
 				888E3FF42F20526B00678706 /* TightFiveUITests */,
 				888E3FD92F20526900678706 /* Products */,
-				883A78612F21E89E00FFA78E /* DELETION_NOTES.md */,
-				88AA9A232F29DF9F00110227 /* ContinuousScrollEngine.swift */,
-				88AA9A252F29DFAB00110227 /* VoiceAwareScrollController.swift */,
-				88AA9A272F29E05F00110227 /* CONTINUOUS_SCROLL_ARCHITECTURE.md */,
-				88AA9A292F29E3A700110227 /* WORLD_CLASS_ENHANCEMENTS.md */,
-				88AA9A2B2F29E40100110227 /* CODE_CHANGES_SUMMARY.md */,
-				88AA9A2D2F29EA9700110227 /* PerformanceAnalytics.swift */,
-				88AA9A2F2F29EAC800110227 /* AcousticAnalyzer.swift */,
-				88AA9A312F29EB9F00110227 /* AI_INTEGRATION_COMPLETE.md */,
-				88AA9A332F29F12600110227 /* AnalyticsDashboardView.swift */,
-				88D7EEE82F2B3A2B001D2097 /* TrashcanView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -267,11 +292,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				88AA9A322F29EB9F00110227 /* AI_INTEGRATION_COMPLETE.md in Resources */,
-				883A78622F21E89E00FFA78E /* DELETION_NOTES.md in Resources */,
-				88AA9A282F29E05F00110227 /* CONTINUOUS_SCROLL_ARCHITECTURE.md in Resources */,
-				88AA9A2C2F29E40100110227 /* CODE_CHANGES_SUMMARY.md in Resources */,
-				88AA9A2A2F29E3A700110227 /* WORLD_CLASS_ENHANCEMENTS.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -296,7 +316,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				88D7EEE92F2B3A2B001D2097 /* TrashcanView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
