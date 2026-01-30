@@ -62,10 +62,11 @@ struct HomeView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 8) {
-                    Image("IconLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 50, height: 50)
+                    // MARK: - HIDDEN: IconLogo
+                    // Image("IconLogo")
+                    //     .resizable()
+                    //     .scaledToFit()
+                    //     .frame(width: 50, height: 50)
 
                     TightFiveWordmark(size: 22)
                 }
@@ -224,11 +225,13 @@ private struct HomeTile: View {
     
     var body: some View {
         HStack(spacing: 14) {
-            Image(iconName)
-                .renderingMode(.original)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 40, height: 40)
+            // MARK: - HIDDEN: Custom Icons
+            // Hiding: IconLooseBits, IconFinishedBits, IconSetlists, IconRunMode, IconShowNotes
+            // Image(iconName)
+            //     .renderingMode(.original)
+            //     .resizable()
+            //     .scaledToFit()
+            //     .frame(width: 40, height: 40)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
