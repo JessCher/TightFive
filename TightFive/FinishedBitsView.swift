@@ -91,6 +91,14 @@ struct FinishedBitsView: View {
                                 Label("Delete", systemImage: "trash")
                             }
                         }
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            Button {
+                                shareBit(bit)
+                            } label: {
+                                Label("Share", systemImage: "square.and.arrow.up")
+                            }
+                            .tint(TFTheme.yellow)
+                        }
                     }
                 }
             }
