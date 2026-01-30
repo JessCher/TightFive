@@ -5,6 +5,11 @@ struct SettingsView: View {
     @State private var selectedBottomBarColor: BitCardFrameColor = AppSettings.shared.bitCardBottomBarColor
     @State private var selectedWindowTheme: BitWindowTheme = AppSettings.shared.bitWindowTheme
     
+    @State private var showFrameColorPicker = false
+    @State private var showBottomBarColorPicker = false
+    @State private var customFrameColor: Color = Color(hex: AppSettings.shared.customFrameColorHex) ?? Color("TFCard")
+    @State private var customBottomBarColor: Color = Color(hex: AppSettings.shared.customBottomBarColorHex) ?? Color("TFCard")
+    
     var body: some View {
         Form {
             Section {
@@ -12,7 +17,7 @@ struct SettingsView: View {
                     ForEach(BitCardFrameColor.allCases) { color in
                         HStack {
                             Circle()
-                                .fill(color.color)
+                                .fill(color == .custom ? customFrameColor : color.color(customHex: AppSettings.shared.customFrameColorHex))
                                 .frame(width: 24, height: 24)
                                 .overlay(
                                     Circle()
@@ -27,13 +32,36 @@ struct SettingsView: View {
                 .pickerStyle(.navigationLink)
                 .onChange(of: selectedFrameColor) { _, newValue in
                     AppSettings.shared.bitCardFrameColor = newValue
+                    if newValue == .custom {
+                        showFrameColorPicker = true
+                    }
+                }
+                
+                // Show custom color picker button if custom is selected
+                if selectedFrameColor == .custom {
+                    Button {
+                        showFrameColorPicker = true
+                    } label: {
+                        HStack {
+                            Text("Choose Custom Color")
+                                .foregroundStyle(.white)
+                            Spacer()
+                            Circle()
+                                .fill(customFrameColor)
+                                .frame(width: 24, height: 24)
+                                .overlay(
+                                    Circle()
+                                        .strokeBorder(Color.white.opacity(0.3), lineWidth: 1)
+                                )
+                        }
+                    }
                 }
                 
                 Picker("Bottom Bar", selection: $selectedBottomBarColor) {
                     ForEach(BitCardFrameColor.allCases) { color in
                         HStack {
                             Circle()
-                                .fill(color.color)
+                                .fill(color == .custom ? customBottomBarColor : color.color(customHex: AppSettings.shared.customBottomBarColorHex))
                                 .frame(width: 24, height: 24)
                                 .overlay(
                                     Circle()
@@ -48,6 +76,29 @@ struct SettingsView: View {
                 .pickerStyle(.navigationLink)
                 .onChange(of: selectedBottomBarColor) { _, newValue in
                     AppSettings.shared.bitCardBottomBarColor = newValue
+                    if newValue == .custom {
+                        showBottomBarColorPicker = true
+                    }
+                }
+                
+                // Show custom color picker button if custom is selected
+                if selectedBottomBarColor == .custom {
+                    Button {
+                        showBottomBarColorPicker = true
+                    } label: {
+                        HStack {
+                            Text("Choose Custom Color")
+                                .foregroundStyle(.white)
+                            Spacer()
+                            Circle()
+                                .fill(customBottomBarColor)
+                                .frame(width: 24, height: 24)
+                                .overlay(
+                                    Circle()
+                                        .strokeBorder(Color.white.opacity(0.3), lineWidth: 1)
+                                )
+                        }
+                    }
                 }
                 
                 Picker("Bit Window Theme", selection: $selectedWindowTheme) {
@@ -99,6 +150,28 @@ struct SettingsView: View {
                 TFWordmarkTitle(title: "Settings", size: 22)
             }
         }
+        .sheet(isPresented: $showFrameColorPicker) {
+            ColorPickerSheet(
+                title: "Frame Color",
+                selectedColor: $customFrameColor,
+                onSave: {
+                    if let hex = customFrameColor.toHex() {
+                        AppSettings.shared.customFrameColorHex = hex
+                    }
+                }
+            )
+        }
+        .sheet(isPresented: $showBottomBarColorPicker) {
+            ColorPickerSheet(
+                title: "Bottom Bar Color",
+                selectedColor: $customBottomBarColor,
+                onSave: {
+                    if let hex = customBottomBarColor.toHex() {
+                        AppSettings.shared.customBottomBarColorHex = hex
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -108,6 +181,20 @@ private struct BitCardPreview: View {
     let frameColor: BitCardFrameColor
     let bottomBarColor: BitCardFrameColor
     let windowTheme: BitWindowTheme
+    
+    private var resolvedFrameColor: Color {
+        if frameColor == .custom {
+            return Color(hex: AppSettings.shared.customFrameColorHex) ?? Color("TFCard")
+        }
+        return frameColor.color(customHex: nil)
+    }
+    
+    private var resolvedBottomBarColor: Color {
+        if bottomBarColor == .custom {
+            return Color(hex: AppSettings.shared.customBottomBarColorHex) ?? Color("TFCard")
+        }
+        return bottomBarColor.color(customHex: nil)
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -208,35 +295,184 @@ private struct BitCardPreview: View {
                 Spacer()
                 Image(systemName: "5.square.fill")
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(TFTheme.yellow)
+                    .foregroundStyle(bottomBarColor.hasTexture && bottomBarColor == .yellowGrit ? .black.opacity(0.85) : TFTheme.yellow)
                 
                 Text("written in TightFive")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(bottomBarColor.hasTexture && bottomBarColor == .yellowGrit ? .black.opacity(0.85) : .white)
                     .kerning(0.5)
                 Spacer()
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 0,
-                    bottomLeadingRadius: 8,
-                    bottomTrailingRadius: 8,
-                    topTrailingRadius: 0,
-                    style: .continuous
+                ZStack {
+                    if bottomBarColor.hasTexture, let theme = bottomBarColor.textureTheme {
+                        // Render textured background
+                        if theme == .chalkboard {
+                            Color("TFCard")
+                            
+                            StaticGritLayer(
+                                density: 300,
+                                opacity: 0.55,
+                                seed: 1234,
+                                particleColor: Color("TFYellow")
+                            )
+                            
+                            StaticGritLayer(
+                                density: 300,
+                                opacity: 0.35,
+                                seed: 5678
+                            )
+                        } else {
+                            Color("TFYellow")
+                            
+                            StaticGritLayer(
+                                density: 800,
+                                opacity: 0.85,
+                                seed: 7777,
+                                particleColor: .brown
+                            )
+                            
+                            StaticGritLayer(
+                                density: 100,
+                                opacity: 0.88,
+                                seed: 8888,
+                                particleColor: .black
+                            )
+                            
+                            StaticGritLayer(
+                                density: 400,
+                                opacity: 0.88,
+                                seed: 8888,
+                                particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
+                            )
+                        }
+                    }
+                    
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 0,
+                        bottomLeadingRadius: 8,
+                        bottomTrailingRadius: 8,
+                        topTrailingRadius: 0,
+                        style: .continuous
+                    )
+                    .fill(bottomBarColor.hasTexture ? .clear : resolvedBottomBarColor)
+                }
+                .clipShape(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 0,
+                        bottomLeadingRadius: 8,
+                        bottomTrailingRadius: 8,
+                        topTrailingRadius: 0,
+                        style: .continuous
+                    )
                 )
-                .fill(bottomBarColor.color)
             )
         }
         .padding(8) // Creates the frame effect
-        .background(frameColor.color)
+        .background(resolvedFrameColor)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 }
 
+// MARK: - Color Picker Sheet
 
+private struct ColorPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    @Binding var selectedColor: Color
+    let onSave: () -> Void
+    
+    @State private var hexInput: String = ""
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    ColorPicker("Pick a Color", selection: $selectedColor, supportsOpacity: false)
+                } header: {
+                    Text("Visual Picker")
+                }
+                
+                Section {
+                    HStack {
+                        TextField("Hex Code", text: $hexInput)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .onChange(of: hexInput) { _, newValue in
+                                if let color = Color(hex: newValue) {
+                                    selectedColor = color
+                                }
+                            }
+                        
+                        Button("Paste") {
+                            if let clipboardString = UIPasteboard.general.string {
+                                hexInput = clipboardString
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(TFTheme.yellow)
+                    }
+                    
+                    Text("Enter a 6-digit hex code (e.g., #FF5733)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Hex Color Code")
+                }
+                
+                Section {
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(selectedColor)
+                            .frame(width: 60, height: 60)
+                            .overlay(
+                                Circle()
+                                    .strokeBorder(Color.white.opacity(0.3), lineWidth: 2)
+                            )
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Preview")
+                                .font(.headline)
+                            Text(selectedColor.toHex() ?? "#000000")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                } header: {
+                    Text("Preview")
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .tfBackground()
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundStyle(Color("TFYellow"))
+                }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave()
+                        dismiss()
+                    }
+                    .foregroundStyle(Color("TFYellow"))
+                }
+            }
+            .onAppear {
+                hexInput = selectedColor.toHex() ?? "#3A3A3A"
+            }
+        }
+    }
+}
 
 #Preview {
     NavigationStack {

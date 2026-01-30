@@ -477,8 +477,23 @@ private struct BitShareCard: View {
     init(bit: Bit, userName: String) {
         self.bit = bit
         self.userName = userName
-        self.frameColor = AppSettings.shared.bitCardFrameColor.color
-        self.bottomBarColor = AppSettings.shared.bitCardBottomBarColor.color
+        
+        // Resolve frame color (handle custom)
+        let frameColorEnum = AppSettings.shared.bitCardFrameColor
+        if frameColorEnum == .custom {
+            self.frameColor = Color(hex: AppSettings.shared.customFrameColorHex) ?? Color("TFCard")
+        } else {
+            self.frameColor = frameColorEnum.color(customHex: nil)
+        }
+        
+        // Resolve bottom bar color (handle custom)
+        let bottomBarColorEnum = AppSettings.shared.bitCardBottomBarColor
+        if bottomBarColorEnum == .custom {
+            self.bottomBarColor = Color(hex: AppSettings.shared.customBottomBarColorHex) ?? Color("TFCard")
+        } else {
+            self.bottomBarColor = bottomBarColorEnum.color(customHex: nil)
+        }
+        
         self.windowTheme = AppSettings.shared.bitWindowTheme
     }
     
@@ -585,20 +600,74 @@ private struct BitShareCard: View {
                 if !userName.isEmpty {
                     Text("by \(userName)")
                         .font(.system(size: 14))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(AppSettings.shared.bitCardBottomBarColor.hasTexture && AppSettings.shared.bitCardBottomBarColor == .yellowGrit ? .black.opacity(0.7) : .white.opacity(0.7))
                 }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
             .background(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 0,
-                    bottomLeadingRadius: 12,
-                    bottomTrailingRadius: 12,
-                    topTrailingRadius: 0,
-                    style: .continuous
+                ZStack {
+                    if AppSettings.shared.bitCardBottomBarColor.hasTexture, let theme = AppSettings.shared.bitCardBottomBarColor.textureTheme {
+                        // Render textured background
+                        if theme == .chalkboard {
+                            Color("TFCard")
+                            
+                            StaticGritLayer(
+                                density: 300,
+                                opacity: 0.55,
+                                seed: 1234,
+                                particleColor: Color("TFYellow")
+                            )
+                            
+                            StaticGritLayer(
+                                density: 300,
+                                opacity: 0.35,
+                                seed: 5678
+                            )
+                        } else {
+                            Color("TFYellow")
+                            
+                            StaticGritLayer(
+                                density: 800,
+                                opacity: 0.85,
+                                seed: 7777,
+                                particleColor: .brown
+                            )
+                            
+                            StaticGritLayer(
+                                density: 100,
+                                opacity: 0.88,
+                                seed: 8888,
+                                particleColor: .black
+                            )
+                            
+                            StaticGritLayer(
+                                density: 400,
+                                opacity: 0.88,
+                                seed: 8888,
+                                particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
+                            )
+                        }
+                    }
+                    
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 0,
+                        bottomLeadingRadius: 12,
+                        bottomTrailingRadius: 12,
+                        topTrailingRadius: 0,
+                        style: .continuous
+                    )
+                    .fill(AppSettings.shared.bitCardBottomBarColor.hasTexture ? .clear : bottomBarColor)
+                }
+                .clipShape(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 0,
+                        bottomLeadingRadius: 12,
+                        bottomTrailingRadius: 12,
+                        topTrailingRadius: 0,
+                        style: .continuous
+                    )
                 )
-                .fill(bottomBarColor)
             )
         }
         .frame(width: 500)
