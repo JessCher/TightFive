@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUI
 import SwiftData
 import UIKit
 
@@ -80,25 +81,25 @@ private struct SetlistMenuTile: View {
                     .frame(width: 34, height: 34)
             } else {
                 Image(systemName: iconName)
-                    .font(.system(size: 22, weight: .semibold))
+                    .appFont(size: 22, weight: .semibold)
                     .foregroundStyle(TFTheme.yellow)
                     .frame(width: 34, height: 34)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(.white)
 
                 Text(subtitle)
-                    .font(.subheadline)
+                    .appFont(.subheadline)
                     .foregroundStyle(.white.opacity(0.62))
             }
 
             Spacer()
 
             Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .semibold))
+                .appFont(size: 14, weight: .semibold)
                 .foregroundStyle(.white.opacity(0.28))
         }
         .padding(.vertical, 18)
@@ -154,13 +155,13 @@ struct InProgressSetlistsView: View {
         VStack(spacing: 14) {
             Spacer()
             Image(systemName: "hammer")
-                .font(.system(size: 48))
+                .appFont(size: 48)
                 .foregroundStyle(.white.opacity(0.3))
             Text("No setlists in progress")
-                .font(.title3.weight(.semibold))
+                .appFont(.title3, weight: .semibold)
                 .foregroundStyle(.white)
             Text("Create a new setlist to start building.")
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.white.opacity(0.6))
             Spacer()
         }
@@ -170,12 +171,12 @@ struct InProgressSetlistsView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text(s.title)
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(.white)
                 
                 if s.hasConfiguredAnchors {
                     Image(systemName: "waveform")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(TFTheme.yellow)
                 }
                 
@@ -184,18 +185,18 @@ struct InProgressSetlistsView: View {
             
             HStack(spacing: 8) {
                 Text(s.updatedAt, style: .date)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.white.opacity(0.5))
                 
                 if s.bitCount > 0 {
                     Text("\(s.bitCount) bits")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.white.opacity(0.5))
                 }
                 
                 if s.blockCount > s.bitCount {
                     Text("\(s.blockCount - s.bitCount) text")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.white.opacity(0.4))
                 }
             }
@@ -254,13 +255,13 @@ struct FinishedSetlistsView: View {
         VStack(spacing: 14) {
             Spacer()
             Image(systemName: "checkmark.seal")
-                .font(.system(size: 48))
+                .appFont(size: 48)
                 .foregroundStyle(.white.opacity(0.3))
             Text("No finished setlists")
-                .font(.title3.weight(.semibold))
+                .appFont(.title3, weight: .semibold)
                 .foregroundStyle(.white)
             Text("Mark a setlist as finished when it's stage-ready.")
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.white.opacity(0.6))
             Spacer()
         }
@@ -270,7 +271,7 @@ struct FinishedSetlistsView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text(s.title)
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(.white)
                 
                 if s.isStageReady {
@@ -278,7 +279,7 @@ struct FinishedSetlistsView: View {
                         Image(systemName: "play.fill")
                         Text("Stage Ready")
                     }
-                    .font(.caption2.weight(.medium))
+                    .appFont(.caption2, weight: .medium)
                     .foregroundStyle(.black)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -286,7 +287,7 @@ struct FinishedSetlistsView: View {
                     .clipShape(Capsule())
                 } else if s.hasConfiguredAnchors {
                     Image(systemName: "waveform")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(TFTheme.yellow)
                 }
                 
@@ -298,20 +299,20 @@ struct FinishedSetlistsView: View {
                 if s.hasScriptContent {
                     HStack(spacing: 4) {
                         Image(systemName: "clock")
-                            .font(.caption2)
+                            .appFont(.caption2)
                         Text(s.formattedDuration)
                     }
-                    .font(.caption.weight(.medium))
+                    .appFont(.caption, weight: .medium)
                     .foregroundStyle(TFTheme.yellow)
                 }
                 
                 Text(s.updatedAt, style: .date)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.white.opacity(0.5))
                 
                 if s.bitCount > 0 {
                     Text("\(s.bitCount) bits")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.white.opacity(0.5))
                 }
             }

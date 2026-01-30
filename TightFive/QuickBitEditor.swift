@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUI
 import Foundation
 import SwiftData
 import Combine
@@ -138,7 +139,7 @@ struct QuickBitEditor: View {
                 
                 // Layer 3: The Icon (on top of everything)
                 Image(systemName: speech.isRecording ? "waveform" : "mic.fill")
-                    .font(.system(size: 20, weight: .black))
+                    .appFont(size: 20, weight: .black)
                     .foregroundStyle(speech.isRecording ? .white : .black.opacity(0.85))
                     .symbolEffect(.variableColor.iterative, isActive: speech.isRecording)
                     .contentTransition(.symbolEffect(.replace))
@@ -157,7 +158,7 @@ struct QuickBitEditor: View {
                     .fill(Color.red)
                     .frame(width: 8, height: 8)
                 Text("LISTENING")
-                    .font(.caption.weight(.bold))
+                    .appFont(.caption, weight: .bold)
                     .foregroundStyle(Color.red)
                     .kerning(1.2)
             }
@@ -165,7 +166,7 @@ struct QuickBitEditor: View {
             
             // The Live Text
             Text(speech.transcript.isEmpty ? "Say something funny..." : speech.transcript)
-                .font(.title3.weight(.medium))
+                .appFont(.title3, weight: .medium)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white)
                 .padding(.horizontal)
@@ -174,7 +175,7 @@ struct QuickBitEditor: View {
             
             // Action Hint
             Text("Tap mic to finish")
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.white.opacity(0.5))
         }
         .padding(.vertical, 20)

@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUI
 import Foundation
 import SwiftData
 import Combine
@@ -149,7 +150,7 @@ struct LooseBitsView: View {
                         showQuickBit = true
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 18, weight: .bold))
+                            .appFont(size: 18, weight: .bold)
                             .foregroundStyle(TFTheme.yellow)
                             .frame(width: 44, height: 44)
                             .background(Color.white.opacity(0.10))
@@ -171,11 +172,11 @@ struct LooseBitsView: View {
     private var emptyState: some View {
         VStack(spacing: 14) {
             Text(emptyStateTitle)
-                .font(.title3.weight(.semibold))
+                .appFont(.title3, weight: .semibold)
                 .foregroundStyle(.white)
 
             Text(emptyStateMessage)
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.white.opacity(0.65))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 26)
@@ -185,7 +186,7 @@ struct LooseBitsView: View {
                     showQuickBit = true
                 } label: {
                     Text("Quick Bit")
-                        .font(.headline.weight(.semibold))
+                        .appFont(.headline, weight: .semibold)
                         .foregroundStyle(.black)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
@@ -292,7 +293,7 @@ struct BitSwipeView<Content: View>: View {
                         ZStack(alignment: .leading) {
                             TFTheme.yellow
                             Image(systemName: "checkmark.seal.fill")
-                                .font(.title2)
+                                .appFont(.title2)
                                 .foregroundColor(.black)
                                 .padding(.leading, 30)
                                 .scaleEffect(offset > 0 ? 1.0 : 0.001)
@@ -306,7 +307,7 @@ struct BitSwipeView<Content: View>: View {
                     ZStack(alignment: .trailing) {
                         Color.red
                         Image(systemName: "trash.fill")
-                            .font(.title2)
+                            .appFont(.title2)
                             .foregroundColor(.white)
                             .padding(.trailing, 30)
                             .scaleEffect(offset < 0 ? 1.0 : 0.001)
@@ -379,7 +380,7 @@ private struct BitCardRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(bit.titleLine)
-                    .font(.title3.weight(.semibold))
+                    .appFont(.title3, weight: .semibold)
                     .foregroundStyle(.white)
                     .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -390,14 +391,14 @@ private struct BitCardRow: View {
                     // Favorite indicator
                     if bit.isFavorite {
                         Image(systemName: "star.fill")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(TFTheme.yellow)
                     }
                     
                     // Show variation count badge if any
                     if bit.variationCount > 0 {
                         Text("\(bit.variationCount)")
-                            .font(.caption.weight(.semibold))
+                            .appFont(.caption, weight: .semibold)
                             .foregroundStyle(.black)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -408,7 +409,7 @@ private struct BitCardRow: View {
             }
 
             Text(bit.updatedAt, style: .date)
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.white.opacity(0.55))
             
             if !bit.tags.isEmpty {
@@ -416,7 +417,7 @@ private struct BitCardRow: View {
                     HStack(spacing: 6) {
                         ForEach(bit.tags, id: \.self) { tag in
                             Text(tag)
-                                .font(.caption2.weight(.medium))
+                                .appFont(.caption2, weight: .medium)
                                 .foregroundStyle(.black)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -571,7 +572,7 @@ private struct LooseBitDetailView: View {
                             Spacer()
                             
                             Text("\(bit.variationCount)")
-                                .font(.subheadline.weight(.semibold))
+                                .appFont(.subheadline, weight: .semibold)
                                 .foregroundStyle(.black)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)
@@ -629,7 +630,7 @@ private struct FinishedBitDetailView: View {
                 // Main Bit Card
                 VStack(alignment: .leading, spacing: 16) {
                     TextField("Add Bit Title", text: $bit.title, axis: .vertical)
-                        .font(.title2.weight(.bold))
+                        .appFont(.title2, weight: .bold)
                         .foregroundStyle(TFTheme.yellow)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
@@ -656,7 +657,7 @@ private struct FinishedBitDetailView: View {
                 // Tags Card - Always show
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Tags")
-                        .font(.headline)
+                        .appFont(.headline)
                         .foregroundStyle(.white)
                     
                     TagEditor(tags: $bit.tags) { updated in
@@ -675,15 +676,15 @@ private struct FinishedBitDetailView: View {
                     } label: {
                         HStack {
                             Image(systemName: "doc.on.doc")
-                                .font(.headline)
+                                .appFont(.headline)
                             
                             Text("Compare Variations")
-                                .font(.headline.weight(.semibold))
+                                .appFont(.headline, weight: .semibold)
                             
                             Spacer()
                             
                             Text("\(bit.variationCount)")
-                                .font(.subheadline.weight(.semibold))
+                                .appFont(.subheadline, weight: .semibold)
                                 .foregroundStyle(.black)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)
@@ -781,10 +782,10 @@ private struct TagEditor: View {
                         ForEach(tags, id: \.self) { tag in
                             HStack(spacing: 6) {
                                 Text(tag)
-                                    .font(.caption2.weight(.medium))
+                                    .appFont(.caption2, weight: .medium)
                                     .foregroundStyle(.black)
                                 Image(systemName: "xmark.circle.fill")
-                                    .font(.caption)
+                                    .appFont(.caption)
                                     .foregroundStyle(.black.opacity(0.7))
                                     .onTapGesture {
                                         var copy = tags
@@ -803,6 +804,7 @@ private struct TagEditor: View {
 
             HStack {
                 TextField("Add tag", text: $input)
+                    .appFont(.body)
                     .textInputAutocapitalization(.words)
                     .onSubmit(addTag)
                 Button("Add") { addTag() }
@@ -864,7 +866,7 @@ private struct BitShareCard: View {
             VStack(alignment: .leading, spacing: 16) {
                 // Bit text only (no title or tags)
                 Text(bit.text)
-                    .font(.system(size: 18))
+                    .appFont(size: 18)
                     .foregroundStyle(windowTheme == .chalkboard ? .white.opacity(0.95) : .black.opacity(0.85))
                     .fixedSize(horizontal: false, vertical: true)
                     .lineSpacing(4)
@@ -964,7 +966,7 @@ private struct BitShareCard: View {
                 
                 if !userName.isEmpty {
                     Text("by \(userName)")
-                        .font(.system(size: 14))
+                        .appFont(size: 14)
                         .foregroundStyle(AppSettings.shared.bitCardBottomBarColor.hasTexture && AppSettings.shared.bitCardBottomBarColor == .yellowGrit ? .black.opacity(0.7) : .white.opacity(0.7))
                 }
             }

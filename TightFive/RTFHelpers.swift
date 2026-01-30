@@ -3,7 +3,7 @@ import UIKit
 import SwiftUI
 
 typealias TFColor = UIColor
-typealias TFFont = UIFont
+typealias appFont = UIFont
 
 
 // MARK: - NSAttributedString RTF Conversion (Safe)
@@ -81,7 +81,7 @@ extension String {
 
     /// Convert plain text to RTF with TightFive theme.
     func toRTF(
-        font: TFFont = .systemFont(ofSize: 17),
+        font: appFont = .systemFont(ofSize: 17),
         color: TFColor = .white,
         lineSpacing: CGFloat = 4,
         paragraphSpacing: CGFloat = 12,

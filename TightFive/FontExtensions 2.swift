@@ -68,3 +68,35 @@ extension Text {
         return self.font(selectedFont.font(size: size).weight(weight))
     }
 }
+// MARK: - Global Font Environment
+
+/// Environment key for the app's selected font
+struct AppFontKey: EnvironmentKey {
+    static let defaultValue: AppFont = .systemDefault
+}
+
+extension EnvironmentValues {
+    var appFont: AppFont {
+        get { self[AppFontKey.self] }
+        set { self[AppFontKey.self] = newValue }
+    }
+}
+
+/// View modifier that applies the global app font to all text in its hierarchy
+struct GlobalFontModifier: ViewModifier {
+    @Environment(AppSettings.self) private var appSettings
+    
+    func body(content: Content) -> some View {
+        content
+            .environment(\.appFont, appSettings.appFont)
+            .font(appSettings.appFont.font(size: 17)) // Default body font
+    }
+}
+
+extension View {
+    /// Applies the global app font to all views in the hierarchy
+    func withGlobalFont() -> some View {
+        modifier(GlobalFontModifier())
+    }
+}
+
