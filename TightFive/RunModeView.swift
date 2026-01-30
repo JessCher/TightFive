@@ -558,20 +558,23 @@ private struct RunModeSetlistRow: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 14) {
-                Image(systemName: setlist.hasScriptContent ? "doc.text.fill" : "doc.text")
-                    .font(.system(size: 22))
-                    .foregroundStyle(setlist.hasScriptContent ? TFTheme.yellow : .white.opacity(0.4))
-                    .frame(width: 44, height: 44)
-                    .background(Color("TFCard"))
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle().strokeBorder(
-                            setlist.hasScriptContent ? TFTheme.yellow.opacity(0.5) : Color("TFCardStroke").opacity(0.5),
-                            lineWidth: 1
-                        )
-                    )
+                // MARK: - HIDDEN: Icons removed to match other tiles
+                // Image(systemName: setlist.hasScriptContent ? "doc.text.fill" : "doc.text")
+                //     .font(.system(size: 22))
+                //     .foregroundStyle(setlist.hasScriptContent ? TFTheme.yellow : .white.opacity(0.4))
+                //     .frame(width: 44, height: 44)
+                //     .background(Color("TFCard"))
+                //     .clipShape(Circle())
+                //     .overlay(
+                //         Circle().strokeBorder(
+                //             setlist.hasScriptContent ? TFTheme.yellow.opacity(0.5) : Color("TFCardStroke").opacity(0.5),
+                //             lineWidth: 1
+                //         )
+                //     )
 
-                VStack(alignment: .leading, spacing: 4) {
+                Spacer()
+
+                VStack(alignment: .center, spacing: 4) {
                     Text(setlist.title)
                         .font(.headline)
                         .foregroundStyle(.white)
@@ -591,18 +594,14 @@ private struct RunModeSetlistRow: View {
 
                 Spacer()
 
-                Image(systemName: "play.fill")
-                    .font(.system(size: 16))
-                    .foregroundStyle(setlist.hasScriptContent ? TFTheme.yellow : .white.opacity(0.3))
+                // MARK: - HIDDEN: Play icon removed to match other tiles
+                // Image(systemName: "play.fill")
+                //     .font(.system(size: 16))
+                //     .foregroundStyle(setlist.hasScriptContent ? TFTheme.yellow : .white.opacity(0.3))
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(Color("TFCard"))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(Color("TFCardStroke").opacity(0.6), lineWidth: 1)
-            )
+            .padding(.vertical, 18)
+            .tfDynamicCard(cornerRadius: 20)
         }
         .buttonStyle(.plain)
         .opacity(setlist.hasScriptContent ? 1.0 : 0.6)

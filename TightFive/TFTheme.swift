@@ -8,6 +8,12 @@ enum TFTheme {
     static let background = Color("TFBackground")
     static let card = Color("TFCard")
     static let cardStroke = Color("TFCardStroke")
+    
+    // MARK: - Dynamic Colors (from AppSettings)
+    /// The user's custom text color (defaults to white)
+    static var text: Color {
+        AppSettings.shared.fontColor
+    }
 
     // MARK: - Layout
     static let corner: CGFloat = 18

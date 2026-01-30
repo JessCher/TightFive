@@ -120,6 +120,31 @@ class AppSettings {
         }
     }
     
+    /// App font color (hex)
+    var appFontColorHex: String {
+        get {
+            UserDefaults.standard.string(forKey: "appFontColorHex") ?? "#FFFFFF" // Default white
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "appFontColorHex")
+            notifyChange()
+        }
+    }
+    
+    /// App font size multiplier (1.0 = default, 0.8 = small, 1.2 = large)
+    var appFontSizeMultiplier: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "appFontSizeMultiplier")
+            // If never set, default to 1.0 (normal size)
+            return value == 0 && !UserDefaults.standard.bool(forKey: "appFontSizeMultiplierHasBeenSet") ? 1.0 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "appFontSizeMultiplier")
+            UserDefaults.standard.set(true, forKey: "appFontSizeMultiplierHasBeenSet")
+            notifyChange()
+        }
+    }
+    
     /// Global tile card theme (affects all tile cards in the app)
     var tileCardTheme: TileCardTheme {
         get {
@@ -290,6 +315,11 @@ class AppSettings {
     /// - Returns: The scaled density value
     func adjustedAppGritDensity(_ baseDensity: Int) -> Int {
         return Int(Double(baseDensity) * appGritLevel)
+    }
+    
+    /// Returns the app's custom font color
+    var fontColor: Color {
+        return Color(hex: appFontColorHex) ?? .white
     }
     
     private init() {}

@@ -3,18 +3,21 @@ import SwiftUI
 // MARK: - Font Extension for App-Wide Font Support
 
 extension View {
-    /// Applies the app's selected font with the specified size
+    /// Applies the app's selected font with the specified size (with size multiplier applied)
     func appFont(size: CGFloat, weight: Font.Weight = .regular) -> some View {
         let selectedFont = AppSettings.shared.appFont
-        return self.font(selectedFont.font(size: size).weight(weight))
+        let multiplier = AppSettings.shared.appFontSizeMultiplier
+        let adjustedSize = size * multiplier
+        return self.font(selectedFont.font(size: adjustedSize).weight(weight))
     }
     
-    /// Applies the app's selected font using a text style
+    /// Applies the app's selected font using a text style (with size multiplier applied)
     func appFont(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> some View {
         let selectedFont = AppSettings.shared.appFont
+        let multiplier = AppSettings.shared.appFontSizeMultiplier
         
         // Map text styles to approximate sizes
-        let size: CGFloat = {
+        let baseSize: CGFloat = {
             switch style {
             case .largeTitle: return 34
             case .title: return 28
@@ -31,24 +34,28 @@ extension View {
             }
         }()
         
-        return self.font(selectedFont.font(size: size).weight(weight))
+        let adjustedSize = baseSize * multiplier
+        return self.font(selectedFont.font(size: adjustedSize).weight(weight))
     }
 }
 
 // MARK: - Text Extension for Direct Font Application
 
 extension Text {
-    /// Applies the app's selected font with the specified size
+    /// Applies the app's selected font with the specified size (with size multiplier applied)
     func appFont(size: CGFloat, weight: Font.Weight = .regular) -> Text {
         let selectedFont = AppSettings.shared.appFont
-        return self.font(selectedFont.font(size: size).weight(weight))
+        let multiplier = AppSettings.shared.appFontSizeMultiplier
+        let adjustedSize = size * multiplier
+        return self.font(selectedFont.font(size: adjustedSize).weight(weight))
     }
     
-    /// Applies the app's selected font using a text style
+    /// Applies the app's selected font using a text style (with size multiplier applied)
     func appFont(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Text {
         let selectedFont = AppSettings.shared.appFont
+        let multiplier = AppSettings.shared.appFontSizeMultiplier
         
-        let size: CGFloat = {
+        let baseSize: CGFloat = {
             switch style {
             case .largeTitle: return 34
             case .title: return 28
@@ -65,9 +72,25 @@ extension Text {
             }
         }()
         
-        return self.font(selectedFont.font(size: size).weight(weight))
+        let adjustedSize = baseSize * multiplier
+        return self.font(selectedFont.font(size: adjustedSize).weight(weight))
     }
 }
+
+// MARK: - Global Font Color Environment
+
+/// Environment key for the app's selected font color
+struct AppFontColorKey: EnvironmentKey {
+    static let defaultValue: Color = .white
+}
+
+extension EnvironmentValues {
+    var appFontColor: Color {
+        get { self[AppFontColorKey.self] }
+        set { self[AppFontColorKey.self] = newValue }
+    }
+}
+
 // MARK: - Global Font Environment
 
 /// Environment key for the app's selected font
@@ -87,9 +110,14 @@ struct GlobalFontModifier: ViewModifier {
     @Environment(AppSettings.self) private var appSettings
     
     func body(content: Content) -> some View {
-        content
+        let fontColor = Color(hex: appSettings.appFontColorHex) ?? .white
+        let multiplier = appSettings.appFontSizeMultiplier
+        let adjustedSize = 17 * multiplier // Default body font
+        
+        return content
             .environment(\.appFont, appSettings.appFont)
-            .font(appSettings.appFont.font(size: 17)) // Default body font
+            .environment(\.appFontColor, fontColor)
+            .font(appSettings.appFont.font(size: adjustedSize))
     }
 }
 
@@ -97,6 +125,12 @@ extension View {
     /// Applies the global app font to all views in the hierarchy
     func withGlobalFont() -> some View {
         modifier(GlobalFontModifier())
+    }
+    
+    /// Applies the app's custom font color
+    func appFontColor() -> some View {
+        let color = AppSettings.shared.fontColor
+        return self.foregroundStyle(color)
     }
 }
 

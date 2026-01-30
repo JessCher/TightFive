@@ -5,10 +5,11 @@ struct MoreView: View {
         ScrollView {
                 VStack(spacing: 24) {
                     VStack(spacing: 8) {
-                        Image("IconLogo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 80, height: 80)
+                        // MARK: - HIDDEN: IconLogo
+                        // Image("IconLogo")
+                        //     .resizable()
+                        //     .scaledToFit()
+                        //     .frame(width: 80, height: 80)
                         
                         TightFiveWordmark(size: 20)
                         
@@ -75,17 +76,20 @@ struct MoreView: View {
     
     private func settingsCard(icon: String, title: String, subtitle: String) -> some View {
         HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(TFTheme.yellow.opacity(0.15))
-                    .frame(width: 44, height: 44)
-                
-                Image(systemName: icon)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(TFTheme.yellow)
-            }
+            // MARK: - HIDDEN: Icons removed to match other tiles
+            // ZStack {
+            //     Circle()
+            //         .fill(TFTheme.yellow.opacity(0.15))
+            //         .frame(width: 44, height: 44)
+            //     
+            //     Image(systemName: icon)
+            //         .font(.system(size: 18, weight: .semibold))
+            //         .foregroundStyle(TFTheme.yellow)
+            // }
             
-            VStack(alignment: .leading, spacing: 4) {
+            Spacer()
+            
+            VStack(alignment: .center, spacing: 4) {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(.white)
@@ -93,11 +97,12 @@ struct MoreView: View {
                 Text(subtitle)
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.6))
+                    .multilineTextAlignment(.center)
             }
             
             Spacer()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, 20)
         .padding(.vertical, 18)
         .tfDynamicCard(cornerRadius: 18)

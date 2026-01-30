@@ -374,36 +374,44 @@ private struct BitCardRow: View {
     let bit: Bit
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(bit.titleLine)
-                    .appFont(.title3, weight: .semibold)
-                    .foregroundStyle(.white)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                
-                Spacer()
-                
-                HStack(spacing: 8) {
-                    // Favorite indicator
-                    if bit.isFavorite {
-                        Image(systemName: "star.fill")
-                            .appFont(.caption)
-                            .foregroundStyle(TFTheme.yellow)
-                    }
-                    
-                    // Show variation count badge if any
-                    if bit.variationCount > 0 {
-                        Text("\(bit.variationCount)")
-                            .appFont(.caption, weight: .semibold)
-                            .foregroundStyle(.black)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(TFTheme.yellow)
-                            .clipShape(Capsule())
-                    }
-                }
-            }
+        VStack(alignment: .center, spacing: 8) {
+            // MARK: - HIDDEN: Favorite and variation badges removed for consistency
+            // HStack {
+            //     Text(bit.titleLine)
+            //         .appFont(.title3, weight: .semibold)
+            //         .foregroundStyle(.white)
+            //         .lineLimit(3)
+            //         .fixedSize(horizontal: false, vertical: true)
+            //     
+            //     Spacer()
+            //     
+            //     HStack(spacing: 8) {
+            //         // Favorite indicator
+            //         if bit.isFavorite {
+            //             Image(systemName: "star.fill")
+            //                 .appFont(.caption)
+            //                 .foregroundStyle(TFTheme.yellow)
+            //         }
+            //         
+            //         // Show variation count badge if any
+            //         if bit.variationCount > 0 {
+            //             Text("\(bit.variationCount)")
+            //                 .appFont(.caption, weight: .semibold)
+            //                 .foregroundStyle(.black)
+            //                 .padding(.horizontal, 8)
+            //                 .padding(.vertical, 4)
+            //                 .background(TFTheme.yellow)
+            //                 .clipShape(Capsule())
+            //         }
+            //     }
+            // }
+
+            Text(bit.titleLine)
+                .appFont(.title3, weight: .semibold)
+                .foregroundStyle(.white)
+                .lineLimit(3)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
 
             Text(bit.updatedAt, style: .date)
                 .appFont(.subheadline)
@@ -425,7 +433,7 @@ private struct BitCardRow: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, 20)
         .padding(.vertical, 18)
         .tfDynamicCard(cornerRadius: 18)

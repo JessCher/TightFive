@@ -233,21 +233,20 @@ private struct HomeTile: View {
             //     .scaledToFit()
             //     .frame(width: 40, height: 40)
             
-            VStack(alignment: .leading, spacing: 4) {
+            Spacer()
+            
+            VStack(alignment: .center, spacing: 4) {
                 Text(title)
                     .appFont(.headline, weight: .semibold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(TFTheme.text)
                 
                 Text(subtitle)
                     .appFont(.subheadline)
-                    .foregroundStyle(.white.opacity(0.62))
+                    .foregroundStyle(TFTheme.text.opacity(0.62))
+                    .multilineTextAlignment(.center)
             }
             
             Spacer()
-            
-            Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.tfYellow.opacity(0.34))
         }
         .padding(.vertical, 29)
         .padding(.horizontal, 16)

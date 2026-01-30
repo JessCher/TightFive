@@ -163,21 +163,25 @@ private struct PerformanceRowView: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(performance.isReviewed ? TFTheme.yellow.opacity(0.2) : Color.white.opacity(0.1))
-                        .frame(width: 50, height: 50)
-                    
-                    Image(systemName: performance.isReviewed ? "checkmark.seal.fill" : "waveform")
-                        .font(.system(size: 20))
-                        .foregroundStyle(performance.isReviewed ? TFTheme.yellow : .white.opacity(0.6))
-                }
+                // MARK: - HIDDEN: Icon removed for consistency
+                // ZStack {
+                //     Circle()
+                //         .fill(performance.isReviewed ? TFTheme.yellow.opacity(0.2) : Color.white.opacity(0.1))
+                //         .frame(width: 50, height: 50)
+                //     
+                //     Image(systemName: performance.isReviewed ? "checkmark.seal.fill" : "waveform")
+                //         .font(.system(size: 20))
+                //         .foregroundStyle(performance.isReviewed ? TFTheme.yellow : .white.opacity(0.6))
+                // }
                 
-                VStack(alignment: .leading, spacing: 4) {
+                Spacer()
+                
+                VStack(alignment: .center, spacing: 4) {
                     Text(performance.displayTitle)
                         .font(.headline)
                         .foregroundStyle(.white)
                         .lineLimit(1)
+                        .multilineTextAlignment(.center)
                     
                     HStack(spacing: 8) {
                         Text(performance.formattedDate)
@@ -220,11 +224,13 @@ private struct PerformanceRowView: View {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 22))
                         .foregroundStyle(isSelected ? TFTheme.yellow : .white.opacity(0.4))
-                } else {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.3))
                 }
+                // MARK: - HIDDEN: Chevron removed for consistency with other tiles
+                // else {
+                //     Image(systemName: "chevron.right")
+                //         .font(.system(size: 14, weight: .medium))
+                //         .foregroundStyle(.white.opacity(0.3))
+                // }
             }
             .padding(16)
             .tfDynamicCard(cornerRadius: 14)

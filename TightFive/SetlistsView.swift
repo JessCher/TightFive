@@ -73,20 +73,24 @@ private struct SetlistMenuTile: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            if isAsset {
-                Image(iconName)
-                    .renderingMode(.original)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 34, height: 34)
-            } else {
-                Image(systemName: iconName)
-                    .appFont(size: 22, weight: .semibold)
-                    .foregroundStyle(TFTheme.yellow)
-                    .frame(width: 34, height: 34)
-            }
+            // MARK: - HIDDEN: Custom Icons
+            // Hiding: IconInProgress, IconFinishedSetlist
+            // if isAsset {
+            //     Image(iconName)
+            //         .renderingMode(.original)
+            //         .resizable()
+            //         .scaledToFit()
+            //         .frame(width: 34, height: 34)
+            // } else {
+            //     Image(systemName: iconName)
+            //         .appFont(size: 22, weight: .semibold)
+            //         .foregroundStyle(TFTheme.yellow)
+            //         .frame(width: 34, height: 34)
+            // }
 
-            VStack(alignment: .leading, spacing: 4) {
+            Spacer()
+
+            VStack(alignment: .center, spacing: 4) {
                 Text(title)
                     .appFont(.headline)
                     .foregroundStyle(.white)
@@ -94,13 +98,10 @@ private struct SetlistMenuTile: View {
                 Text(subtitle)
                     .appFont(.subheadline)
                     .foregroundStyle(.white.opacity(0.62))
+                    .multilineTextAlignment(.center)
             }
 
             Spacer()
-
-            Image(systemName: "chevron.right")
-                .appFont(size: 14, weight: .semibold)
-                .foregroundStyle(.white.opacity(0.28))
         }
         .padding(.vertical, 18)
         .padding(.horizontal, 16)

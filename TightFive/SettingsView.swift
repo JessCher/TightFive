@@ -11,6 +11,10 @@ struct SettingsView: View {
     @State private var appGritLevel: Double = AppSettings.shared.appGritLevel
     @State private var selectedAppFont: AppFont = AppSettings.shared.appFont
     
+    // Font customization
+    @State private var appFontColor: Color = Color(hex: AppSettings.shared.appFontColorHex) ?? .white
+    @State private var appFontSizeMultiplier: Double = AppSettings.shared.appFontSizeMultiplier
+    
     // Quick Bit advanced customization
     @State private var quickBitCustomColor: Color = Color(hex: AppSettings.shared.quickBitCustomColorHex) ?? Color("TFYellow")
     @State private var quickBitGritEnabled: Bool = AppSettings.shared.quickBitGritEnabled
@@ -562,19 +566,95 @@ struct SettingsView: View {
                 .onChange(of: selectedAppFont) { _, newValue in
                     AppSettings.shared.appFont = newValue
                 }
+                
+                // Font Color Picker
+                VStack(alignment: .leading, spacing: 8) {
+                    ColorPicker("Font Color", selection: $appFontColor, supportsOpacity: false)
+                        .onChange(of: appFontColor) { _, newValue in
+                            if let hex = newValue.toHex() {
+                                AppSettings.shared.appFontColorHex = hex
+                            }
+                        }
+                    
+                    Text("Current: \(AppSettings.shared.appFontColorHex)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("", text: Binding(
+                        get: { AppSettings.shared.appFontColorHex },
+                        set: { newValue in
+                            AppSettings.shared.appFontColorHex = newValue
+                            if let color = Color(hex: newValue) {
+                                appFontColor = color
+                            }
+                        }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                }
+                
+                // Font Size Slider
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Font Size")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        Text("\(Int(appFontSizeMultiplier * 100))%")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    HStack(spacing: 12) {
+                        Text("Small")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        Slider(value: $appFontSizeMultiplier, in: 0.8...1.4, step: 0.05)
+                            .tint(TFTheme.yellow)
+                            .onChange(of: appFontSizeMultiplier) { _, newValue in
+                                AppSettings.shared.appFontSizeMultiplier = newValue
+                            }
+                        
+                        Text("Large")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Button("Reset to Default (100%)") {
+                        appFontSizeMultiplier = 1.0
+                        AppSettings.shared.appFontSizeMultiplier = 1.0
+                    }
+                    .font(.caption)
+                    .foregroundStyle(TFTheme.yellow)
+                }
+                .padding(.vertical, 4)
             } header: {
                 Text("Theme Customization")
             } footer: {
-                Text("Customize the appearance of tile cards and the Quick Bit button throughout the app. The Grit Level controls texture density for these elements only.")
+                Text("Customize the appearance of tile cards, Quick Bit button, fonts, and colors throughout the app. The Grit Level controls texture density for these elements only.")
             }
             
             // Theme Preview section
             Section {
                 VStack(spacing: 16) {
+                    Text("Font Preview")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    FontPreview(
+                        appFont: selectedAppFont,
+                        fontColor: appFontColor,
+                        fontSizeMultiplier: appFontSizeMultiplier
+                    )
+                    
                     Text("Quick Bit Button Preview")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.white.opacity(0.6))
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 8)
                     
                     QuickBitButtonPreview(
                         theme: selectedQuickBitTheme,
@@ -1260,10 +1340,58 @@ private struct ColorPickerSheet: View {
                     .foregroundStyle(Color("TFYellow"))
                 }
             }
-            .onAppear {
-                hexInput = selectedColor.toHex() ?? "#3A3A3A"
+        }
+    }
+}
+
+// MARK: - Font Preview
+
+private struct FontPreview: View {
+    let appFont: AppFont
+    let fontColor: Color
+    let fontSizeMultiplier: Double
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Sample Text")
+                .font(appFont.font(size: 20 * fontSizeMultiplier).weight(.bold))
+                .foregroundStyle(fontColor)
+            
+            Text("This is how your custom font, color, and size will appear throughout the app. The quick brown fox jumps over the lazy dog.")
+                .font(appFont.font(size: 15 * fontSizeMultiplier))
+                .foregroundStyle(fontColor.opacity(0.85))
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+            
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Font")
+                        .font(.caption2)
+                        .foregroundStyle(fontColor.opacity(0.5))
+                    Text(appFont.displayName)
+                        .font(.caption)
+                        .foregroundStyle(fontColor.opacity(0.7))
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("Size")
+                        .font(.caption2)
+                        .foregroundStyle(fontColor.opacity(0.5))
+                    Text("\(Int(fontSizeMultiplier * 100))%")
+                        .font(.caption)
+                        .foregroundStyle(fontColor.opacity(0.7))
+                }
             }
         }
+        .padding(16)
+        .background(Color("TFCard"))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Color("TFCardStroke").opacity(0.6), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
 
