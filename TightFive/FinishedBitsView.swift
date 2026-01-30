@@ -17,6 +17,7 @@ struct FinishedBitsView: View {
 
     @State private var query: String = ""
     @State private var showQuickBit = false
+    @State private var selectedBit: Bit?
     
     private var title: String {
         return "Finished Bits"
@@ -44,60 +45,57 @@ struct FinishedBitsView: View {
                         .padding(.top, 40)
                 } else {
                     ForEach(filtered) { bit in
-                        NavigationLink(value: bit) {
+                        // Use BitSwipeView with custom share action
+                        BitSwipeView(
+                            bit: bit,
+                            onFinish: {
+                                // For finished bits, "finish" action becomes "share"
+                                shareBit(bit)
+                            },
+                            onDelete: {
+                                withAnimation(.snappy) { softDeleteBit(bit) }
+                            },
+                            onTap: {
+                                selectedBit = bit
+                            }
+                        ) {
                             // The Card Itself
                             BitCardRow(bit: bit)
                                 .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            // Favorite/Unfavorite action
-                            Button {
-                                withAnimation {
-                                    bit.isFavorite.toggle()
-                                    bit.updatedAt = Date()
-                                    try? modelContext.save()
-                                }
-                            } label: {
-                                Label(
-                                    bit.isFavorite ? "Unfavorite" : "Favorite",
-                                    systemImage: bit.isFavorite ? "star.slash" : "star.fill"
-                                )
-                            }
-                            
-                            // Share action
-                            Button {
-                                shareBit(bit)
-                            } label: {
-                                Label("Share", systemImage: "square.and.arrow.up")
-                            }
-                            
-                            if inProgressSetlists.isEmpty {
-                                Text("No in-progress setlists")
-                            } else {
-                                Menu("Add to setlist…") {
-                                    ForEach(inProgressSetlists) { setlist in
-                                        Button(setlist.title.isEmpty ? "Untitled Set" : setlist.title) {
-                                            add(bit: bit, to: setlist)
+                                .contextMenu {
+                                    // Favorite/Unfavorite action
+                                    Button {
+                                        withAnimation {
+                                            bit.isFavorite.toggle()
+                                            bit.updatedAt = Date()
+                                            try? modelContext.save()
+                                        }
+                                    } label: {
+                                        Label(
+                                            bit.isFavorite ? "Unfavorite" : "Favorite",
+                                            systemImage: bit.isFavorite ? "star.slash" : "star.fill"
+                                        )
+                                    }
+                                    
+                                    // Share action
+                                    Button {
+                                        shareBit(bit)
+                                    } label: {
+                                        Label("Share", systemImage: "square.and.arrow.up")
+                                    }
+                                    
+                                    if inProgressSetlists.isEmpty {
+                                        Text("No in-progress setlists")
+                                    } else {
+                                        Menu("Add to setlist…") {
+                                            ForEach(inProgressSetlists) { setlist in
+                                                Button(setlist.title.isEmpty ? "Untitled Set" : setlist.title) {
+                                                    add(bit: bit, to: setlist)
+                                                }
+                                            }
                                         }
                                     }
                                 }
-                            }
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                withAnimation(.snappy) { softDeleteBit(bit) }
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            Button {
-                                shareBit(bit)
-                            } label: {
-                                Label("Share", systemImage: "square.and.arrow.up")
-                            }
-                            .tint(TFTheme.yellow)
                         }
                     }
                 }
@@ -110,7 +108,7 @@ struct FinishedBitsView: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query, prompt: "Search bits")
-        .navigationDestination(for: Bit.self) { bit in
+        .navigationDestination(item: $selectedBit) { bit in
             BitDetailView(bit: bit)
         }
         .toolbar {

@@ -288,20 +288,20 @@ struct BitSwipeView<Content: View>: View {
             // Background Layer (The Actions)
             GeometryReader { geo in
                 HStack(spacing: 0) {
-                    // LEFT SIDE (Swipe Right -> Finish) - only for loose bits
-                    if bit.status == .loose {
-                        ZStack(alignment: .leading) {
-                            TFTheme.yellow
-                            Image(systemName: "checkmark.seal.fill")
-                                .appFont(.title2)
-                                .foregroundColor(.black)
-                                .padding(.leading, 30)
-                                .scaleEffect(offset > 0 ? 1.0 : 0.001)
-                                .opacity(offset > 0 ? 1 : 0)
-                        }
-                        .frame(width: geo.size.width / 2)
-                        .offset(x: offset > 0 ? 0 : -geo.size.width / 2)
+                    // LEFT SIDE (Swipe Right)
+                    // - Loose bits: Finish action with checkmark
+                    // - Finished bits: Share action with share icon
+                    ZStack(alignment: .leading) {
+                        TFTheme.yellow
+                        Image(systemName: bit.status == .loose ? "checkmark.seal.fill" : "square.and.arrow.up")
+                            .appFont(.title2)
+                            .foregroundColor(.black)
+                            .padding(.leading, 30)
+                            .scaleEffect(offset > 0 ? 1.0 : 0.001)
+                            .opacity(offset > 0 ? 1 : 0)
                     }
+                    .frame(width: geo.size.width / 2)
+                    .offset(x: offset > 0 ? 0 : -geo.size.width / 2)
 
                     // RIGHT SIDE (Swipe Left -> Delete)
                     ZStack(alignment: .trailing) {
@@ -333,12 +333,7 @@ struct BitSwipeView<Content: View>: View {
                             if abs(translation) > vertical * 1.5 {
                                 isSwiping = true
                                 withAnimation(.interactiveSpring(response: 0.3, dampingFraction: 0.8)) {
-                                    // For finished bits, only allow left swipe (delete)
-                                    if bit.status == .finished && translation > 0 {
-                                        offset = 0
-                                    } else {
-                                        offset = translation
-                                    }
+                                    offset = translation
                                 }
                             }
                         }
@@ -347,8 +342,10 @@ struct BitSwipeView<Content: View>: View {
                             
                             let translation = value.translation.width
                             withAnimation(.snappy) {
-                                if translation > actionThreshold && bit.status == .loose {
-                                    // Swipe Right -> Finish (only for loose bits)
+                                if translation > actionThreshold {
+                                    // Swipe Right
+                                    // - Loose bits: Finish
+                                    // - Finished bits: Share
                                     onFinish()
                                     offset = 0
                                 } else if translation < -actionThreshold {
