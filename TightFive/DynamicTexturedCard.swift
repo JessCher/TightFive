@@ -1,33 +1,19 @@
 import SwiftUI
-import Combine
 
-// MARK: - 2. The Dynamic Grit Component (Low Power Mode)
-struct DynamicGritLayer: View {
+// MARK: - Static Grit Texture
+struct StaticGritLayer: View {
     var density: Int
     var opacity: Double
-    var speedMultiplier: CGFloat
     var seed: Int
-    var particleColor: Color = .white // New parameter with default
-    /// Set to false to freeze the grit in-place (no motion/animation).
-    var isAnimated: Bool = false
+    var particleColor: Color = .white
     
     var body: some View {
         Canvas { context, size in
             var rng = SeededRandomGenerator(seed: UInt64(seed))
             
-            // Offsets are zero, no motion
-            let xOffset: CGFloat = 0
-            let yOffset: CGFloat = 0
-            
-            context.translateBy(x: xOffset, y: yOffset)
-            
-            let w = size.width
-            let h = size.height
-            
             for _ in 0..<density {
-                // Expanded bounds to prevent clipping during tilt
-                let x = Double.random(in: -40...(w + 40), using: &rng)
-                let y = Double.random(in: -40...(h + 40), using: &rng)
+                let x = Double.random(in: 0...size.width, using: &rng)
+                let y = Double.random(in: 0...size.height, using: &rng)
                 let r = Double.random(in: 0.5...1.5, using: &rng)
                 
                 let rect = CGRect(x: x, y: y, width: r, height: r)
@@ -36,15 +22,13 @@ struct DynamicGritLayer: View {
         }
         .opacity(opacity)
         .blendMode(.overlay)
-        // SAFETY FIX: Composites the view into an off-screen image before display
-        // drastically reducing GPU strain for complex shapes.
         .drawingGroup()
         .allowsHitTesting(false)
     }
 }
 
-// MARK: - 3. The Card Modifier (Optimized)
-struct DynamicCardModifier: ViewModifier {
+// MARK: - Textured Card Modifier
+struct TexturedCardModifier: ViewModifier {
     var color: Color
     var cornerRadius: CGFloat
     
@@ -54,19 +38,16 @@ struct DynamicCardModifier: ViewModifier {
                 ZStack {
                     color
                     
-                    // SAFETY FIX: Reduced density from 800 -> 120
-                    DynamicGritLayer(
-                        density: 500,
-                        opacity: 0.15,
-                        speedMultiplier: 0.5,
-                        seed: 1234
+                    StaticGritLayer(
+                        density: 300,
+                        opacity: 0.55,
+                        seed: 1234,
+                        particleColor: Color("TFYellow")
                     )
                     
-                    // SAFETY FIX: Reduced density from 300 -> 60
-                    DynamicGritLayer(
-                        density: 150,
+                    StaticGritLayer(
+                        density: 300,
                         opacity: 0.35,
-                        speedMultiplier: 1.2,
                         seed: 5678
                     )
                     
@@ -92,10 +73,10 @@ struct DynamicCardModifier: ViewModifier {
     }
 }
 
-// MARK: - 4. View Extension
+// MARK: - View Extension
 extension View {
     func tfDynamicCard(color: Color = Color("TFCard"), cornerRadius: CGFloat = 20) -> some View {
-        self.modifier(DynamicCardModifier(color: color, cornerRadius: cornerRadius))
+        self.modifier(TexturedCardModifier(color: color, cornerRadius: cornerRadius))
     }
 }
 

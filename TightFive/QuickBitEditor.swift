@@ -105,18 +105,16 @@ struct QuickBitEditor: View {
                     // Dynamic dust layers (only when not recording) - MATCHES YOUR CARDS
                     if !speech.isRecording {
                         // Coarse dust layer
-                        DynamicGritLayer(
+                        StaticGritLayer(
                             density: 60,
                             opacity: 0.12,
-                            speedMultiplier: 0.4,
                             seed: 9991
                         )
                         
                         // Fine dust layer
-                        DynamicGritLayer(
+                        StaticGritLayer(
                             density: 40,
                             opacity: 0.25,
-                            speedMultiplier: 0.8,
                             seed: 9992
                         )
                     }

@@ -22,18 +22,10 @@ struct TFWordmarkTitle: View {
             Text(first)
                 .font(.custom("Chalkduster", size: size))
                 .foregroundStyle(.white)
-                .shadow(color: .black, radius: 0, x: -1, y: -1)
-                .shadow(color: .black, radius: 0, x: 1, y: -1)
-                .shadow(color: .black, radius: 0, x: -1, y: 1)
-                .shadow(color: .black, radius: 0, x: 1, y: 1)
             if let second {
                 Text(second)
                     .font(.custom("Chalkduster", size: size))
                     .foregroundStyle(Color("TFYellow"))
-                    .shadow(color: .black, radius: 0, x: -1, y: -1)
-                    .shadow(color: .black, radius: 0, x: 1, y: -1)
-                    .shadow(color: .black, radius: 0, x: -1, y: 1)
-                    .shadow(color: .black, radius: 0, x: 1, y: 1)
             }
         }
         .kerning(1.0)
@@ -51,3 +43,4 @@ struct TFWordmarkTitle: View {
     .padding()
     .background(Color.black)
 }
+

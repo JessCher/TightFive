@@ -9,8 +9,7 @@ struct SetlistsView: View {
     @State private var newlyCreated: Setlist?
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
+        VStack(spacing: 20) {
                 NavigationLink {
                     InProgressSetlistsView()
                 } label: {
@@ -62,7 +61,6 @@ struct SetlistsView: View {
             .navigationDestination(item: $newlyCreated) { set in
                 SetlistBuilderView(setlist: set)
             }
-        }
     }
 }
 

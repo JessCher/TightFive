@@ -77,7 +77,6 @@
 				StageModeView.swift = (ios, );
 				StageTeleprompterEngine.swift = (ios, );
 				TFBackground.swift = (ios, );
-				TFBackgroundView.swift = (ios, );
 				TFIcons.swift = (ios, );
 				TFTheme.swift = (ios, );
 				TFWordmarkTitle.swift = (ios, );

@@ -7,7 +7,7 @@ class AppSettings {
     /// Shared singleton instance
     static let shared = AppSettings()
     
-    /// Bit card frame color for shareable cards
+    /// Bit card frame color for shareable cards (background/border)
     var bitCardFrameColor: BitCardFrameColor {
         get {
             guard let rawValue = UserDefaults.standard.string(forKey: "bitCardFrameColor"),
@@ -18,6 +18,34 @@ class AppSettings {
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: "bitCardFrameColor")
+        }
+    }
+    
+    /// Bit card bottom bar color for shareable cards
+    var bitCardBottomBarColor: BitCardFrameColor {
+        get {
+            guard let rawValue = UserDefaults.standard.string(forKey: "bitCardBottomBarColor"),
+                  let color = BitCardFrameColor(rawValue: rawValue) else {
+                return .default
+            }
+            return color
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: "bitCardBottomBarColor")
+        }
+    }
+    
+    /// Bit window theme for the text area of shareable cards
+    var bitWindowTheme: BitWindowTheme {
+        get {
+            guard let rawValue = UserDefaults.standard.string(forKey: "bitWindowTheme"),
+                  let theme = BitWindowTheme(rawValue: rawValue) else {
+                return .chalkboard
+            }
+            return theme
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: "bitWindowTheme")
         }
     }
     
@@ -66,3 +94,25 @@ enum BitCardFrameColor: String, CaseIterable, Identifiable {
         }
     }
 }
+/// Available themes for the bit window (text area) on shareable cards
+enum BitWindowTheme: String, CaseIterable, Identifiable {
+    case chalkboard = "chalkboard"
+    case yellowGrit = "yellowGrit"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .chalkboard: return "Chalkboard"
+        case .yellowGrit: return "Yellow Notepad"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .chalkboard: return "Dark with subtle texture"
+        case .yellowGrit: return "Warm yellow with grit"
+        }
+    }
+}
+

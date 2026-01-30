@@ -1,5 +1,4 @@
 import Foundation
-
 import UIKit
 typealias TFColor = UIColor
 typealias TFFont = UIFont

@@ -25,8 +25,7 @@ struct ShowNotesView: View {
     @State private var selectedIDs: Set<UUID> = []
     
     var body: some View {
-        NavigationStack {
-            Group {
+        Group {
                 if performances.isEmpty {
                     emptyState
                 } else {
@@ -88,7 +87,6 @@ struct ShowNotesView: View {
             .sheet(isPresented: $showCreateNote) {
                 CreateShowNoteView()
             }
-        }
     }
     
     private var emptyState: some View {

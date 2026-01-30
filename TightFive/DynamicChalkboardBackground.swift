@@ -11,7 +11,7 @@ struct DynamicChalkboardBackground: View {
 
     // MARK: - Tunables (PERFORMANCE OPTIMIZED)
     private let dustCount = 800        // Reduced from 1200
-    private let clumpCount = 50        // Reduced from 80
+    private let clumpCount = 80        // Reduced from 80
     private let breatheSpeed = 0.25
     private let breatheAmplitude: CGFloat = 0.06
     
@@ -95,8 +95,9 @@ struct DynamicChalkboardBackground: View {
                     let rect = CGRect(x: cx - base/2, y: cy - base/2, width: base, height: base)
 
                     let gradient = Gradient(stops: [
-                        .init(color: .white.opacity(0.18), location: 0.0),
-                        .init(color: .white.opacity(0.03), location: 1.0)
+                        .init(color: .tfYellow.opacity(0.18), location: 0.50),
+                        .init(color: .blue.opacity(0.03), location: 1.0),
+                        .init(color: .white.opacity(0.03), location: 1.5),
                     ])
 
                     ctx.fill(

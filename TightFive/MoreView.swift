@@ -2,8 +2,7 @@ import SwiftUI
 
 struct MoreView: View {
     var body: some View {
-        NavigationStack {
-            ScrollView {
+        ScrollView {
                 VStack(spacing: 24) {
                     VStack(spacing: 8) {
                         Image("IconLogo")
@@ -72,7 +71,6 @@ struct MoreView: View {
                 }
             }
             .tfBackground()
-        }
     }
     
     private func settingsCard(icon: String, title: String, subtitle: String) -> some View {

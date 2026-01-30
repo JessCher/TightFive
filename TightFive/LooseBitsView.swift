@@ -26,9 +26,7 @@ struct LooseBitsView: View {
 
     @State private var query: String = ""
     @State private var showQuickBit = false
-    
-    // Navigation Path State for programmatic navigation (fixes gesture conflicts)
-    @State private var navigationPath = NavigationPath()
+    @State private var selectedBit: Bit?
 
     private var title: String {
         switch mode {
@@ -62,8 +60,7 @@ struct LooseBitsView: View {
     }
 
     var body: some View {
-        NavigationStack(path: $navigationPath) {
-            ScrollView {
+        ScrollView {
                 VStack(spacing: 12) {
                     if filtered.isEmpty {
                         emptyState
@@ -80,8 +77,8 @@ struct LooseBitsView: View {
                                     withAnimation(.snappy) { softDeleteBit(bit) }
                                 },
                                 onTap: {
-                                    // Handle navigation manually to avoid gesture conflict
-                                    navigationPath.append(bit)
+                                    // Handle navigation with state binding
+                                    selectedBit = bit
                                 }
                             ) {
                                 // The Card Itself
@@ -138,7 +135,7 @@ struct LooseBitsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: "Search bits")
             // Handle Navigation Destination here
-            .navigationDestination(for: Bit.self) { bit in
+            .navigationDestination(item: $selectedBit) { bit in
                 BitDetailView(bit: bit)
             }
             .toolbar {
@@ -168,7 +165,6 @@ struct LooseBitsView: View {
                 QuickBitEditor()
                     .presentationDetents([.medium, .large])
             }
-        }
         .hideKeyboardInteractively()
     }
 
@@ -836,29 +832,114 @@ private struct BitShareCard: View {
     let bit: Bit
     let userName: String
     let frameColor: Color
+    let bottomBarColor: Color
+    let windowTheme: BitWindowTheme
     
     init(bit: Bit, userName: String) {
         self.bit = bit
         self.userName = userName
         self.frameColor = AppSettings.shared.bitCardFrameColor.color
+        self.bottomBarColor = AppSettings.shared.bitCardBottomBarColor.color
+        self.windowTheme = AppSettings.shared.bitWindowTheme
     }
     
     var body: some View {
         VStack(spacing: 0) {
-            // Main content area with dynamic card texture
+            // Main content area with dynamic card texture - rounded only at top
             VStack(alignment: .leading, spacing: 16) {
                 // Bit text only (no title or tags)
                 Text(bit.text)
                     .font(.system(size: 18))
-                    .foregroundStyle(.white.opacity(0.95))
+                    .foregroundStyle(windowTheme == .chalkboard ? .white.opacity(0.95) : .black.opacity(0.85))
                     .fixedSize(horizontal: false, vertical: true)
                     .lineSpacing(4)
             }
-            .frame(maxWidth: 500)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(32)
-            .tfDynamicCard(cornerRadius: 0)
+            .background(
+                ZStack {
+                    if windowTheme == .chalkboard {
+                        // Original chalkboard theme
+                        Color("TFCard")
+                        
+                        StaticGritLayer(
+                            density: 300,
+                            opacity: 0.55,
+                            seed: 1234,
+                            particleColor: Color("TFYellow")
+                        )
+                        
+                        StaticGritLayer(
+                            density: 300,
+                            opacity: 0.35,
+                            seed: 5678
+                        )
+                    } else {
+                        // Yellow grit theme (matches Quick Bit button)
+                        Color("TFYellow")
+                        
+                        StaticGritLayer(
+                            density: 800,
+                            opacity: 0.85,
+                            seed: 7777,
+                            particleColor: .brown
+                        )
+                        
+                        StaticGritLayer(
+                            density: 100,
+                            opacity: 0.88,
+                            seed: 8888,
+                            particleColor: .black
+                        )
+                        
+                        StaticGritLayer(
+                            density: 400,
+                            opacity: 0.88,
+                            seed: 8888,
+                            particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
+                        )
+                    }
+                    
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 12,
+                        bottomLeadingRadius: 0,
+                        bottomTrailingRadius: 0,
+                        topTrailingRadius: 12,
+                        style: .continuous
+                    )
+                    .fill(
+                        RadialGradient(
+                            colors: [.clear, .black.opacity(windowTheme == .chalkboard ? 0.3 : 0.15)],
+                            center: .center,
+                            startRadius: 50,
+                            endRadius: 400
+                        )
+                    )
+                }
+                .clipShape(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 12,
+                        bottomLeadingRadius: 0,
+                        bottomTrailingRadius: 0,
+                        topTrailingRadius: 12,
+                        style: .continuous
+                    )
+                )
+            )
+            .overlay(
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 12,
+                    bottomLeadingRadius: 0,
+                    bottomTrailingRadius: 0,
+                    topTrailingRadius: 12,
+                    style: .continuous
+                )
+                .strokeBorder(Color("TFCardStroke"), lineWidth: 1.5)
+                .opacity(0.9)
+                .blendMode(.overlay)
+            )
             
-            // Polaroid-style bar at the bottom - use same color variable
+            // Polaroid-style bar at the bottom - rounded only at bottom
             VStack(spacing: 4) {
                 TFWordmarkTitle(title: "written in TightFive", size: 16)
                 
@@ -870,16 +951,21 @@ private struct BitShareCard: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
-            .background(frameColor)
+            .background(
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 0,
+                    bottomLeadingRadius: 12,
+                    bottomTrailingRadius: 12,
+                    topTrailingRadius: 0,
+                    style: .continuous
+                )
+                .fill(bottomBarColor)
+            )
         }
         .frame(width: 500)
+        .padding(12) // This creates the frame effect around everything
         .background(frameColor)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
-            // Thin polaroid-style frame around the entire card - use same color variable
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(frameColor, lineWidth: 12)
-        )
         .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUI
 import SwiftData
 
 /// Analytics Dashboard - Shows AI-powered performance insights
