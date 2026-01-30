@@ -2,6 +2,7 @@ import Foundation
 import Speech
 import AVFoundation
 import Combine
+import SwiftUI
 
 /// Continuous speech recognition engine for Teleprompter Stage Mode.
 /// - Publishes partial transcripts continuously (no restarts).

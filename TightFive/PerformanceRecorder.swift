@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import Combine
+import SwiftUI
 
 /// Audio recording service for Stage Mode performances.
 ///

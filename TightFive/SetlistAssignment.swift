@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import SwiftUI
 
 /// A bit's appearance in a setlist, stored as an immutable snapshot.
 ///

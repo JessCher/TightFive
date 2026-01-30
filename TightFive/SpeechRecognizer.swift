@@ -2,6 +2,7 @@ import Foundation
 import Speech
 import AVFoundation
 import Combine
+import SwiftUI
 
 @MainActor
 class SpeechRecognizer: ObservableObject {

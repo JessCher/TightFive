@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// High-performance analytics engine for Stage Mode performances.
 /// Analyzes confidence trends, pace variations, and provides actionable insights.

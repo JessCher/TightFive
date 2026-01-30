@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import SwiftUI
 
 enum BitStatus: String, Codable, CaseIterable {
     case loose

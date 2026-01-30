@@ -516,42 +516,46 @@ private struct BitShareCard: View {
                         // Original chalkboard theme
                         Color("TFCard")
                         
-                        StaticGritLayer(
-                            density: 300,
-                            opacity: 0.55,
-                            seed: 1234,
-                            particleColor: Color("TFYellow")
-                        )
-                        
-                        StaticGritLayer(
-                            density: 300,
-                            opacity: 0.35,
-                            seed: 5678
-                        )
+                        if AppSettings.shared.bitCardGritLevel > 0 {
+                            StaticGritLayer(
+                                density: AppSettings.shared.adjustedBitCardGritDensity(300),
+                                opacity: 0.55,
+                                seed: 1234,
+                                particleColor: Color("TFYellow")
+                            )
+                            
+                            StaticGritLayer(
+                                density: AppSettings.shared.adjustedBitCardGritDensity(300),
+                                opacity: 0.35,
+                                seed: 5678
+                            )
+                        }
                     } else {
                         // Yellow grit theme (matches Quick Bit button)
                         Color("TFYellow")
                         
-                        StaticGritLayer(
-                            density: 800,
-                            opacity: 0.85,
-                            seed: 7777,
-                            particleColor: .brown
-                        )
-                        
-                        StaticGritLayer(
-                            density: 100,
-                            opacity: 0.88,
-                            seed: 8888,
-                            particleColor: .black
-                        )
-                        
-                        StaticGritLayer(
-                            density: 400,
-                            opacity: 0.88,
-                            seed: 8888,
-                            particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
-                        )
+                        if AppSettings.shared.bitCardGritLevel > 0 {
+                            StaticGritLayer(
+                                density: AppSettings.shared.adjustedBitCardGritDensity(800),
+                                opacity: 0.85,
+                                seed: 7777,
+                                particleColor: .brown
+                            )
+                            
+                            StaticGritLayer(
+                                density: AppSettings.shared.adjustedBitCardGritDensity(100),
+                                opacity: 0.88,
+                                seed: 8888,
+                                particleColor: .black
+                            )
+                            
+                            StaticGritLayer(
+                                density: AppSettings.shared.adjustedBitCardGritDensity(400),
+                                opacity: 0.88,
+                                seed: 8888,
+                                particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
+                            )
+                        }
                     }
                     
                     UnevenRoundedRectangle(
@@ -612,41 +616,45 @@ private struct BitShareCard: View {
                         if theme == .chalkboard {
                             Color("TFCard")
                             
-                            StaticGritLayer(
-                                density: 300,
-                                opacity: 0.55,
-                                seed: 1234,
-                                particleColor: Color("TFYellow")
-                            )
-                            
-                            StaticGritLayer(
-                                density: 300,
-                                opacity: 0.35,
-                                seed: 5678
-                            )
+                            if AppSettings.shared.bitCardGritLevel > 0 {
+                                StaticGritLayer(
+                                    density: AppSettings.shared.adjustedBitCardGritDensity(300),
+                                    opacity: 0.55,
+                                    seed: 1234,
+                                    particleColor: Color("TFYellow")
+                                )
+                                
+                                StaticGritLayer(
+                                    density: AppSettings.shared.adjustedBitCardGritDensity(300),
+                                    opacity: 0.35,
+                                    seed: 5678
+                                )
+                            }
                         } else {
                             Color("TFYellow")
                             
-                            StaticGritLayer(
-                                density: 800,
-                                opacity: 0.85,
-                                seed: 7777,
-                                particleColor: .brown
-                            )
-                            
-                            StaticGritLayer(
-                                density: 100,
-                                opacity: 0.88,
-                                seed: 8888,
-                                particleColor: .black
-                            )
-                            
-                            StaticGritLayer(
-                                density: 400,
-                                opacity: 0.88,
-                                seed: 8888,
-                                particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
-                            )
+                            if AppSettings.shared.bitCardGritLevel > 0 {
+                                StaticGritLayer(
+                                    density: AppSettings.shared.adjustedBitCardGritDensity(800),
+                                    opacity: 0.85,
+                                    seed: 7777,
+                                    particleColor: .brown
+                                )
+                                
+                                StaticGritLayer(
+                                    density: AppSettings.shared.adjustedBitCardGritDensity(100),
+                                    opacity: 0.88,
+                                    seed: 8888,
+                                    particleColor: .black
+                                )
+                                
+                                StaticGritLayer(
+                                    density: AppSettings.shared.adjustedBitCardGritDensity(400),
+                                    opacity: 0.88,
+                                    seed: 8888,
+                                    particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
+                                )
+                            }
                         }
                     }
                     
@@ -672,7 +680,59 @@ private struct BitShareCard: View {
         }
         .frame(width: 500)
         .padding(12) // This creates the frame effect around everything
-        .background(frameColor)
+        .background(
+            ZStack {
+                if AppSettings.shared.bitCardFrameColor.hasTexture, let theme = AppSettings.shared.bitCardFrameColor.textureTheme {
+                    // Render textured frame background
+                    if theme == .chalkboard {
+                        Color("TFCard")
+                        
+                        if AppSettings.shared.bitCardGritLevel > 0 {
+                            StaticGritLayer(
+                                density: AppSettings.shared.adjustedBitCardGritDensity(300),
+                                opacity: 0.55,
+                                seed: 9999,
+                                particleColor: Color("TFYellow")
+                            )
+                            
+                            StaticGritLayer(
+                                density: AppSettings.shared.adjustedBitCardGritDensity(300),
+                                opacity: 0.35,
+                                seed: 1111
+                            )
+                        }
+                    } else if theme == .yellowGrit {
+                        Color("TFYellow")
+                        
+                        if AppSettings.shared.bitCardGritLevel > 0 {
+                            StaticGritLayer(
+                                density: AppSettings.shared.adjustedBitCardGritDensity(800),
+                                opacity: 0.85,
+                                seed: 2222,
+                                particleColor: .brown
+                            )
+                            
+                            StaticGritLayer(
+                                density: AppSettings.shared.adjustedBitCardGritDensity(100),
+                                opacity: 0.88,
+                                seed: 3333,
+                                particleColor: .black
+                            )
+                            
+                            StaticGritLayer(
+                                density: AppSettings.shared.adjustedBitCardGritDensity(400),
+                                opacity: 0.88,
+                                seed: 4444,
+                                particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
+                            )
+                        }
+                    }
+                } else {
+                    // Solid color frame
+                    frameColor
+                }
+            }
+        )
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
     }

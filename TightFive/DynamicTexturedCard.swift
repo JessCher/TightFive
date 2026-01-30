@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 // MARK: - Static Grit Texture
 struct StaticGritLayer: View {
@@ -31,30 +32,98 @@ struct StaticGritLayer: View {
 struct TexturedCardModifier: ViewModifier {
     var color: Color
     var cornerRadius: CGFloat
+    @Environment(AppSettings.self) private var appSettings
     
     func body(content: Content) -> some View {
+        let _ = appSettings.updateTrigger // Force observation
+        let theme = appSettings.tileCardTheme
+        let gritLevel = appSettings.appGritLevel
+        let customColor = Color(hex: appSettings.tileCardCustomColorHex) ?? theme.baseColor
+        let gritEnabled = appSettings.tileCardGritEnabled
+        let gritLayer1 = Color(hex: appSettings.tileCardGritLayer1ColorHex) ?? Color("TFYellow")
+        let gritLayer2 = Color(hex: appSettings.tileCardGritLayer2ColorHex) ?? .white.opacity(0.3)
+        let gritLayer3 = Color(hex: appSettings.tileCardGritLayer3ColorHex) ?? .white.opacity(0.1)
+        
         content
             .background(
                 ZStack {
-                    color
-                    
-                    StaticGritLayer(
-                        density: 300,
-                        opacity: 0.55,
-                        seed: 1234,
-                        particleColor: Color("TFYellow")
-                    )
-                    
-                    StaticGritLayer(
-                        density: 300,
-                        opacity: 0.35,
-                        seed: 5678
-                    )
+                    // Use custom color if custom theme, otherwise use theme base color
+                    if theme == .custom {
+                        customColor
+                        
+                        // Apply custom grit layers if enabled
+                        if gritEnabled && gritLevel > 0 {
+                            StaticGritLayer(
+                                density: appSettings.adjustedAppGritDensity(300),
+                                opacity: 0.55,
+                                seed: 1234,
+                                particleColor: gritLayer1
+                            )
+                            
+                            StaticGritLayer(
+                                density: appSettings.adjustedAppGritDensity(300),
+                                opacity: 0.35,
+                                seed: 5678,
+                                particleColor: gritLayer2
+                            )
+                            
+                            StaticGritLayer(
+                                density: appSettings.adjustedAppGritDensity(200),
+                                opacity: 0.25,
+                                seed: 9999,
+                                particleColor: gritLayer3
+                            )
+                        }
+                    } else {
+                        // Use theme-based color
+                        theme.baseColor
+                        
+                        // Apply grit layers based on theme and grit level
+                        if gritLevel > 0 {
+                            if theme == .darkGrit {
+                                // Dark Grit theme layers
+                                StaticGritLayer(
+                                    density: appSettings.adjustedAppGritDensity(300),
+                                    opacity: 0.55,
+                                    seed: 1234,
+                                    particleColor: Color("TFYellow")
+                                )
+                                
+                                StaticGritLayer(
+                                    density: appSettings.adjustedAppGritDensity(300),
+                                    opacity: 0.35,
+                                    seed: 5678
+                                )
+                            } else if theme == .yellowGrit {
+                                // Yellow Grit theme layers
+                                StaticGritLayer(
+                                    density: appSettings.adjustedAppGritDensity(800),
+                                    opacity: 0.85,
+                                    seed: 7777,
+                                    particleColor: .brown
+                                )
+                                
+                                StaticGritLayer(
+                                    density: appSettings.adjustedAppGritDensity(100),
+                                    opacity: 0.88,
+                                    seed: 8888,
+                                    particleColor: .black
+                                )
+                                
+                                StaticGritLayer(
+                                    density: appSettings.adjustedAppGritDensity(400),
+                                    opacity: 0.88,
+                                    seed: 8888,
+                                    particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
+                                )
+                            }
+                        }
+                    }
                     
                     RoundedRectangle(cornerRadius: cornerRadius)
                         .fill(
                             RadialGradient(
-                                colors: [.clear, .black.opacity(0.3)],
+                                colors: [.clear, .black.opacity(theme == .darkGrit ? 0.3 : 0.15)],
                                 center: .center,
                                 startRadius: 50,
                                 endRadius: 400

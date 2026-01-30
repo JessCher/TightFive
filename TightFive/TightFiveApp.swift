@@ -11,6 +11,7 @@ struct TightFiveApp: App {
         WindowGroup {
             ContentView()
                 .tint(TFTheme.yellow)
+                .environment(AppSettings.shared)
         }
         .modelContainer(for: [
             Bit.self,

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import SwiftUI
 
 /// A recorded comedy performance with audio and metadata.
 @Model

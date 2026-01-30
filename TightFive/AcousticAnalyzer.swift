@@ -1,6 +1,7 @@
 import Foundation
 import Accelerate
 import AVFoundation
+import SwiftUI
 
 /// High-performance acoustic feature analyzer for real-time voice analysis.
 /// Detects emphasis, questions, energy levels using efficient signal processing.

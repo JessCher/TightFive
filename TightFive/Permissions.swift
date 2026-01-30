@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import Speech
+import SwiftUI
 
 enum Permissions {
 

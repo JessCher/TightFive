@@ -2,6 +2,7 @@ import Foundation
 import Speech
 import AVFoundation
 import Combine
+import SwiftUI
 
 /// Speech recognition for Stage Mode anchor phrase detection.
 ///

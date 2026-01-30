@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Bridges TeleprompterScrollTracker (voice matching) with ContinuousScrollEngine (auto-scroll)
 /// 

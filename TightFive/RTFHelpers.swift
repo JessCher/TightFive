@@ -1,5 +1,7 @@
 import Foundation
 import UIKit
+import SwiftUI
+
 typealias TFColor = UIColor
 typealias TFFont = UIFont
 

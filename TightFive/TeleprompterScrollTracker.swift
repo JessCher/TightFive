@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Converts partial speech transcript into a stable "current line index".
 ///

@@ -1,7 +1,9 @@
 import SwiftUI
+import Combine
 
 struct HomeView: View {
     @State private var showQuickBit = false
+    @Environment(AppSettings.self) private var appSettings
 
     var body: some View {
         ScrollView {
@@ -91,39 +93,112 @@ struct HomeView: View {
     }
 
     private var quickBitButton: some View {
-        Button {
+        let _ = appSettings.updateTrigger // Force observation
+        let theme = appSettings.quickBitTheme
+        let gritLevel = appSettings.appGritLevel
+        let customColor = Color(hex: appSettings.quickBitCustomColorHex) ?? theme.baseColor
+        let gritEnabled = appSettings.quickBitGritEnabled
+        let gritLayer1 = Color(hex: appSettings.quickBitGritLayer1ColorHex) ?? .brown
+        let gritLayer2 = Color(hex: appSettings.quickBitGritLayer2ColorHex) ?? .black
+        let gritLayer3 = Color(hex: appSettings.quickBitGritLayer3ColorHex) ?? Color(red: 0.8, green: 0.4, blue: 0.0)
+        
+        // Determine text color based on theme or custom color
+        let textColor: Color = {
+            if theme == .custom {
+                // Calculate luminance for custom color
+                if let components = UIColor(customColor).cgColor.components, components.count >= 3 {
+                    let r = components[0]
+                    let g = components[1]
+                    let b = components[2]
+                    let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                    return luminance > 0.5 ? .black.opacity(0.85) : .white
+                }
+                return .white
+            }
+            return theme == .darkGrit ? .white : .black.opacity(0.85)
+        }()
+        
+        return Button {
             showQuickBit = true
         } label: {
             ZStack {
-                // Base yellow background
-                Color("TFYellow")
+                // Use custom color if custom theme, otherwise use theme base color
+                if theme == .custom {
+                    customColor
+                    
+                    // Apply custom grit layers if enabled
+                    if gritEnabled && gritLevel > 0 {
+                        StaticGritLayer(
+                            density: appSettings.adjustedAppGritDensity(800),
+                            opacity: 0.85,
+                            seed: 9001,
+                            particleColor: gritLayer1
+                        )
+                        
+                        StaticGritLayer(
+                            density: appSettings.adjustedAppGritDensity(100),
+                            opacity: 0.88,
+                            seed: 9002,
+                            particleColor: gritLayer2
+                        )
+                        
+                        StaticGritLayer(
+                            density: appSettings.adjustedAppGritDensity(400),
+                            opacity: 0.88,
+                            seed: 9003,
+                            particleColor: gritLayer3
+                        )
+                    }
+                } else {
+                    // Base color from theme
+                    theme.baseColor
+                    
+                    // Apply grit layers based on grit enabled setting and grit level
+                    if gritLevel > 0 {
+                        if theme == .darkGrit {
+                            // Dark Grit theme layers
+                            StaticGritLayer(
+                                density: appSettings.adjustedAppGritDensity(300),
+                                opacity: 0.55,
+                                seed: 1234,
+                                particleColor: Color("TFYellow")
+                            )
+                            
+                            StaticGritLayer(
+                                density: appSettings.adjustedAppGritDensity(300),
+                                opacity: 0.35,
+                                seed: 5678
+                            )
+                        } else if theme == .yellowGrit {
+                            // Yellow Grit theme layers
+                            StaticGritLayer(
+                                density: appSettings.adjustedAppGritDensity(800),
+                                opacity: 0.85,
+                                seed: 7777,
+                                particleColor: .brown
+                            )
+                            
+                            StaticGritLayer(
+                                density: appSettings.adjustedAppGritDensity(100),
+                                opacity: 0.88,
+                                seed: 8888,
+                                particleColor: .black
+                            )
+                            
+                            StaticGritLayer(
+                                density: appSettings.adjustedAppGritDensity(400),
+                                opacity: 0.88,
+                                seed: 8888,
+                                particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
+                            )
+                        }
+                    }
+                }
                 
-                // Dynamic dust layers with BLACK particles for yellow background
-                StaticGritLayer(
-                    density: 800,
-                    opacity: 0.85,
-                    seed: 7777,
-                    particleColor: .brown
-                )
-                
-                StaticGritLayer(
-                    density: 100,
-                    opacity: 0.88,
-                    seed: 8888,
-                    particleColor: .black
-                )
-                
-                StaticGritLayer(
-                    density: 400,
-                    opacity: 0.88,
-                    seed: 8888,
-                    particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
-                )
-                
-                // Button text on top
+                // Button text on top (adjust color based on background brightness)
                 Text("Quick Bit")
-                    .font(.title.weight(.bold))
-                    .foregroundStyle(.black)
+                    .font(appSettings.appFont.font(size: 28).weight(.bold))
+                    .foregroundStyle(textColor)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 125) // Explicit height for hero button
@@ -135,7 +210,7 @@ struct HomeView: View {
                     .blendMode(.overlay)
             )
             .shadow(color: .black.opacity(0.8), radius: 10, x: 0, y: 8)
-            .shadow(color: Color("TFYellow").opacity(0.15), radius: 12, x: 0, y: 0)
+            .shadow(color: customColor.opacity(0.15), radius: 12, x: 0, y: 0)
         }
     }
 }
@@ -157,11 +232,11 @@ private struct HomeTile: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.headline)
+                    .appFont(.headline, weight: .semibold)
                     .foregroundStyle(.white)
                 
                 Text(subtitle)
-                    .font(.subheadline)
+                    .appFont(.subheadline)
                     .foregroundStyle(.white.opacity(0.62))
             }
             

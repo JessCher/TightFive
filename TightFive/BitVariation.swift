@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import SwiftUI
 
 /// Tracks how a bit evolves across different setlists.
 ///

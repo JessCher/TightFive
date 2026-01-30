@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import SwiftUI
 
 /// A comedy setlist - a performance script with modular bit insertion.
 ///

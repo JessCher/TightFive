@@ -19,13 +19,62 @@ struct TFWordmarkTitle: View {
     var body: some View {
         let (first, second) = parts
         HStack(spacing: 6) {
-            Text(first)
-                .font(.custom("Chalkduster", size: size))
-                .foregroundStyle(.white)
-            if let second {
-                Text(second)
+            ZStack {
+                // Stroke layer (black outline)
+                Text(first)
                     .font(.custom("Chalkduster", size: size))
-                    .foregroundStyle(Color("TFYellow"))
+                    .foregroundStyle(.black)
+                    .offset(x: -1, y: -1)
+                
+                Text(first)
+                    .font(.custom("Chalkduster", size: size))
+                    .foregroundStyle(.black)
+                    .offset(x: 1, y: -1)
+                
+                Text(first)
+                    .font(.custom("Chalkduster", size: size))
+                    .foregroundStyle(.black)
+                    .offset(x: -1, y: 1)
+                
+                Text(first)
+                    .font(.custom("Chalkduster", size: size))
+                    .foregroundStyle(.black)
+                    .offset(x: 1, y: 1)
+                
+                // Fill layer (white)
+                Text(first)
+                    .font(.custom("Chalkduster", size: size))
+                    .foregroundStyle(.white)
+            }
+            
+            if let second {
+                ZStack {
+                    // Stroke layer (black outline)
+                    Text(second)
+                        .font(.custom("Chalkduster", size: size))
+                        .foregroundStyle(.black)
+                        .offset(x: -1, y: -1)
+                    
+                    Text(second)
+                        .font(.custom("Chalkduster", size: size))
+                        .foregroundStyle(.black)
+                        .offset(x: 1, y: -1)
+                    
+                    Text(second)
+                        .font(.custom("Chalkduster", size: size))
+                        .foregroundStyle(.black)
+                        .offset(x: -1, y: 1)
+                    
+                    Text(second)
+                        .font(.custom("Chalkduster", size: size))
+                        .foregroundStyle(.black)
+                        .offset(x: 1, y: 1)
+                    
+                    // Fill layer (yellow)
+                    Text(second)
+                        .font(.custom("Chalkduster", size: size))
+                        .foregroundStyle(Color("TFYellow"))
+                }
             }
         }
         .kerning(1.0)
