@@ -117,11 +117,6 @@
 			path = TightFiveUITests;
 			sourceTree = "<group>";
 		};
-		888E401C2F20682C00678706 /* Fonts */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Fonts;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -152,7 +147,6 @@
 		888E3FCF2F20526900678706 = {
 			isa = PBXGroup;
 			children = (
-				888E401C2F20682C00678706 /* Fonts */,
 				888E3FDA2F20526900678706 /* TightFive */,
 				888E3FEA2F20526B00678706 /* TightFiveTests */,
 				888E3FF42F20526B00678706 /* TightFiveUITests */,
@@ -187,7 +181,6 @@
 			);
 			fileSystemSynchronizedGroups = (
 				888E3FDA2F20526900678706 /* TightFive */,
-				888E401C2F20682C00678706 /* Fonts */,
 			);
 			name = TightFive;
 			packageProductDependencies = (

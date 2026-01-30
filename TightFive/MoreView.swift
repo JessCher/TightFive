@@ -38,7 +38,11 @@ struct MoreView: View {
                             settingsCard(icon: "trash", title: "Trashcan", subtitle: "Recover deleted items")
                         }
                         
-                        settingsCard(icon: "gear", title: "Settings", subtitle: "Coming soon")
+                        NavigationLink {
+                            SettingsView()
+                        } label: {
+                            settingsCard(icon: "gear", title: "Settings", subtitle: "Customize your experience")
+                        }
                         settingsCard(icon: "externaldrive", title: "Storage", subtitle: Performance.formattedTotalStorage)
                         settingsCard(icon: "questionmark.circle", title: "Help", subtitle: "Probably not coming")
                     }

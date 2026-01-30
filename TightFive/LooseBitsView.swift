@@ -291,18 +291,20 @@ struct BitSwipeView<Content: View>: View {
             // Background Layer (The Actions)
             GeometryReader { geo in
                 HStack(spacing: 0) {
-                    // LEFT SIDE (Swipe Right -> Finish)
-                    ZStack(alignment: .leading) {
-                        TFTheme.yellow
-                        Image(systemName: bit.status == .loose ? "checkmark.seal.fill" : "tray.full.fill")
-                            .font(.title2)
-                            .foregroundColor(.black)
-                            .padding(.leading, 30)
-                            .scaleEffect(offset > 0 ? 1.0 : 0.001)
-                            .opacity(offset > 0 ? 1 : 0)
+                    // LEFT SIDE (Swipe Right -> Finish) - only for loose bits
+                    if bit.status == .loose {
+                        ZStack(alignment: .leading) {
+                            TFTheme.yellow
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.title2)
+                                .foregroundColor(.black)
+                                .padding(.leading, 30)
+                                .scaleEffect(offset > 0 ? 1.0 : 0.001)
+                                .opacity(offset > 0 ? 1 : 0)
+                        }
+                        .frame(width: geo.size.width / 2)
+                        .offset(x: offset > 0 ? 0 : -geo.size.width / 2)
                     }
-                    .frame(width: geo.size.width / 2)
-                    .offset(x: offset > 0 ? 0 : -geo.size.width / 2)
 
                     // RIGHT SIDE (Swipe Left -> Delete)
                     ZStack(alignment: .trailing) {
@@ -334,7 +336,12 @@ struct BitSwipeView<Content: View>: View {
                             if abs(translation) > vertical * 1.5 {
                                 isSwiping = true
                                 withAnimation(.interactiveSpring(response: 0.3, dampingFraction: 0.8)) {
-                                    offset = translation
+                                    // For finished bits, only allow left swipe (delete)
+                                    if bit.status == .finished && translation > 0 {
+                                        offset = 0
+                                    } else {
+                                        offset = translation
+                                    }
                                 }
                             }
                         }
@@ -343,8 +350,8 @@ struct BitSwipeView<Content: View>: View {
                             
                             let translation = value.translation.width
                             withAnimation(.snappy) {
-                                if translation > actionThreshold {
-                                    // Swipe Right -> Finish
+                                if translation > actionThreshold && bit.status == .loose {
+                                    // Swipe Right -> Finish (only for loose bits)
                                     onFinish()
                                     offset = 0
                                 } else if translation < -actionThreshold {
@@ -494,6 +501,19 @@ private struct UndoableTextEditor: UIViewRepresentable {
 
 private struct BitDetailView: View {
     @Bindable var bit: Bit
+    
+    var body: some View {
+        if bit.status == .finished {
+            FinishedBitDetailView(bit: bit)
+        } else {
+            LooseBitDetailView(bit: bit)
+        }
+    }
+}
+
+// MARK: - Loose Bit Detail View
+private struct LooseBitDetailView: View {
+    @Bindable var bit: Bit
     @State private var showVariationComparison = false
     @ObservedObject private var keyboard = TFKeyboardState.shared
     @Environment(\.undoManager) private var undoManager
@@ -593,6 +613,165 @@ private struct BitDetailView: View {
     }
 }
 
+// MARK: - Finished Bit Detail View
+private struct FinishedBitDetailView: View {
+    @Bindable var bit: Bit
+    @State private var showVariationComparison = false
+    @State private var showShareSheet = false
+    @ObservedObject private var keyboard = TFKeyboardState.shared
+    @Environment(\.undoManager) private var undoManager
+    @Environment(\.modelContext) private var modelContext
+    
+    private var displayTitle: String {
+        let trimmed = bit.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Add Bit Title" : trimmed
+    }
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                // Main Bit Card
+                VStack(alignment: .leading, spacing: 16) {
+                    TextField("Add Bit Title", text: $bit.title, axis: .vertical)
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(TFTheme.yellow)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .onChange(of: bit.title) { _, _ in
+                            bit.updatedAt = Date()
+                            try? modelContext.save()
+                        }
+                    
+                    Divider()
+                        .background(.white.opacity(0.2))
+                    
+                    // Editable text view that scales to content
+                    UndoableTextEditor(
+                        text: $bit.text,
+                        modelContext: modelContext,
+                        bit: bit,
+                        undoManager: undoManager
+                    )
+                    .frame(minHeight: 200)
+                }
+                .padding(20)
+                .tfDynamicCard(cornerRadius: 20)
+                
+                // Tags Card - Always show
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Tags")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    
+                    TagEditor(tags: $bit.tags) { updated in
+                        bit.tags = updated
+                        bit.updatedAt = Date()
+                        try? modelContext.save()
+                    }
+                }
+                .padding(20)
+                .tfDynamicCard(cornerRadius: 20)
+                
+                // Compare Variations Button
+                if !bit.variations.isEmpty {
+                    Button {
+                        showVariationComparison = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "doc.on.doc")
+                                .font(.headline)
+                            
+                            Text("Compare Variations")
+                                .font(.headline.weight(.semibold))
+                            
+                            Spacer()
+                            
+                            Text("\(bit.variationCount)")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(.black.opacity(0.15))
+                                .clipShape(Capsule())
+                        }
+                        .foregroundStyle(.black)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 18)
+                        .frame(maxWidth: .infinity)
+                        .background(TFTheme.yellow)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .strokeBorder(Color("TFCardStroke"), lineWidth: 1.5)
+                                .opacity(0.9)
+                                .blendMode(.overlay)
+                        )
+                        .shadow(color: .black.opacity(0.4), radius: 8, x: 0, y: 4)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 28)
+        }
+        .tfBackground()
+        .tfUndoRedoToolbar(isVisible: keyboard.isVisible)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                HStack(spacing: 12) {
+                    // Share button
+                    Button {
+                        shareBit(bit)
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .foregroundStyle(TFTheme.yellow)
+                    }
+                    
+                    // Favorite button
+                    Button {
+                        bit.isFavorite.toggle()
+                        bit.updatedAt = Date()
+                        try? modelContext.save()
+                    } label: {
+                        Image(systemName: bit.isFavorite ? "star.fill" : "star")
+                            .foregroundStyle(TFTheme.yellow)
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showVariationComparison) {
+            VariationComparisonView(bit: bit)
+        }
+    }
+    
+    private func shareBit(_ bit: Bit) {
+        // Fetch user profile name
+        let descriptor = FetchDescriptor<UserProfile>()
+        let userName = (try? modelContext.fetch(descriptor).first?.name) ?? ""
+        
+        let renderer = ImageRenderer(content: BitShareCard(bit: bit, userName: userName))
+        renderer.scale = 3.0 // High resolution for sharing
+        
+        if let image = renderer.uiImage {
+            let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+            
+            // Present the share sheet
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootVC = windowScene.windows.first?.rootViewController {
+                var topVC = rootVC
+                while let presentedVC = topVC.presentedViewController {
+                    topVC = presentedVC
+                }
+                activityVC.popoverPresentationController?.sourceView = topVC.view
+                topVC.present(activityVC, animated: true)
+            }
+        }
+    }
+}
+
+// MARK: - Tag Editor
+
 private struct TagEditor: View {
     @Binding var tags: [String]
     var onChange: ([String]) -> Void
@@ -652,48 +831,56 @@ private struct TagEditor: View {
 
 // MARK: - Share Card
 
-/// A beautifully styled card for sharing bits externally
+/// A beautifully styled polaroid-style card for sharing bits externally
 private struct BitShareCard: View {
     let bit: Bit
     let userName: String
+    let frameColor: Color
+    
+    init(bit: Bit, userName: String) {
+        self.bit = bit
+        self.userName = userName
+        self.frameColor = AppSettings.shared.bitCardFrameColor.color
+    }
     
     var body: some View {
         VStack(spacing: 0) {
-            contentArea
-            bottomBar
+            // Main content area with dynamic card texture
+            VStack(alignment: .leading, spacing: 16) {
+                // Bit text only (no title or tags)
+                Text(bit.text)
+                    .font(.system(size: 18))
+                    .foregroundStyle(.white.opacity(0.95))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineSpacing(4)
+            }
+            .frame(maxWidth: 500)
+            .padding(32)
+            .tfDynamicCard(cornerRadius: 0)
+            
+            // Polaroid-style bar at the bottom - use same color variable
+            VStack(spacing: 4) {
+                TFWordmarkTitle(title: "written in TightFive", size: 16)
+                
+                if !userName.isEmpty {
+                    Text("by \(userName)")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 24)
+            .background(frameColor)
         }
         .frame(width: 500)
-        .background(Color("TFCard"))
+        .background(frameColor)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            // Thin polaroid-style frame around the entire card - use same color variable
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(frameColor, lineWidth: 12)
+        )
         .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
-    }
-    
-    private var contentArea: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Bit text only (no title or tags)
-            Text(bit.text)
-                .font(.system(size: 18))
-                .foregroundStyle(.white.opacity(0.95))
-                .fixedSize(horizontal: false, vertical: true)
-                .lineSpacing(4)
-        }
-        .frame(maxWidth: 500)
-        .padding(32)
-        .tfDynamicCard(cornerRadius: 0)
-    }
-    
-    private var bottomBar: some View {
-        VStack(spacing: 4) {
-            TFWordmarkTitle(title: "written in TightFive", size: 16)
-            if !userName.isEmpty {
-                Text("by \(userName)")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.white.opacity(0.7))
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .background(Color("TFCard"))
     }
 }
 
