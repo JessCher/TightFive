@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUI
 import Foundation
 import SwiftData
 import UIKit
@@ -6,15 +7,16 @@ import UIKit
 /// The Setlist Builder - a performance script editor with modular bit insertion.
 ///
 /// **Architecture:**
-/// - Script Tab: The blended performance document (freeform + bits)
-/// - Notes Tab: Auxiliary notes (delivery ideas, reminders) - NOT for performance
+/// - Script Tab: The blended performance document (freeform + bits) - uses PlainTextEditor
+/// - Notes Tab: Auxiliary notes (delivery ideas, reminders) - uses RichTextEditor for formatting
 /// - Bit Drawer: Available bits to insert into the script
 ///
 /// **Key Features:**
 /// - Insert bits from drawer into script
-/// - Freeform writing between bits
+/// - Freeform writing between bits (plain text)
 /// - Drag & drop reordering
-/// - Inline editing
+/// - Inline editing with full undo/redo support
+/// - Rich text formatting available in Notes tab only
 struct SetlistBuilderView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -452,7 +454,7 @@ private struct ScriptBlockRowView: View {
         assignment?.setlist
     }
 
-    @State private var editRTF: Data = TFRTFTheme.body("")
+    @State private var editText: String = ""
     @State private var showVariationNote = false
     @State private var variationNote = ""
     @FocusState private var isFocused: Bool
@@ -490,21 +492,22 @@ private struct ScriptBlockRowView: View {
             }
             
             if isEditing {
-                RichTextEditor(rtfData: $editRTF, undoManager: undoManager)
+                PlainTextEditor(text: $editText, undoManager: undoManager)
                     .frame(minHeight: 140)
                     .padding(6)
                     .background(Color.black.opacity(0.3))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .onAppear {
-                        editRTF = rtfData
-                        // RichTextEditor manages its own focus;
-                        // we keep the Done button for a predictable commit.
+                        // Convert RTF to plain text for editing
+                        editText = NSAttributedString.fromRTF(rtfData)?.string ?? ""
                     }
                     .toolbar {
                         ToolbarItemGroup(placement: .keyboard) {
                             Spacer()
                             Button("Done") {
-                                onEndEdit(editRTF)
+                                // Convert plain text back to RTF
+                                let rtf = TFRTFTheme.body(editText)
+                                onEndEdit(rtf)
                                 isFocused = false
                             }
                             .foregroundStyle(TFTheme.yellow)
@@ -512,12 +515,14 @@ private struct ScriptBlockRowView: View {
                     }
                     .onChange(of: isFocused) { oldValue, newValue in
                         if oldValue == true && newValue == false {
-                            onEndEdit(editRTF)
+                            let rtf = TFRTFTheme.body(editText)
+                            onEndEdit(rtf)
                         }
                     }
                     .onDisappear {
                         // Fallback commit in case the row disappears while editing
-                        onEndEdit(editRTF)
+                        let rtf = TFRTFTheme.body(editText)
+                        onEndEdit(rtf)
                     }
             } else {
                 let plain = NSAttributedString.fromRTF(rtfData)?.string ?? ""
@@ -567,13 +572,14 @@ private struct ScriptBlockRowView: View {
                 
                 if isEditing {
                     VStack(alignment: .leading, spacing: 8) {
-                        RichTextEditor(rtfData: $editRTF, undoManager: undoManager)
+                        PlainTextEditor(text: $editText, undoManager: undoManager)
                             .frame(minHeight: 140)
                             .padding(6)
                             .background(Color.black.opacity(0.3))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .onAppear {
-                                editRTF = assignment.performedRTF
+                                // Convert RTF to plain text for editing
+                                editText = assignment.plainText
                             }
                         
                         Button {
@@ -645,22 +651,32 @@ private struct ScriptBlockRowView: View {
     
     private func saveVariation() {
         guard let assignment = assignment,
-              let setlist = setlist,
-              editRTF != assignment.performedRTF else {
-            onEndEdit(editRTF)
+              let setlist = setlist else {
+            // Convert plain text back to RTF for freeform blocks
+            let rtf = TFRTFTheme.body(editText)
+            onEndEdit(rtf)
+            return
+        }
+        
+        // Convert plain text to RTF
+        let newRTF = TFRTFTheme.body(editText)
+        
+        // Check if text actually changed
+        guard newRTF != assignment.performedRTF else {
+            onEndEdit(newRTF)
             return
         }
         
         // Create variation and update assignment
         setlist.commitVariation(
             for: assignment,
-            newRTF: editRTF,
+            newRTF: newRTF,
             note: variationNote.isEmpty ? nil : variationNote,
             context: modelContext
         )
         
         variationNote = ""
-        onEndEdit(editRTF)
+        onEndEdit(newRTF)
     }
 }
 

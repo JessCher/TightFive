@@ -17,7 +17,7 @@ final class Performance {
     var audioFilename: String
     var duration: TimeInterval
     var fileSize: Int64
-    var notes: String
+    var notes: String  // Keep as String - no schema change
     var rating: Int
     
     // MARK: - Soft Delete
@@ -71,7 +71,7 @@ final class Performance {
         self.audioFilename = audioFilename
         self.duration = duration
         self.fileSize = fileSize
-        self.notes = ""
+        self.notes = ""  // Back to String
         self.rating = 0
     }
 }
@@ -197,4 +197,7 @@ extension Performance {
         context.delete(self)
     }
 }
+
+
+
 

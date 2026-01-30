@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUI
 import SwiftData
 import AVFoundation
 import UIKit
@@ -237,6 +238,7 @@ private struct PerformanceRowView: View {
 struct PerformanceDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.undoManager) private var undoManager
     
     @Bindable var performance: Performance
     var onDelete: (() -> Void)?
@@ -247,6 +249,7 @@ struct PerformanceDetailView: View {
     
     @State private var editableTitle: String = ""
     @State private var setlist: Setlist?
+    @ObservedObject private var keyboard = TFKeyboardState.shared
     
     var body: some View {
         NavigationStack {
@@ -278,6 +281,12 @@ struct PerformanceDetailView: View {
                         dismiss()
                     }
                     .foregroundStyle(TFTheme.yellow)
+                }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    if keyboard.isVisible {
+                        TFUndoRedoControls()
+                    }
                 }
             }
             .tfBackground()

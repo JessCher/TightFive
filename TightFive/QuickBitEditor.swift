@@ -1,17 +1,18 @@
 import SwiftUI
-import SwiftUI
 import Foundation
 import SwiftData
 import Combine
 import UIKit // Needed for UIColor/UIFont
 
+/// Quick Bit Editor - Fast bit capture with dictation support
+/// Uses PlainTextEditor for text input with full undo/redo support
 struct QuickBitEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     
     // Assumes SpeechRecognizer.swift exists
     @StateObject private var speech = SpeechRecognizer()
-    @State private var rtfData: Data = (NSAttributedString(string: "").rtfData() ?? Data())
+    @State private var text: String = ""
     
     // Animation state for the recording pulse
     @State private var pulsePhase = false
@@ -24,7 +25,7 @@ struct QuickBitEditor: View {
             ZStack(alignment: .bottom) {
                 // Main Content
                 VStack(spacing: 12) {
-                    RichTextEditor(rtfData: $rtfData, undoManager: undoManager)
+                    PlainTextEditor(text: $text, undoManager: undoManager)
                         .ignoresSafeArea(.keyboard, edges: .bottom)
                         .padding(.horizontal, 12)
                         .padding(.top, 12)
@@ -199,8 +200,7 @@ struct QuickBitEditor: View {
     
     // This was missing in your snippet!
     private var isEmpty: Bool {
-        let plain = NSAttributedString.fromRTF(rtfData)?.string
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let plain = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return plain.isEmpty
     }
     
@@ -209,8 +209,7 @@ struct QuickBitEditor: View {
             commitTranscription()
             speech.stopTranscribing()
         }
-        let plain = NSAttributedString.fromRTF(rtfData)?.string
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let plain = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !plain.isEmpty else { return }
         
         // Assumes you have a 'Bit' model in SwiftData
@@ -221,21 +220,9 @@ struct QuickBitEditor: View {
     private func commitTranscription() {
         guard !speech.transcript.isEmpty else { return }
         
-        // This relies on the shared RTFHelpers.swift file
-        let currentAttr = NSAttributedString.fromRTF(rtfData) ?? NSAttributedString(string: "")
-        let mutable = NSMutableAttributedString(attributedString: currentAttr)
-        let prefix = (mutable.length > 0) ? " " : ""
-        
-        // We append the text in White to match your editor defaults
-        let newText = NSAttributedString(
-            string: prefix + speech.transcript,
-            attributes: [.foregroundColor: UIColor.white, .font: UIFont.systemFont(ofSize: 17)]
-        )
-        
-        mutable.append(newText)
-        if let newData = mutable.rtfData() {
-            rtfData = newData
-        }
+        // Append transcribed text to existing text
+        let prefix = text.isEmpty ? "" : " "
+        text += prefix + speech.transcript
     }
 }
 
