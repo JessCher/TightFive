@@ -62,7 +62,7 @@ struct ProfileView: View {
                     Text("Track how many live comedy shows you've performed.")
                 }
                 
-                if let profile = profile, !name.isEmpty {
+                if profile != nil, !name.isEmpty {
                     Section {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Profile Summary")
