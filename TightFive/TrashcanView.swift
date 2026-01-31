@@ -122,7 +122,7 @@ struct TrashcanView: View {
                     }
                 } header: {
                     Text("BITS (\(deletedBits.count))")
-                        .font(.caption.weight(.bold))
+                        .appFont(.caption, weight: .bold)
                         .foregroundStyle(.white.opacity(0.5))
                 }
             }
@@ -153,7 +153,7 @@ struct TrashcanView: View {
                     }
                 } header: {
                     Text("SETLISTS (\(deletedSetlists.count))")
-                        .font(.caption.weight(.bold))
+                        .appFont(.caption, weight: .bold)
                         .foregroundStyle(.white.opacity(0.5))
                 }
             }
@@ -184,7 +184,7 @@ struct TrashcanView: View {
                     }
                 } header: {
                     Text("SHOW NOTES (\(deletedPerformances.count))")
-                        .font(.caption.weight(.bold))
+                        .appFont(.caption, weight: .bold)
                         .foregroundStyle(.white.opacity(0.5))
                 }
             }
@@ -202,11 +202,11 @@ struct TrashcanView: View {
                 .foregroundStyle(.white.opacity(0.25))
             
             Text("Trashcan is Empty")
-                .font(.title2.weight(.semibold))
+                .appFont(.title2, weight: .semibold)
                 .foregroundStyle(.white)
             
             Text("Deleted items will appear here.\nYou can restore them or delete permanently.")
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.white.opacity(0.6))
                 .multilineTextAlignment(.center)
         }
@@ -295,12 +295,12 @@ private struct TrashItemRow: View {
             // Content
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.subheadline.weight(.medium))
+                    .appFont(.subheadline, weight: .medium)
                     .foregroundStyle(.white)
                     .lineLimit(1)
                 
                 Text(subtitle)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.white.opacity(0.5))
             }
             

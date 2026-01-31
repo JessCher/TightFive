@@ -129,9 +129,9 @@ struct SettingsView: View {
                     ForEach(BitWindowTheme.allCases) { theme in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(theme.displayName)
-                                .font(.body)
+                                .appFont(.body)
                             Text(theme.description)
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         .tag(theme)
@@ -147,7 +147,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Text("Grit Level")
-                                .font(.body)
+                                .appFont(.body)
                             Spacer()
                             Text(bitCardGritLevel == 0 ? "None" : bitCardGritLevel == 1.0 ? "Max" : "\(Int(bitCardGritLevel * 100))%")
                                 .font(.body.monospacedDigit())
@@ -156,7 +156,7 @@ struct SettingsView: View {
                         
                         HStack(spacing: 12) {
                             Text("0")
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                             
                             Slider(value: $bitCardGritLevel, in: 0...1.0, step: 0.05)
@@ -166,7 +166,7 @@ struct SettingsView: View {
                                 }
                             
                             Text("Max")
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -186,7 +186,7 @@ struct SettingsView: View {
             Section {
                 VStack(spacing: 12) {
                     Text("Preview")
-                        .font(.caption.weight(.semibold))
+                        .appFont(.caption, weight: .semibold)
                         .foregroundStyle(.white.opacity(0.6))
                         .frame(maxWidth: .infinity, alignment: .leading)
                     
@@ -207,9 +207,9 @@ struct SettingsView: View {
                     ForEach(TileCardTheme.allCases) { theme in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(theme.displayName)
-                                .font(.body)
+                                .appFont(.body)
                             Text(theme.description)
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         .tag(theme)
@@ -235,7 +235,7 @@ struct SettingsView: View {
                             
                             HStack {
                                 Text("Hex:")
-                                    .font(.caption)
+                                    .appFont(.caption)
                                     .foregroundStyle(.secondary)
                                 TextField("", text: Binding(
                                     get: { AppSettings.shared.tileCardCustomColorHex },
@@ -264,7 +264,7 @@ struct SettingsView: View {
                         if tileCardGritEnabled {
                             VStack(spacing: 16) {
                                 Text("Grit Layer Colors")
-                                    .font(.caption.weight(.semibold))
+                                    .appFont(.caption, weight: .semibold)
                                     .foregroundStyle(.white.opacity(0.6))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 
@@ -279,7 +279,7 @@ struct SettingsView: View {
                                     
                                     HStack {
                                         Text("Hex:")
-                                            .font(.caption)
+                                            .appFont(.caption)
                                             .foregroundStyle(.secondary)
                                         TextField("", text: Binding(
                                             get: { AppSettings.shared.tileCardGritLayer1ColorHex },
@@ -308,7 +308,7 @@ struct SettingsView: View {
                                     
                                     HStack {
                                         Text("Hex:")
-                                            .font(.caption)
+                                            .appFont(.caption)
                                             .foregroundStyle(.secondary)
                                         TextField("", text: Binding(
                                             get: { AppSettings.shared.tileCardGritLayer2ColorHex },
@@ -337,7 +337,7 @@ struct SettingsView: View {
                                     
                                     HStack {
                                         Text("Hex:")
-                                            .font(.caption)
+                                            .appFont(.caption)
                                             .foregroundStyle(.secondary)
                                         TextField("", text: Binding(
                                             get: { AppSettings.shared.tileCardGritLayer3ColorHex },
@@ -366,9 +366,9 @@ struct SettingsView: View {
                     ForEach(TileCardTheme.allCases) { theme in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(theme.displayName)
-                                .font(.body)
+                                .appFont(.body)
                             Text(theme.description)
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         .tag(theme)
@@ -394,7 +394,7 @@ struct SettingsView: View {
                             
                             HStack {
                                 Text("Hex:")
-                                    .font(.caption)
+                                    .appFont(.caption)
                                     .foregroundStyle(.secondary)
                                 TextField("", text: Binding(
                                     get: { AppSettings.shared.quickBitCustomColorHex },
@@ -423,7 +423,7 @@ struct SettingsView: View {
                         if quickBitGritEnabled {
                             VStack(spacing: 16) {
                                 Text("Grit Layer Colors")
-                                    .font(.caption.weight(.semibold))
+                                    .appFont(.caption, weight: .semibold)
                                     .foregroundStyle(.white.opacity(0.6))
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 
@@ -438,7 +438,7 @@ struct SettingsView: View {
                                     
                                     HStack {
                                         Text("Hex:")
-                                            .font(.caption)
+                                            .appFont(.caption)
                                             .foregroundStyle(.secondary)
                                         TextField("", text: Binding(
                                             get: { AppSettings.shared.quickBitGritLayer1ColorHex },
@@ -467,7 +467,7 @@ struct SettingsView: View {
                                     
                                     HStack {
                                         Text("Hex:")
-                                            .font(.caption)
+                                            .appFont(.caption)
                                             .foregroundStyle(.secondary)
                                         TextField("", text: Binding(
                                             get: { AppSettings.shared.quickBitGritLayer2ColorHex },
@@ -496,7 +496,7 @@ struct SettingsView: View {
                                     
                                     HStack {
                                         Text("Hex:")
-                                            .font(.caption)
+                                            .appFont(.caption)
                                             .foregroundStyle(.secondary)
                                         TextField("", text: Binding(
                                             get: { AppSettings.shared.quickBitGritLayer3ColorHex },
@@ -525,7 +525,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text("Grit Level")
-                            .font(.body)
+                            .appFont(.body)
                         Spacer()
                         Text(appGritLevel == 0 ? "None" : appGritLevel == 1.0 ? "Max" : "\(Int(appGritLevel * 100))%")
                             .font(.body.monospacedDigit())
@@ -534,7 +534,7 @@ struct SettingsView: View {
                     
                     HStack(spacing: 12) {
                         Text("0")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                         
                         Slider(value: $appGritLevel, in: 0...1.0, step: 0.05)
@@ -544,7 +544,7 @@ struct SettingsView: View {
                             }
                         
                         Text("Max")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -554,9 +554,9 @@ struct SettingsView: View {
                     ForEach(AppFont.allCases) { font in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(font.displayName)
-                                .font(.body)
+                                .appFont(.body)
                             Text(font.description)
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         .tag(font)
@@ -577,7 +577,7 @@ struct SettingsView: View {
                         }
                     
                     Text("Current: \(AppSettings.shared.appFontColorHex)")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                     TextField("", text: Binding(
                         get: { AppSettings.shared.appFontColorHex },
@@ -597,18 +597,18 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text("Font Size")
-                            .font(.headline)
+                            .appFont(.headline)
                         
                         Spacer()
                         
                         Text("\(Int(appFontSizeMultiplier * 100))%")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                     }
                     
                     HStack(spacing: 12) {
                         Text("Small")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                         
                         Slider(value: $appFontSizeMultiplier, in: 0.8...1.4, step: 0.05)
@@ -618,7 +618,7 @@ struct SettingsView: View {
                             }
                         
                         Text("Large")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                     }
                     
@@ -626,7 +626,7 @@ struct SettingsView: View {
                         appFontSizeMultiplier = 1.0
                         AppSettings.shared.appFontSizeMultiplier = 1.0
                     }
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(TFTheme.yellow)
                 }
                 .padding(.vertical, 4)
@@ -640,7 +640,7 @@ struct SettingsView: View {
             Section {
                 VStack(spacing: 16) {
                     Text("Font Preview")
-                        .font(.caption.weight(.semibold))
+                        .appFont(.caption, weight: .semibold)
                         .foregroundStyle(.white.opacity(0.6))
                         .frame(maxWidth: .infinity, alignment: .leading)
                     
@@ -651,7 +651,7 @@ struct SettingsView: View {
                     )
                     
                     Text("Quick Bit Button Preview")
-                        .font(.caption.weight(.semibold))
+                        .appFont(.caption, weight: .semibold)
                         .foregroundStyle(.white.opacity(0.6))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, 8)
@@ -668,7 +668,7 @@ struct SettingsView: View {
                     )
                     
                     Text("Tile Card Preview")
-                        .font(.caption.weight(.semibold))
+                        .appFont(.caption, weight: .semibold)
                         .foregroundStyle(.white.opacity(0.6))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, 8)
@@ -1290,7 +1290,7 @@ private struct ColorPickerSheet: View {
                     }
                     
                     Text("Enter a 6-digit hex code (e.g., #FF5733)")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.secondary)
                 } header: {
                     Text("Hex Color Code")
@@ -1308,9 +1308,9 @@ private struct ColorPickerSheet: View {
                         
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Preview")
-                                .font(.headline)
+                                .appFont(.headline)
                             Text(selectedColor.toHex() ?? "#000000")
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -1366,10 +1366,10 @@ private struct FontPreview: View {
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Font")
-                        .font(.caption2)
+                        .appFont(.caption2)
                         .foregroundStyle(fontColor.opacity(0.5))
                     Text(appFont.displayName)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(fontColor.opacity(0.7))
                 }
                 
@@ -1377,10 +1377,10 @@ private struct FontPreview: View {
                 
                 VStack(alignment: .trailing, spacing: 4) {
                     Text("Size")
-                        .font(.caption2)
+                        .appFont(.caption2)
                         .foregroundStyle(fontColor.opacity(0.5))
                     Text("\(Int(fontSizeMultiplier * 100))%")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(fontColor.opacity(0.7))
                 }
             }

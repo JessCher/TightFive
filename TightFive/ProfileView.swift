@@ -41,7 +41,7 @@ struct ProfileView: View {
                     HStack {
                         Stepper(value: $showsPerformed, in: 0...9999) {
                             Text("\(showsPerformed)")
-                                .font(.title2.weight(.semibold))
+                                .appFont(.title2, weight: .semibold)
                                 .foregroundStyle(TFTheme.yellow)
                         }
                         .onChange(of: showsPerformed) { _, newValue in
@@ -62,11 +62,11 @@ struct ProfileView: View {
                     Section {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Profile Summary")
-                                .font(.headline)
+                                .appFont(.headline)
                                 .foregroundStyle(.white)
                             
                             Text("\(name) has performed \(showsPerformed) show\(showsPerformed == 1 ? "" : "s").")
-                                .font(.subheadline)
+                                .appFont(.subheadline)
                                 .foregroundStyle(.white.opacity(0.7))
                         }
                         .padding(.vertical, 8)

@@ -145,11 +145,11 @@ struct FinishedBitsView: View {
         VStack(spacing: 14) {
             Text("No finished bits yet")
                 .appFont(.title3, weight: .semibold)
-                .foregroundStyle(.white)
+                .foregroundStyle(TFTheme.text)
 
             Text("Move a bit to Finished when it's stage-ready.")
                 .appFont(.subheadline)
-                .foregroundStyle(.white.opacity(0.65))
+                .foregroundStyle(TFTheme.text.opacity(0.65))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 26)
 
@@ -230,7 +230,7 @@ private struct BitDetailView: View {
                     // Read-only text view that scales to content
                     Text(bit.text)
                         .appFont(.body)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(TFTheme.text)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -241,7 +241,7 @@ private struct BitDetailView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Tags")
                         .appFont(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(TFTheme.text)
                     
                     TagEditor(tags: $bit.tags) { updated in
                         bit.tags = updated
@@ -420,7 +420,7 @@ private struct BitCardRow: View {
             // HStack {
             //     Text(bit.titleLine)
             //         .appFont(.title3, weight: .semibold)
-            //         .foregroundStyle(.white)
+            //         .foregroundStyle(TFTheme.text)
             //         .lineLimit(3)
             //         .fixedSize(horizontal: false, vertical: true)
             //     
@@ -449,14 +449,14 @@ private struct BitCardRow: View {
 
             Text(bit.titleLine)
                 .appFont(.title3, weight: .semibold)
-                .foregroundStyle(.white)
+                .foregroundStyle(TFTheme.text)
                 .lineLimit(3)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(bit.updatedAt, style: .date)
                 .appFont(.subheadline)
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(TFTheme.text.opacity(0.55))
             
             if !bit.tags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {

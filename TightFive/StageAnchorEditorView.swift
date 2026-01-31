@@ -57,7 +57,7 @@ struct StageAnchorEditorView: View {
                 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { saveAnchors() }
-                        .font(.headline)
+                        .appFont(.headline)
                         .foregroundStyle(hasChanges ? TFTheme.yellow : .white.opacity(0.4))
                         .disabled(!hasChanges)
                 }
@@ -75,12 +75,12 @@ struct StageAnchorEditorView: View {
                 Image(systemName: "waveform")
                     .foregroundStyle(TFTheme.yellow)
                 Text("Anchor Phrases")
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(.white)
             }
             
             Text("Say these opening lines to navigate to each bit during your performance.")
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.white.opacity(0.6))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -97,11 +97,11 @@ struct StageAnchorEditorView: View {
                 .foregroundStyle(.white.opacity(0.3))
             
             Text("No bits in script")
-                .font(.title3.weight(.semibold))
+                .appFont(.title3, weight: .semibold)
                 .foregroundStyle(.white)
             
             Text("Add bits to your setlist to configure anchors.")
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.white.opacity(0.6))
                 .multilineTextAlignment(.center)
             
@@ -121,12 +121,12 @@ struct StageAnchorEditorView: View {
                 
                 if let assignment = setlist.assignments.first(where: { $0.id == anchor.assignmentId }) {
                     Text(assignment.bitTitleSnapshot)
-                        .font(.subheadline.weight(.medium))
+                        .appFont(.subheadline, weight: .medium)
                         .foregroundStyle(.white)
                         .lineLimit(1)
                 } else {
                     Text("Unknown Bit")
-                        .font(.subheadline.weight(.medium))
+                        .appFont(.subheadline, weight: .medium)
                         .foregroundStyle(.white.opacity(0.5))
                 }
                 
@@ -142,18 +142,18 @@ struct StageAnchorEditorView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Image(systemName: "quote.opening")
-                        .font(.caption2)
+                        .appFont(.caption2)
                         .foregroundStyle(TFTheme.yellow.opacity(0.7))
                     
                     Text("Anchor phrase:")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.white.opacity(0.5))
                     
                     Spacer()
                     
                     if !anchor.isValid && anchor.isEnabled {
                         Text("Too short")
-                            .font(.caption2)
+                            .appFont(.caption2)
                             .foregroundStyle(.orange)
                     }
                 }
@@ -161,7 +161,7 @@ struct StageAnchorEditorView: View {
                 if editingAnchorId == anchor.id {
                     TextField("Enter phrase...", text: $editingText)
                         .textFieldStyle(.plain)
-                        .font(.body)
+                        .appFont(.body)
                         .foregroundStyle(.white)
                         .padding(10)
                         .background(Color.black.opacity(0.3))
@@ -176,7 +176,7 @@ struct StageAnchorEditorView: View {
                         startEditing(anchor)
                     } label: {
                         Text(anchor.phrase)
-                            .font(.body)
+                            .appFont(.body)
                             .foregroundStyle(anchor.isEnabled ? .white.opacity(0.9) : .white.opacity(0.4))
                             .italic()
                             .lineLimit(2)
@@ -210,7 +210,7 @@ struct StageAnchorEditorView: View {
                     Image(systemName: "mic.fill")
                     Text("Test Recognition")
                 }
-                .font(.headline)
+                .appFont(.headline)
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -227,7 +227,7 @@ struct StageAnchorEditorView: View {
                 resetToDefaults()
             } label: {
                 Text("Reset to Defaults")
-                    .font(.subheadline)
+                    .appFont(.subheadline)
                     .foregroundStyle(.white.opacity(0.5))
             }
         }
@@ -311,12 +311,12 @@ struct AnchorTestView: View {
                     }
                     
                     Text(isListening ? "Listening..." : "Tap to Start")
-                        .font(.headline)
+                        .appFont(.headline)
                         .foregroundStyle(.white)
                     
                     if !recognizer.lastTranscript.isEmpty {
                         Text("\"\(recognizer.lastTranscript)\"")
-                            .font(.subheadline)
+                            .appFont(.subheadline)
                             .foregroundStyle(.white.opacity(0.6))
                             .italic()
                             .lineLimit(2)
@@ -335,7 +335,7 @@ struct AnchorTestView: View {
                 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("LISTENING FOR:")
-                        .font(.caption.weight(.bold))
+                        .appFont(.caption, weight: .bold)
                         .foregroundStyle(.white.opacity(0.5))
                         .kerning(1.5)
                     
@@ -347,7 +347,7 @@ struct AnchorTestView: View {
                                         .foregroundStyle(matchedAnchor?.id == anchor.id ? .green : .white.opacity(0.3))
                                     
                                     Text(anchor.shortPhrase)
-                                        .font(.subheadline)
+                                        .appFont(.subheadline)
                                         .foregroundStyle(.white.opacity(0.8))
                                         .lineLimit(1)
                                 }
@@ -369,7 +369,7 @@ struct AnchorTestView: View {
                         Image(systemName: isListening ? "stop.fill" : "mic.fill")
                         Text(isListening ? "Stop" : "Start Listening")
                     }
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
@@ -401,18 +401,18 @@ struct AnchorTestView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(.green)
                 Text("Match Found!")
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(.white)
             }
             
             Text(anchor.phrase)
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.white.opacity(0.8))
                 .italic()
                 .multilineTextAlignment(.center)
             
             Text("\(Int(matchConfidence * 100))% confidence")
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.white.opacity(0.5))
         }
         .padding(16)

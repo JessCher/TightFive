@@ -14,8 +14,8 @@ struct MoreView: View {
                         TightFiveWordmark(size: 20)
                         
                         Text("Version 1.0")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.5))
+                            .appFont(.caption)
+                            .foregroundStyle(TFTheme.text.opacity(0.5))
                     }
                     .padding(.top, 20)
                     
@@ -52,12 +52,12 @@ struct MoreView: View {
                     
                     VStack(spacing: 4) {
                         Text("Made for comedians with love")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.4))
+                            .appFont(.caption)
+                            .foregroundStyle(TFTheme.text.opacity(0.4))
                         
                         Text("2026 Jesse Cherry")
-                            .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.3))
+                            .appFont(.caption2)
+                            .foregroundStyle(TFTheme.text.opacity(0.3))
                     }
                     .padding(.bottom, 20)
                 }
@@ -91,12 +91,12 @@ struct MoreView: View {
             
             VStack(alignment: .center, spacing: 4) {
                 Text(title)
-                    .font(.headline)
-                    .foregroundStyle(.white)
+                    .appFont(.headline)
+                    .foregroundStyle(TFTheme.text)
                 
                 Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.6))
+                    .appFont(.subheadline)
+                    .foregroundStyle(TFTheme.text.opacity(0.6))
                     .multilineTextAlignment(.center)
             }
             

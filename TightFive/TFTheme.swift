@@ -51,7 +51,7 @@ extension View {
     /// Yellow pill button like the mock
     func tfPrimaryPill() -> some View {
         self
-            .font(.title3.weight(.semibold))
+            .appFont(.title3, weight: .semibold)
             .foregroundStyle(.black)
             .padding(.vertical, 16)
             .frame(maxWidth: .infinity)

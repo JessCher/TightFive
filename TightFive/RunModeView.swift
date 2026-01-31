@@ -117,7 +117,7 @@ struct RunModeView: View {
                     Button { handleDismiss() } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(TFTheme.text.opacity(0.7))
                             .frame(width: 36, height: 36)
                             .background(Color.white.opacity(0.1))
                             .clipShape(Circle())
@@ -133,7 +133,7 @@ struct RunModeView: View {
                     } label: {
                         Image(systemName: "arrow.counterclockwise")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.9))
+                            .foregroundStyle(TFTheme.text.opacity(0.9))
                             .frame(width: 36, height: 36)
                             .background(Color.white.opacity(0.1))
                             .clipShape(Circle())
@@ -149,7 +149,7 @@ struct RunModeView: View {
                     } label: {
                         Image(systemName: "gearshape")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.85))
+                            .foregroundStyle(TFTheme.text.opacity(0.85))
                             .frame(width: 36, height: 36)
                             .background(Color.white.opacity(0.1))
                             .clipShape(Circle())
@@ -404,38 +404,38 @@ struct RunModeView: View {
                 Section("Teleprompter") {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Font Size")
-                            .font(.headline)
+                            .appFont(.headline)
 
                         Slider(value: $teleprompterFontSize, in: 22...54, step: 1)
                         Text("\(Int(teleprompterFontSize)) pt")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Scroll Speed")
-                            .font(.headline)
+                            .appFont(.headline)
 
                         Slider(value: $teleprompterSpeed, in: 0...140, step: 1)
                         Text("\(Int(teleprompterSpeed)) pts/sec")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Context Window Height")
-                            .font(.headline)
+                            .appFont(.headline)
 
                         Slider(value: $teleprompterWindowHeight, in: 120...280, step: 1)
                         Text("\(Int(teleprompterWindowHeight)) pt tall")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
 
                 Section {
                     Text("Tip: Use the timer Play/Pause to start or stop scrolling hands-free.")
-                        .font(.footnote)
+                        .appFont(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -456,18 +456,18 @@ struct RunModeView: View {
         VStack(spacing: 16) {
             Image(systemName: "doc.text")
                 .font(.system(size: 56))
-                .foregroundStyle(.white.opacity(0.3))
+                .foregroundStyle(TFTheme.text.opacity(0.3))
 
             Text("No script content")
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(.white)
+                .appFont(.title2, weight: .semibold)
+                .foregroundStyle(TFTheme.text)
 
             Text("Add content to your setlist script first.")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.6))
+                .appFont(.subheadline)
+                .foregroundStyle(TFTheme.text.opacity(0.6))
 
             Button("Go Back") { handleDismiss() }
-                .font(.headline)
+                .appFont(.headline)
                 .foregroundStyle(.black)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
@@ -526,8 +526,8 @@ struct RunModeLauncherView: View {
                 Image(systemName: icon)
                     .foregroundStyle(TFTheme.yellow)
                 Text(title)
-                    .font(.headline)
-                    .foregroundStyle(.white)
+                    .appFont(.headline)
+                    .foregroundStyle(TFTheme.text)
             }
             .padding(.leading, 4)
 
@@ -540,11 +540,11 @@ struct RunModeLauncherView: View {
     private var emptyState: some View {
         VStack(spacing: 14) {
             Text("No setlists yet")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(.white)
+                .appFont(.title3, weight: .semibold)
+                .foregroundStyle(TFTheme.text)
             Text("Create a setlist and add some content.")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.6))
+                .appFont(.subheadline)
+                .foregroundStyle(TFTheme.text.opacity(0.6))
                 .multilineTextAlignment(.center)
         }
         .padding(.top, 40)
@@ -576,18 +576,18 @@ private struct RunModeSetlistRow: View {
 
                 VStack(alignment: .center, spacing: 4) {
                     Text(setlist.title)
-                        .font(.headline)
-                        .foregroundStyle(.white)
+                        .appFont(.headline)
+                        .foregroundStyle(TFTheme.text)
 
                     HStack(spacing: 8) {
                         Text(setlist.hasScriptContent ? "Has script" : "No script yet")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(setlist.hasScriptContent ? TFTheme.yellow.opacity(0.8) : .white.opacity(0.4))
 
                         if setlist.bitCount > 0 {
                             Text("\(setlist.bitCount) bits")
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.5))
+                                .appFont(.caption)
+                                .foregroundStyle(TFTheme.text.opacity(0.5))
                         }
                     }
                 }

@@ -154,7 +154,7 @@ struct StageModeView: View {
                 .frame(width: 10, height: 10)
 
             Text("REC")
-                .font(.caption.weight(.bold))
+                .appFont(.caption, weight: .bold)
                 .foregroundStyle(.red)
 
             AudioLevelBar(level: engine.audioLevel)
@@ -237,18 +237,18 @@ struct StageModeView: View {
         VStack(spacing: 8) {
             HStack {
                 Image(systemName: engine.isListening ? "waveform" : "waveform.slash")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(engine.isListening ? .green : .white.opacity(0.4))
 
                 Text(engine.isListening ? "Listening" : "Not Listening")
-                    .font(.caption2.weight(.semibold))
+                    .appFont(.caption2, weight: .semibold)
                     .foregroundStyle(engine.isListening ? .green : .white.opacity(0.4))
 
                 Spacer()
 
                 if let msg = engine.errorMessage, !msg.isEmpty {
                     Text(msg)
-                        .font(.caption2)
+                        .appFont(.caption2)
                         .foregroundStyle(.red.opacity(0.9))
                         .lineLimit(1)
                 }
@@ -288,7 +288,7 @@ struct StageModeView: View {
                     Image(systemName: isAutoScrollEnabled ? "sparkles" : "hand.raised.fill")
                         .font(.system(size: 14, weight: .bold))
                     Text(isAutoScrollEnabled ? "Auto" : "Manual")
-                        .font(.caption.weight(.bold))
+                        .appFont(.caption, weight: .bold)
                 }
                 .foregroundStyle(isAutoScrollEnabled ? .black : .white.opacity(0.9))
                 .padding(.horizontal, 14)
@@ -363,16 +363,16 @@ struct StageModeView: View {
 
             VStack(spacing: 18) {
                 Text("End Performance?")
-                    .font(.title2.weight(.bold))
+                    .appFont(.title2, weight: .bold)
                     .foregroundStyle(.white)
 
                 Text("Your recording will be saved.")
-                    .font(.subheadline)
+                    .appFont(.subheadline)
                     .foregroundStyle(.white.opacity(0.7))
 
                 HStack(spacing: 12) {
                     Button("Cancel") { showExitConfirmation = false }
-                        .font(.headline)
+                        .appFont(.headline)
                         .foregroundStyle(.white.opacity(0.9))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -383,7 +383,7 @@ struct StageModeView: View {
                         showExitConfirmation = false
                         endSession()
                     }
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -412,11 +412,11 @@ struct StageModeView: View {
                     .foregroundStyle(.green)
 
                 Text("Performance Saved")
-                    .font(.title3.weight(.bold))
+                    .appFont(.title3, weight: .bold)
                     .foregroundStyle(.white)
 
                 Button("Done") { dismiss() }
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(.black)
                     .padding(.horizontal, 22)
                     .padding(.vertical, 12)
@@ -442,15 +442,15 @@ struct StageModeView: View {
                 .foregroundStyle(.white.opacity(0.3))
 
             Text("No script content")
-                .font(.title2.weight(.semibold))
+                .appFont(.title2, weight: .semibold)
                 .foregroundStyle(.white)
 
             Text("Add content to your setlist script first.")
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.white.opacity(0.6))
 
             Button("Go Back") { dismiss() }
-                .font(.headline)
+                .appFont(.headline)
                 .foregroundStyle(.black)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)

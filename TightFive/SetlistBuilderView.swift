@@ -100,7 +100,7 @@ struct SetlistBuilderView: View {
     
     private var titleField: some View {
         TextField("Set title", text: $setlist.title)
-            .font(.title2.weight(.semibold))
+            .appFont(.title2, weight: .semibold)
             .foregroundStyle(.white)
             .padding(.horizontal, 16)
             .padding(.top, 14)
@@ -146,11 +146,11 @@ struct SetlistBuilderView: View {
                 .foregroundStyle(.white.opacity(0.25))
             
             Text("Start Your Script")
-                .font(.title3.weight(.semibold))
+                .appFont(.title3, weight: .semibold)
                 .foregroundStyle(.white)
             
             Text("Add bits from your library or write\ntransitions and tags directly.")
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.white.opacity(0.6))
                 .multilineTextAlignment(.center)
             
@@ -163,7 +163,7 @@ struct SetlistBuilderView: View {
                         Image(systemName: "tray.and.arrow.down")
                         Text("Add Bit")
                     }
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(.black)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
@@ -178,7 +178,7 @@ struct SetlistBuilderView: View {
                         Image(systemName: "pencil")
                         Text("Write")
                     }
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 12)
@@ -268,7 +268,7 @@ struct SetlistBuilderView: View {
                 Image(systemName: "lightbulb")
                     .foregroundStyle(TFTheme.yellow)
                 Text("Any riff ideas? Any moments for crowd work? Any notes you want to leave about your delivery? Work it all out here, this is the space to plan your performance")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.white.opacity(0.6))
             }
             .padding(.horizontal, 16)
@@ -483,10 +483,10 @@ private struct ScriptBlockRowView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "pencil.circle.fill")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.white.opacity(0.4))
                 Text("FREEFORM")
-                    .font(.caption2.weight(.bold))
+                    .appFont(.caption2, weight: .bold)
                     .foregroundStyle(.white.opacity(0.4))
                     .kerning(1)
             }
@@ -527,7 +527,7 @@ private struct ScriptBlockRowView: View {
             } else {
                 let plain = NSAttributedString.fromRTF(rtfData)?.string ?? ""
                 Text(plain.isEmpty ? "Tap to write..." : plain)
-                    .font(.body)
+                    .appFont(.body)
                     .foregroundStyle(plain.isEmpty ? .white.opacity(0.4) : .white.opacity(0.9))
                     .italic(plain.isEmpty)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -549,23 +549,23 @@ private struct ScriptBlockRowView: View {
             if let assignment = assignment {
                 HStack(spacing: 6) {
                     Image(systemName: "doc.text.fill")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(TFTheme.yellow.opacity(0.8))
                     Text("BIT")
-                        .font(.caption2.weight(.bold))
+                        .appFont(.caption2, weight: .bold)
                         .foregroundStyle(TFTheme.yellow.opacity(0.8))
                         .kerning(1)
                     
                     Spacer()
                     
                     Text(assignment.bitTitleSnapshot)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.white.opacity(0.5))
                         .lineLimit(1)
                     
                     if assignment.isModified {
                         Image(systemName: "pencil.circle.fill")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.orange)
                     }
                 }
@@ -587,9 +587,9 @@ private struct ScriptBlockRowView: View {
                         } label: {
                             HStack(spacing: 6) {
                                 Image(systemName: "note.text")
-                                    .font(.caption)
+                                    .appFont(.caption)
                                 Text(variationNote.isEmpty ? "Add variation note (optional)" : variationNote)
-                                    .font(.caption)
+                                    .appFont(.caption)
                                     .lineLimit(1)
                             }
                             .foregroundStyle(.white.opacity(0.6))
@@ -625,7 +625,7 @@ private struct ScriptBlockRowView: View {
                     }
                 } else {
                     Text(assignment.plainText)
-                        .font(.body)
+                        .appFont(.body)
                         .foregroundStyle(.white.opacity(0.9))
                         .lineLimit(10)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -636,7 +636,7 @@ private struct ScriptBlockRowView: View {
                 }
             } else {
                 Text("Bit not found")
-                    .font(.body)
+                    .appFont(.body)
                     .foregroundStyle(.red.opacity(0.7))
             }
         }
@@ -807,10 +807,10 @@ private struct BitDrawerSheet: View {
                 .font(.system(size: 48))
                 .foregroundStyle(.white.opacity(0.3))
             Text(showAllBits ? "No bits yet" : "No finished bits")
-                .font(.title3.weight(.semibold))
+                .appFont(.title3, weight: .semibold)
                 .foregroundStyle(.white)
             Text(showAllBits ? "Create some bits first." : "Mark bits as Finished when ready.")
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.white.opacity(0.6))
                 .multilineTextAlignment(.center)
             Spacer()
@@ -865,18 +865,18 @@ private struct BitDrawerRowView: View {
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(bit.titleLine)
-                        .font(.headline)
+                        .appFont(.headline)
                         .foregroundStyle(.white)
                         .lineLimit(2)
                     
                     HStack(spacing: 8) {
                         Text(bit.updatedAt, style: .date)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.white.opacity(0.5))
                         
                         if isInSetlist {
                             Text("In Set")
-                                .font(.caption.weight(.medium))
+                                .appFont(.caption, weight: .medium)
                                 .foregroundStyle(.black)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -888,7 +888,7 @@ private struct BitDrawerRowView: View {
                         if !bit.tags.isEmpty {
                             ForEach(bit.tags.prefix(2), id: \.self) { tag in
                                 Text(tag)
-                                    .font(.caption2.weight(.medium))
+                                    .appFont(.caption2, weight: .medium)
                                     .foregroundStyle(.black)
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)

@@ -155,13 +155,13 @@ struct BitDrawerView: View {
                 .foregroundStyle(.white.opacity(0.3))
             
             Text(showAllBits ? "No bits yet" : "No finished bits")
-                .font(.title3.weight(.semibold))
+                .appFont(.title3, weight: .semibold)
                 .foregroundStyle(.white)
             
             Text(showAllBits
                  ? "Create some bits first, then add them here."
                  : "Mark bits as Finished when they're stage-ready.")
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.white.opacity(0.6))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
@@ -170,7 +170,7 @@ struct BitDrawerView: View {
                 Button("Show All Bits") {
                     withAnimation { showAllBits = true }
                 }
-                .font(.subheadline.weight(.medium))
+                .appFont(.subheadline, weight: .medium)
                 .foregroundStyle(TFTheme.yellow)
                 .padding(.top, 8)
             }
@@ -200,18 +200,18 @@ private struct BitDrawerRow: View {
                 // Content
                 VStack(alignment: .leading, spacing: 4) {
                     Text(bit.titleLine)
-                        .font(.headline)
+                        .appFont(.headline)
                         .foregroundStyle(.white)
                         .lineLimit(2)
                     
                     HStack(spacing: 8) {
                         Text(bit.updatedAt, style: .date)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.white.opacity(0.5))
                         
                         if isInSetlist {
                             Text("In Set")
-                                .font(.caption.weight(.medium))
+                                .appFont(.caption, weight: .medium)
                                 .foregroundStyle(.black)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -221,7 +221,7 @@ private struct BitDrawerRow: View {
                         
                         if bit.variationCount > 0 {
                             Text("\(bit.variationCount) var")
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.white.opacity(0.5))
                         }
                     }

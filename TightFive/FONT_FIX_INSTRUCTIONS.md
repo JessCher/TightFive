@@ -6,7 +6,7 @@ The global font settings you configured in `TightFiveApp.swift` are working for 
 
 ## Why Home View Works But Others Don't
 
-`HomeView` works because it uses `.appFont()` modifiers throughout (like `.appFont(.headline, weight: .semibold)`), while other views like `LooseBitsView`, `SetlistsView`, etc. still use standard `.font()` modifiers (like `.font(.headline.weight(.semibold))`).
+`HomeView` works because it uses `.appFont()` modifiers throughout (like `.appFont(.headline, weight: .semibold)`), while other views like `LooseBitsView`, `SetlistsView`, etc. still use standard `.font()` modifiers (like `.appFont(.headline, weight: .semibold)`).
 
 ## The Solution: Batch Find and Replace
 
@@ -24,26 +24,26 @@ In Xcode:
 You'll need to replace several patterns. Here are the most common ones:
 
 #### Pattern 1: Text Styles with Weight
-**Find:** `.font(.headline.weight(.semibold))`
+**Find:** `.appFont(.headline, weight: .semibold)`
 **Replace:** `.appFont(.headline, weight: .semibold)`
 
-**Find:** `.font(.title3.weight(.semibold))`
+**Find:** `.appFont(.title3, weight: .semibold)`
 **Replace:** `.appFont(.title3, weight: .semibold)`
 
-**Find:** `.font(.caption.weight(.semibold))`
+**Find:** `.appFont(.caption, weight: .semibold)`
 **Replace:** `.appFont(.caption, weight: .semibold)`
 
 #### Pattern 2: Text Styles without Weight
-**Find:** `.font(.headline)`
+**Find:** `.appFont(.headline)`
 **Replace:** `.appFont(.headline)`
 
-**Find:** `.font(.subheadline)`
+**Find:** `.appFont(.subheadline)`
 **Replace:** `.appFont(.subheadline)`
 
-**Find:** `.font(.caption)`
+**Find:** `.appFont(.caption)`
 **Replace:** `.appFont(.caption)`
 
-**Find:** `.font(.caption2.weight(.medium))`
+**Find:** `.appFont(.caption2, weight: .medium)`
 **Replace:** `.appFont(.caption2, weight: .medium)`
 
 #### Pattern 3: System Fonts with Specific Sizes
@@ -53,7 +53,7 @@ You'll need to replace several patterns. Here are the most common ones:
 **Find:** `.font(.system(size: 14))`
 **Replace:** `.appFont(size: 14)`
 
-**Find:** `.font(.title2.weight(.bold))`
+**Find:** `.appFont(.title2, weight: .bold)`
 **Replace:** `.appFont(.title2, weight: .bold)`
 
 ### Step 3: Files That Need Updating (Priority Order)

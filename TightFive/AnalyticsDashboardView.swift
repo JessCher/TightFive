@@ -59,11 +59,11 @@ struct AnalyticsDashboardView: View {
             
             VStack(spacing: 8) {
                 Text("No Analytics Yet")
-                    .font(.title2.weight(.bold))
+                    .appFont(.title2, weight: .bold)
                     .foregroundStyle(.white)
                 
                 Text("Perform in Stage Mode to get\nAI-powered insights about your show")
-                    .font(.subheadline)
+                    .appFont(.subheadline)
                     .foregroundStyle(.white.opacity(0.6))
                     .multilineTextAlignment(.center)
             }
@@ -128,7 +128,7 @@ struct AnalyticsDashboardView: View {
                     .foregroundStyle(.white)
                 
                 Text(label)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.white.opacity(0.6))
             }
         }
@@ -143,7 +143,7 @@ struct AnalyticsDashboardView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Recent Insights")
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(.white)
                 
                 Spacer()
@@ -152,7 +152,7 @@ struct AnalyticsDashboardView: View {
                     AllInsightsView(performances: analyzedPerformances)
                 } label: {
                     Text("See All")
-                        .font(.subheadline.weight(.medium))
+                        .appFont(.subheadline, weight: .medium)
                         .foregroundStyle(TFTheme.yellow)
                 }
             }
@@ -247,12 +247,12 @@ struct InsightRow: View {
             
             VStack(alignment: .leading, spacing: 3) {
                 Text(insight.title)
-                    .font(.subheadline.weight(.semibold))
+                    .appFont(.subheadline, weight: .semibold)
                     .foregroundStyle(.white)
                     .lineLimit(1)
                 
                 Text(insight.detail)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.white.opacity(0.6))
                     .lineLimit(2)
             }
@@ -260,7 +260,7 @@ struct InsightRow: View {
             Spacer()
             
             Image(systemName: "chevron.right")
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.white.opacity(0.3))
         }
         .padding(12)
@@ -397,10 +397,10 @@ struct FilterChip: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.caption.weight(.semibold))
+                    .appFont(.caption, weight: .semibold)
                 
                 Text(title)
-                    .font(.subheadline.weight(.semibold))
+                    .appFont(.subheadline, weight: .semibold)
             }
             .foregroundStyle(isSelected ? .black : .white.opacity(0.8))
             .padding(.horizontal, 14)
@@ -430,11 +430,11 @@ struct InsightRowWithPerformance: View {
                 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(insight.title)
-                        .font(.subheadline.weight(.semibold))
+                        .appFont(.subheadline, weight: .semibold)
                         .foregroundStyle(.white)
                     
                     Text(insight.detail)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.white.opacity(0.6))
                         .lineLimit(2)
                 }
@@ -442,20 +442,20 @@ struct InsightRowWithPerformance: View {
                 Spacer()
                 
                 Image(systemName: "chevron.right")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.white.opacity(0.3))
             }
             
             HStack(spacing: 6) {
                 Text(performance.displayTitle)
-                    .font(.caption2.weight(.medium))
+                    .appFont(.caption2, weight: .medium)
                     .foregroundStyle(.white.opacity(0.5))
                 
                 Text("•")
                     .foregroundStyle(.white.opacity(0.3))
                 
                 Text(performance.formattedDate)
-                    .font(.caption2)
+                    .appFont(.caption2)
                     .foregroundStyle(.white.opacity(0.5))
             }
         }
@@ -516,19 +516,19 @@ struct InsightDetailView: View {
                     
                     VStack(alignment: .leading, spacing: 6) {
                         Text(insight.title)
-                            .font(.title2.weight(.bold))
+                            .appFont(.title2, weight: .bold)
                             .foregroundStyle(.white)
                         
                         HStack(spacing: 6) {
                             Text(severityLabel)
-                                .font(.caption.weight(.semibold))
+                                .appFont(.caption, weight: .semibold)
                                 .foregroundStyle(iconColor)
                             
                             Text("•")
                                 .foregroundStyle(.white.opacity(0.3))
                             
                             Text(insight.timestamp, style: .relative)
-                                .font(.caption)
+                                .appFont(.caption)
                                 .foregroundStyle(.white.opacity(0.6))
                         }
                     }
@@ -537,11 +537,11 @@ struct InsightDetailView: View {
                 // Detail
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Details")
-                        .font(.headline)
+                        .appFont(.headline)
                         .foregroundStyle(.white)
                     
                     Text(insight.detail)
-                        .font(.body)
+                        .appFont(.body)
                         .foregroundStyle(.white.opacity(0.8))
                         .lineSpacing(4)
                 }
@@ -552,7 +552,7 @@ struct InsightDetailView: View {
                 if let lineRange = insight.lineRange {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Affected Lines")
-                            .font(.headline)
+                            .appFont(.headline)
                             .foregroundStyle(.white)
                         
                         HStack {
@@ -560,7 +560,7 @@ struct InsightDetailView: View {
                                 .foregroundStyle(TFTheme.yellow)
                             
                             Text("Lines \(lineRange.lowerBound) - \(lineRange.upperBound)")
-                                .font(.subheadline.weight(.medium))
+                                .appFont(.subheadline, weight: .medium)
                                 .foregroundStyle(.white)
                             
                             Spacer()
@@ -574,7 +574,7 @@ struct InsightDetailView: View {
                 // Performance Info
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Performance")
-                        .font(.headline)
+                        .appFont(.headline)
                         .foregroundStyle(.white)
                     
                     VStack(spacing: 10) {
@@ -600,18 +600,18 @@ struct InsightDetailView: View {
     private func infoRow(icon: String, label: String, value: String) -> some View {
         HStack {
             Image(systemName: icon)
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.white.opacity(0.5))
                 .frame(width: 20)
             
             Text(label)
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.white.opacity(0.6))
             
             Spacer()
             
             Text(value)
-                .font(.subheadline.weight(.medium))
+                .appFont(.subheadline, weight: .medium)
                 .foregroundStyle(.white)
         }
     }

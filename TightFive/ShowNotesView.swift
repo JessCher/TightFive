@@ -53,7 +53,7 @@ struct ShowNotesView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showStorageInfo = true } label: {
                         Image(systemName: "internaldrive")
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(TFTheme.text.opacity(0.7))
                     }
                 }
                 
@@ -94,15 +94,15 @@ struct ShowNotesView: View {
         VStack(spacing: 16) {
             Image(systemName: "waveform")
                 .font(.system(size: 56))
-                .foregroundStyle(.white.opacity(0.3))
+                .foregroundStyle(TFTheme.text.opacity(0.3))
             
             Text("No performances yet")
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(.white)
+                .appFont(.title2, weight: .semibold)
+                .foregroundStyle(TFTheme.text)
             
             Text("Record a performance in Stage Mode\nand it will appear here.")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.6))
+                .appFont(.subheadline)
+                .foregroundStyle(TFTheme.text.opacity(0.6))
                 .multilineTextAlignment(.center)
         }
     }
@@ -178,39 +178,39 @@ private struct PerformanceRowView: View {
                 
                 VStack(alignment: .center, spacing: 4) {
                     Text(performance.displayTitle)
-                        .font(.headline)
-                        .foregroundStyle(.white)
+                        .appFont(.headline)
+                        .foregroundStyle(TFTheme.text)
                         .lineLimit(1)
                         .multilineTextAlignment(.center)
                     
                     HStack(spacing: 8) {
                         Text(performance.formattedDate)
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.5))
+                            .appFont(.caption)
+                            .foregroundStyle(TFTheme.text.opacity(0.5))
                         
                         if !performance.city.isEmpty {
                             Text(performance.city)
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.5))
+                                .appFont(.caption)
+                                .foregroundStyle(TFTheme.text.opacity(0.5))
                                 .lineLimit(1)
                         } else if !performance.venue.isEmpty {
                             Text(performance.venue)
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.5))
+                                .appFont(.caption)
+                                .foregroundStyle(TFTheme.text.opacity(0.5))
                                 .lineLimit(1)
                         }
                     }
                     
                     HStack(spacing: 12) {
                         Label(performance.formattedDuration, systemImage: "clock")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.5))
+                            .appFont(.caption)
+                            .foregroundStyle(TFTheme.text.opacity(0.5))
                         
                         if performance.rating > 0 {
                             HStack(spacing: 2) {
                                 ForEach(1...5, id: \.self) { index in
                                     Image(systemName: index <= performance.rating ? "star.fill" : "star")
-                                        .font(.caption2)
+                                        .appFont(.caption2)
                                         .foregroundStyle(index <= performance.rating ? TFTheme.yellow : .white.opacity(0.3))
                                 }
                             }
@@ -229,7 +229,7 @@ private struct PerformanceRowView: View {
                 // else {
                 //     Image(systemName: "chevron.right")
                 //         .font(.system(size: 14, weight: .medium))
-                //         .foregroundStyle(.white.opacity(0.3))
+                //         .foregroundStyle(TFTheme.text.opacity(0.3))
                 // }
             }
             .padding(16)
@@ -322,24 +322,24 @@ struct PerformanceDetailView: View {
     private var headerSection: some View {
         VStack(spacing: 8) {
             Text(performance.displayTitle)
-                .font(.title2.weight(.bold))
-                .foregroundStyle(.white)
+                .appFont(.title2, weight: .bold)
+                .foregroundStyle(TFTheme.text)
                 .multilineTextAlignment(.center)
             
             HStack(spacing: 16) {
                 Label(performance.formattedDuration, systemImage: "clock")
                 Label(performance.formattedFileSize, systemImage: "doc")
             }
-            .font(.caption)
-            .foregroundStyle(.white.opacity(0.5))
+            .appFont(.caption)
+            .foregroundStyle(TFTheme.text.opacity(0.5))
         }
     }
     
     private var setlistSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Setlist")
-                .font(.headline)
-                .foregroundStyle(.white)
+                .appFont(.headline)
+                .foregroundStyle(TFTheme.text)
             
             if let setlist = setlist {
                 ScrollView {
@@ -355,8 +355,8 @@ struct PerformanceDetailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             } else {
                 Text("Setlist not found")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.5))
+                    .appFont(.subheadline)
+                    .foregroundStyle(TFTheme.text.opacity(0.5))
                     .padding()
                     .frame(maxWidth: .infinity)
                     .background(Color.black.opacity(0.3))
@@ -374,7 +374,7 @@ struct PerformanceDetailView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(content)
                     .font(.system(size: 15, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(TFTheme.text.opacity(0.85))
                     .lineSpacing(6)
                     .fixedSize(horizontal: false, vertical: true)
                 
@@ -404,8 +404,8 @@ struct PerformanceDetailView: View {
             // Custom Title
             VStack(alignment: .leading, spacing: 8) {
                 Text("Show Title")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .appFont(.caption, weight: .semibold)
+                    .foregroundStyle(TFTheme.text.opacity(0.6))
                     .textCase(.uppercase)
                     .kerning(0.5)
                 
@@ -417,16 +417,16 @@ struct PerformanceDetailView: View {
                     }
                 ))
                     .textFieldStyle(.plain)
-                    .font(.body)
-                    .foregroundStyle(.white)
+                    .appFont(.body)
+                    .foregroundStyle(TFTheme.text)
                     .padding(12)
                     .background(Color.black.opacity(0.3))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                 
                 if !editableTitle.isEmpty {
                     Text("Original: \(performance.setlistTitle)")
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.4))
+                        .appFont(.caption2)
+                        .foregroundStyle(TFTheme.text.opacity(0.4))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -436,8 +436,8 @@ struct PerformanceDetailView: View {
             // Date Performed
             VStack(alignment: .leading, spacing: 8) {
                 Text("Date Performed")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .appFont(.caption, weight: .semibold)
+                    .foregroundStyle(TFTheme.text.opacity(0.6))
                     .textCase(.uppercase)
                     .kerning(0.5)
                 
@@ -453,15 +453,15 @@ struct PerformanceDetailView: View {
             // City
             VStack(alignment: .leading, spacing: 8) {
                 Text("City")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .appFont(.caption, weight: .semibold)
+                    .foregroundStyle(TFTheme.text.opacity(0.6))
                     .textCase(.uppercase)
                     .kerning(0.5)
                 
                 TextField("Enter city", text: $performance.city)
                     .textFieldStyle(.plain)
-                    .font(.body)
-                    .foregroundStyle(.white)
+                    .appFont(.body)
+                    .foregroundStyle(TFTheme.text)
                     .padding(12)
                     .background(Color.black.opacity(0.3))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -473,15 +473,15 @@ struct PerformanceDetailView: View {
             // Venue
             VStack(alignment: .leading, spacing: 8) {
                 Text("Venue")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .appFont(.caption, weight: .semibold)
+                    .foregroundStyle(TFTheme.text.opacity(0.6))
                     .textCase(.uppercase)
                     .kerning(0.5)
                 
                 TextField("Enter venue name", text: $performance.venue)
                     .textFieldStyle(.plain)
-                    .font(.body)
-                    .foregroundStyle(.white)
+                    .appFont(.body)
+                    .foregroundStyle(TFTheme.text)
                     .padding(12)
                     .background(Color.black.opacity(0.3))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -519,13 +519,13 @@ struct PerformanceDetailView: View {
             HStack {
                 Text(player.formattedCurrentTime)
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(TFTheme.text.opacity(0.6))
                 
                 Spacer()
                 
                 Text(player.formattedDuration)
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(TFTheme.text.opacity(0.6))
             }
             
             // Scrubber - FIX: Only seek, don't auto-play
@@ -542,7 +542,7 @@ struct PerformanceDetailView: View {
                 Button { player.skipBackward(seconds: 15) } label: {
                     Image(systemName: "gobackward.15")
                         .font(.system(size: 24))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(TFTheme.text)
                 }
                 
                 // FIXED: Play button with proper toggle
@@ -557,7 +557,7 @@ struct PerformanceDetailView: View {
                 Button { player.skipForward(seconds: 15) } label: {
                     Image(systemName: "goforward.15")
                         .font(.system(size: 24))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(TFTheme.text)
                 }
             }
         }
@@ -583,12 +583,12 @@ struct PerformanceDetailView: View {
                 .foregroundStyle(.orange)
             
             Text("Recording Not Found")
-                .font(.headline)
-                .foregroundStyle(.white)
+                .appFont(.headline)
+                .foregroundStyle(TFTheme.text)
             
             Text("The audio file may have been deleted.")
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.6))
+                .appFont(.caption)
+                .foregroundStyle(TFTheme.text.opacity(0.6))
         }
         .padding(20)
         .frame(maxWidth: .infinity)
@@ -598,8 +598,8 @@ struct PerformanceDetailView: View {
     private var ratingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Rating")
-                .font(.headline)
-                .foregroundStyle(.white)
+                .appFont(.headline)
+                .foregroundStyle(TFTheme.text)
             
             HStack(spacing: 8) {
                 ForEach(1...5, id: \.self) { index in
@@ -621,13 +621,13 @@ struct PerformanceDetailView: View {
     private var notesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Notes")
-                .font(.headline)
-                .foregroundStyle(.white)
+                .appFont(.headline)
+                .foregroundStyle(TFTheme.text)
             
             TextEditor(text: $performance.notes)
                 .scrollContentBackground(.hidden)
-                .font(.body)
-                .foregroundStyle(.white)
+                .appFont(.body)
+                .foregroundStyle(TFTheme.text)
                 .frame(minHeight: 120)
                 .padding(12)
                 .background(Color.black.opacity(0.3))
@@ -649,8 +649,8 @@ struct PerformanceDetailView: View {
                         Image(systemName: "square.and.arrow.up")
                         Text("Share Recording")
                     }
-                    .font(.headline)
-                    .foregroundStyle(.white)
+                    .appFont(.headline)
+                    .foregroundStyle(TFTheme.text)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(Color("TFCard"))
@@ -667,7 +667,7 @@ struct PerformanceDetailView: View {
                     Image(systemName: "trash")
                     Text("Delete Performance")
                 }
-                .font(.headline)
+                .appFont(.headline)
                 .foregroundStyle(.red)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -878,39 +878,39 @@ struct StorageInfoView: View {
                         
                         VStack(spacing: 2) {
                             Text(Performance.formattedTotalStorage)
-                                .font(.headline)
-                                .foregroundStyle(.white)
+                                .appFont(.headline)
+                                .foregroundStyle(TFTheme.text)
                             Text("used")
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.5))
+                                .appFont(.caption)
+                                .foregroundStyle(TFTheme.text.opacity(0.5))
                         }
                     }
                     
                     Text("\(performances.count) recordings")
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.text.opacity(0.6))
                 }
                 .padding(.top, 20)
                 
                 if !performances.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("RECORDINGS")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.white.opacity(0.5))
+                            .appFont(.caption, weight: .bold)
+                            .foregroundStyle(TFTheme.text.opacity(0.5))
                             .kerning(1.5)
                         
                         ForEach(performances) { performance in
                             HStack {
                                 Text(performance.setlistTitle)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.white)
+                                    .appFont(.subheadline)
+                                    .foregroundStyle(TFTheme.text)
                                     .lineLimit(1)
                                 
                                 Spacer()
                                 
                                 Text(performance.formattedFileSize)
-                                    .font(.caption)
-                                    .foregroundStyle(.white.opacity(0.5))
+                                    .appFont(.caption)
+                                    .foregroundStyle(TFTheme.text.opacity(0.5))
                             }
                             .padding(.vertical, 8)
                             
@@ -932,7 +932,7 @@ struct StorageInfoView: View {
                             Image(systemName: "trash")
                             Text("Clear All Recordings")
                         }
-                        .font(.headline)
+                        .appFont(.headline)
                         .foregroundStyle(.red)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
@@ -1004,13 +1004,13 @@ struct CreateShowNoteView: View {
                     // Setlist Selection
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Setlist")
-                            .font(.headline)
-                            .foregroundStyle(.white)
+                            .appFont(.headline)
+                            .foregroundStyle(TFTheme.text)
                         
                         if finishedSetlists.isEmpty {
                             Text("No finished setlists available")
-                                .font(.subheadline)
-                                .foregroundStyle(.white.opacity(0.5))
+                                .appFont(.subheadline)
+                                .foregroundStyle(TFTheme.text.opacity(0.5))
                                 .padding()
                                 .frame(maxWidth: .infinity)
                                 .background(Color.white.opacity(0.05))
@@ -1028,8 +1028,8 @@ struct CreateShowNoteView: View {
                                         .foregroundStyle(selectedSetlist == nil ? .white.opacity(0.5) : .white)
                                     Spacer()
                                     Image(systemName: "chevron.down")
-                                        .font(.caption)
-                                        .foregroundStyle(.white.opacity(0.5))
+                                        .appFont(.caption)
+                                        .foregroundStyle(TFTheme.text.opacity(0.5))
                                 }
                                 .padding()
                                 .background(Color.white.opacity(0.1))
@@ -1043,8 +1043,8 @@ struct CreateShowNoteView: View {
                     // Audio File
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Audio Recording")
-                            .font(.headline)
-                            .foregroundStyle(.white)
+                            .appFont(.headline)
+                            .foregroundStyle(TFTheme.text)
                         
                         Button {
                             showAudioPicker = true
@@ -1060,8 +1060,8 @@ struct CreateShowNoteView: View {
                                 Spacer()
                                 
                                 Image(systemName: "folder")
-                                    .font(.caption)
-                                    .foregroundStyle(.white.opacity(0.5))
+                                    .appFont(.caption)
+                                    .foregroundStyle(TFTheme.text.opacity(0.5))
                             }
                             .padding()
                             .background(Color.white.opacity(0.1))
@@ -1074,8 +1074,8 @@ struct CreateShowNoteView: View {
                     // Date Performed
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Date Performed")
-                            .font(.headline)
-                            .foregroundStyle(.white)
+                            .appFont(.headline)
+                            .foregroundStyle(TFTheme.text)
                         
                         DatePicker("", selection: $datePerformed, displayedComponents: [.date])
                             .datePickerStyle(.compact)
@@ -1088,13 +1088,13 @@ struct CreateShowNoteView: View {
                     // City
                     VStack(alignment: .leading, spacing: 12) {
                         Text("City")
-                            .font(.headline)
-                            .foregroundStyle(.white)
+                            .appFont(.headline)
+                            .foregroundStyle(TFTheme.text)
                         
                         TextField("Enter city", text: $city)
                             .textFieldStyle(.plain)
-                            .font(.body)
-                            .foregroundStyle(.white)
+                            .appFont(.body)
+                            .foregroundStyle(TFTheme.text)
                             .padding(12)
                             .background(Color.black.opacity(0.3))
                             .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -1105,13 +1105,13 @@ struct CreateShowNoteView: View {
                     // Venue
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Venue")
-                            .font(.headline)
-                            .foregroundStyle(.white)
+                            .appFont(.headline)
+                            .foregroundStyle(TFTheme.text)
                         
                         TextField("Enter venue name", text: $venue)
                             .textFieldStyle(.plain)
-                            .font(.body)
-                            .foregroundStyle(.white)
+                            .appFont(.body)
+                            .foregroundStyle(TFTheme.text)
                             .padding(12)
                             .background(Color.black.opacity(0.3))
                             .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -1121,7 +1121,7 @@ struct CreateShowNoteView: View {
                     
                     if let errorMessage {
                         Text(errorMessage)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.red)
                             .padding()
                     }
@@ -1135,7 +1135,7 @@ struct CreateShowNoteView: View {
                                 .progressViewStyle(CircularProgressViewStyle(tint: .black))
                         } else {
                             Text("Create Show Note")
-                                .font(.headline)
+                                .appFont(.headline)
                                 .foregroundStyle(.black)
                         }
                     }

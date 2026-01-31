@@ -110,18 +110,18 @@ For each remaining file, use these find-and-replace patterns:
 ### Common Patterns
 | Find | Replace |
 |------|---------|
-| `.font(.headline)` | `.appFont(.headline)` |
-| `.font(.title3.weight(.semibold))` | `.appFont(.title3, weight: .semibold)` |
-| `.font(.caption)` | `.appFont(.caption)` |
-| `.font(.body)` | `.appFont(.body)` |
-| `.font(.subheadline)` | `.appFont(.subheadline)` |
+| `.appFont(.headline)` | `.appFont(.headline)` |
+| `.appFont(.title3, weight: .semibold)` | `.appFont(.title3, weight: .semibold)` |
+| `.appFont(.caption)` | `.appFont(.caption)` |
+| `.appFont(.body)` | `.appFont(.body)` |
+| `.appFont(.subheadline)` | `.appFont(.subheadline)` |
 | `.font(.system(size: 18))` | `.appFont(size: 18)` |
 | `.font(.system(size: 18, weight: .bold))` | `.appFont(size: 18, weight: .bold)` |
 
 ### Text Style with Weight
-- `.font(.headline.weight(.semibold))` → `.appFont(.headline, weight: .semibold)`
-- `.font(.caption2.weight(.medium))` → `.appFont(.caption2, weight: .medium)`
-- `.font(.title2.weight(.bold))` → `.appFont(.title2, weight: .bold)`
+- `.appFont(.headline, weight: .semibold)` → `.appFont(.headline, weight: .semibold)`
+- `.appFont(.caption2, weight: .medium)` → `.appFont(.caption2, weight: .medium)`
+- `.appFont(.title2, weight: .bold)` → `.appFont(.title2, weight: .bold)`
 
 ## 🎯 Current Status
 

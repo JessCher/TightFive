@@ -57,14 +57,14 @@ struct VariationComparisonView: View {
                     } header: {
                         HStack {
                             Text("VARIATIONS")
-                                .font(.caption.weight(.bold))
+                                .appFont(.caption, weight: .bold)
                                 .foregroundStyle(.white.opacity(0.5))
                                 .kerning(1.5)
                             
                             Spacer()
                             
                             Text("\(sortedVariations.count)")
-                                .font(.caption.weight(.bold))
+                                .appFont(.caption, weight: .bold)
                                 .foregroundStyle(.black)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -118,13 +118,13 @@ struct VariationComparisonView: View {
             // Header
             HStack {
                 Label("Master", systemImage: "star.fill")
-                    .font(.subheadline.weight(.semibold))
+                    .appFont(.subheadline, weight: .semibold)
                     .foregroundStyle(TFTheme.yellow)
                 
                 Spacer()
                 
                 Text("Original")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.white.opacity(0.5))
             }
             
@@ -132,20 +132,20 @@ struct VariationComparisonView: View {
             
             // Content
             Text(bit.text)
-                .font(.body)
+                .appFont(.body)
                 .foregroundStyle(.white)
                 .fixedSize(horizontal: false, vertical: true)
             
             // Meta
             HStack {
                 Text("Created \(bit.createdAt, style: .date)")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.white.opacity(0.4))
                 
                 Spacer()
                 
                 Text("\(bit.text.count) chars")
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.white.opacity(0.4))
             }
         }
@@ -173,11 +173,11 @@ struct VariationComparisonView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(variation.setlistTitle)
-                            .font(.subheadline.weight(.semibold))
+                            .appFont(.subheadline, weight: .semibold)
                             .foregroundStyle(.white)
                         
                         Text(variation.formattedDate)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.white.opacity(0.5))
                     }
                     
@@ -200,7 +200,7 @@ struct VariationComparisonView: View {
                             .fill(Color.green.opacity(0.3))
                             .frame(width: 8, height: 8)
                         Text("Added")
-                            .font(.caption2)
+                            .appFont(.caption2)
                             .foregroundStyle(.white.opacity(0.5))
                     }
                     
@@ -209,7 +209,7 @@ struct VariationComparisonView: View {
                             .fill(Color.orange.opacity(0.3))
                             .frame(width: 8, height: 8)
                         Text("Removed")
-                            .font(.caption2)
+                            .appFont(.caption2)
                             .foregroundStyle(.white.opacity(0.5))
                     }
                 }
@@ -217,18 +217,18 @@ struct VariationComparisonView: View {
                 
                 // Content with diff highlighting
                 Text(diffHighlightedAttributedString(original: bit.text, modified: variation.plainText))
-                    .font(.body)
+                    .appFont(.body)
                     .fixedSize(horizontal: false, vertical: true)
                 
                 // Note if present
                 if let note = variation.note, !note.isEmpty {
                     HStack(spacing: 6) {
                         Image(systemName: "quote.opening")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(TFTheme.yellow.opacity(0.7))
                         
                         Text(note)
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.white.opacity(0.6))
                             .italic()
                     }
@@ -388,16 +388,16 @@ struct VariationComparisonView: View {
             // Character count change
             HStack(spacing: 4) {
                 Image(systemName: diff >= 0 ? "plus" : "minus")
-                    .font(.caption2)
+                    .appFont(.caption2)
                 Text("\(abs(diff)) chars")
-                    .font(.caption)
+                    .appFont(.caption)
             }
             .foregroundStyle(diff >= 0 ? .green : .orange)
             
             // Percent change
             if percentChange > 0 {
                 Text(String(format: "%.0f%% %@", percentChange, diff >= 0 ? "longer" : "shorter"))
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.white.opacity(0.4))
             }
             
@@ -415,11 +415,11 @@ struct VariationComparisonView: View {
                 .foregroundStyle(.white.opacity(0.3))
             
             Text("No variations yet")
-                .font(.headline)
+                .appFont(.headline)
                 .foregroundStyle(.white.opacity(0.7))
             
             Text("Variations are created when you edit a bit's content in a setlist.")
-                .font(.caption)
+                .appFont(.caption)
                 .foregroundStyle(.white.opacity(0.5))
                 .multilineTextAlignment(.center)
         }

@@ -11,14 +11,14 @@ struct RunModeSettingsView: View {
                     // General Section
                     VStack(alignment: .leading, spacing: 12) {
                         Text("General")
-                            .font(.title3.weight(.semibold))
+                            .appFont(.title3, weight: .semibold)
                             .foregroundStyle(TFTheme.yellow)
                             .padding(.horizontal, 4)
                         
                         // Default Mode Picker Card
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Default Mode")
-                                .font(.headline)
+                                .appFont(.headline)
                                 .foregroundStyle(.white)
                             
                             Picker("Default Mode", selection: $settings.defaultMode) {
@@ -35,11 +35,11 @@ struct RunModeSettingsView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Start timer automatically")
-                                    .font(.headline)
+                                    .appFont(.headline)
                                     .foregroundStyle(.white)
                                 
                                 Text("Timer begins when you enter Run Mode")
-                                    .font(.caption)
+                                    .appFont(.caption)
                                     .foregroundStyle(.white.opacity(0.6))
                             }
                             
@@ -56,11 +56,11 @@ struct RunModeSettingsView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Start teleprompter automatically")
-                                    .font(.headline)
+                                    .appFont(.headline)
                                     .foregroundStyle(.white)
                                 
                                 Text("Scrolling begins immediately in Teleprompter mode")
-                                    .font(.caption)
+                                    .appFont(.caption)
                                     .foregroundStyle(.white.opacity(0.6))
                             }
                             
@@ -77,7 +77,7 @@ struct RunModeSettingsView: View {
                     // Teleprompter Defaults Section
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Teleprompter Defaults")
-                            .font(.title3.weight(.semibold))
+                            .appFont(.title3, weight: .semibold)
                             .foregroundStyle(TFTheme.yellow)
                             .padding(.horizontal, 4)
                             .padding(.top, 8)
@@ -86,7 +86,7 @@ struct RunModeSettingsView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
                                 Text("Default font size")
-                                    .font(.headline)
+                                    .appFont(.headline)
                                     .foregroundStyle(.white)
                                 Spacer()
                                 Text("\(Int(settings.defaultFontSize)) pt")
@@ -104,7 +104,7 @@ struct RunModeSettingsView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
                                 Text("Default speed")
-                                    .font(.headline)
+                                    .appFont(.headline)
                                     .foregroundStyle(.white)
                                 Spacer()
                                 Text("\(Int(settings.defaultSpeed)) pts/sec")
@@ -121,7 +121,7 @@ struct RunModeSettingsView: View {
                         // Teleprompter Font Color Card
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Teleprompter font color")
-                                .font(.headline)
+                                .appFont(.headline)
                                 .foregroundStyle(.white)
                             
                             Picker("Teleprompter font color", selection: $settings.teleprompterFontColor) {
@@ -137,7 +137,7 @@ struct RunModeSettingsView: View {
                         // Context Window Color Card
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Margin Color")
-                                .font(.headline)
+                                .appFont(.headline)
                                 .foregroundStyle(.white)
                             
                             Picker("Context window color", selection: $settings.contextWindowColor) {
@@ -154,7 +154,7 @@ struct RunModeSettingsView: View {
                     // Script Defaults Section
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Script Defaults")
-                            .font(.title3.weight(.semibold))
+                            .appFont(.title3, weight: .semibold)
                             .foregroundStyle(TFTheme.yellow)
                             .padding(.horizontal, 4)
                             .padding(.top, 8)
@@ -162,7 +162,7 @@ struct RunModeSettingsView: View {
                         // Script Font Color Card
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Script font color")
-                                .font(.headline)
+                                .appFont(.headline)
                                 .foregroundStyle(.white)
                             
                             Picker("Script font color", selection: $settings.scriptFontColor) {
@@ -179,7 +179,7 @@ struct RunModeSettingsView: View {
                     // Timer Section
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Timer")
-                            .font(.title3.weight(.semibold))
+                            .appFont(.title3, weight: .semibold)
                             .foregroundStyle(TFTheme.yellow)
                             .padding(.horizontal, 4)
                             .padding(.top, 8)
@@ -187,7 +187,7 @@ struct RunModeSettingsView: View {
                         // Timer Color Card
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Timer color")
-                                .font(.headline)
+                                .appFont(.headline)
                                 .foregroundStyle(.white)
                             
                             Picker("Timer color", selection: $settings.timerColor) {
@@ -204,7 +204,7 @@ struct RunModeSettingsView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
                                 Text("Timer size")
-                                    .font(.headline)
+                                    .appFont(.headline)
                                     .foregroundStyle(.white)
                                 Spacer()
                                 Text("\(Int(settings.timerSize)) pt")
@@ -221,7 +221,7 @@ struct RunModeSettingsView: View {
                     
                     // Footer
                     Text("Make it yours")
-                        .font(.footnote)
+                        .appFont(.footnote)
                         .foregroundStyle(.white.opacity(0.5))
                         .padding(.top, 8)
                 }

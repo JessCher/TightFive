@@ -173,11 +173,11 @@ struct LooseBitsView: View {
         VStack(spacing: 14) {
             Text(emptyStateTitle)
                 .appFont(.title3, weight: .semibold)
-                .foregroundStyle(.white)
+                .foregroundStyle(TFTheme.text)
 
             Text(emptyStateMessage)
                 .appFont(.subheadline)
-                .foregroundStyle(.white.opacity(0.65))
+                .foregroundStyle(TFTheme.text.opacity(0.65))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 26)
 
@@ -379,7 +379,7 @@ private struct BitCardRow: View {
             // HStack {
             //     Text(bit.titleLine)
             //         .appFont(.title3, weight: .semibold)
-            //         .foregroundStyle(.white)
+            //         .foregroundStyle(TFTheme.text)
             //         .lineLimit(3)
             //         .fixedSize(horizontal: false, vertical: true)
             //     
@@ -408,14 +408,14 @@ private struct BitCardRow: View {
 
             Text(bit.titleLine)
                 .appFont(.title3, weight: .semibold)
-                .foregroundStyle(.white)
+                .foregroundStyle(TFTheme.text)
                 .lineLimit(3)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(bit.updatedAt, style: .date)
                 .appFont(.subheadline)
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(TFTheme.text.opacity(0.55))
             
             if !bit.tags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -572,7 +572,7 @@ private struct LooseBitDetailView: View {
                                 .foregroundStyle(TFTheme.yellow)
                             
                             Text("Compare Variations")
-                                .foregroundStyle(.white)
+                                .foregroundStyle(TFTheme.text)
                             
                             Spacer()
                             
@@ -663,7 +663,7 @@ private struct FinishedBitDetailView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Tags")
                         .appFont(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(TFTheme.text)
                     
                     TagEditor(tags: $bit.tags) { updated in
                         bit.tags = updated

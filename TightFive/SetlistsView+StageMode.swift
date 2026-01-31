@@ -40,9 +40,9 @@ struct StageModeReadyBadge: View {
         if setlist.isStageReady {
             HStack(spacing: 4) {
                 Image(systemName: "mic.fill")
-                    .font(.caption2)
+                    .appFont(.caption2)
                 Text("Stage Ready")
-                    .font(.caption2.weight(.medium))
+                    .appFont(.caption2, weight: .medium)
             }
             .foregroundStyle(.black)
             .padding(.horizontal, 8)
@@ -52,9 +52,9 @@ struct StageModeReadyBadge: View {
         } else if !setlist.isDraft && !setlist.orderedAssignments.isEmpty {
             HStack(spacing: 4) {
                 Image(systemName: "waveform")
-                    .font(.caption2)
+                    .appFont(.caption2)
                 Text("Configure Stage")
-                    .font(.caption2.weight(.medium))
+                    .appFont(.caption2, weight: .medium)
             }
             .foregroundStyle(.white.opacity(0.7))
             .padding(.horizontal, 8)
@@ -72,26 +72,26 @@ struct SetlistRowWithStageStatus: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(setlist.title)
-                    .font(.headline)
+                    .appFont(.headline)
                     .foregroundStyle(.white)
                 
                 HStack(spacing: 8) {
                     Text(setlist.updatedAt, style: .date)
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.white.opacity(0.5))
                     
                     if setlist.bitCount > 0 {
                         Text("\(setlist.bitCount) bits")
-                            .font(.caption)
+                            .appFont(.caption)
                             .foregroundStyle(.white.opacity(0.5))
                     }
                     
                     if setlist.isStageReady {
                         HStack(spacing: 2) {
                             Image(systemName: "mic.fill")
-                                .font(.caption2)
+                                .appFont(.caption2)
                             Text("Ready")
-                                .font(.caption2)
+                                .appFont(.caption2)
                         }
                         .foregroundStyle(TFTheme.yellow)
                     }
@@ -121,7 +121,7 @@ struct StageModeFAB: View {
                     Image(systemName: "mic.fill")
                         .font(.system(size: 18, weight: .bold))
                     Text("Stage Mode")
-                        .font(.headline)
+                        .appFont(.headline)
                 }
                 .foregroundStyle(.black)
                 .padding(.horizontal, 20)
@@ -157,11 +157,11 @@ struct StageModeOnboardingView: View {
                 
                 VStack(spacing: 8) {
                     Text("Stage Mode")
-                        .font(.title.weight(.bold))
+                        .appFont(.title, weight: .bold)
                         .foregroundStyle(.white)
                     
                     Text("Your voice-activated teleprompter")
-                        .font(.subheadline)
+                        .appFont(.subheadline)
                         .foregroundStyle(.white.opacity(0.6))
                 }
                 
@@ -183,7 +183,7 @@ struct StageModeOnboardingView: View {
                         onConfigure()
                     } label: {
                         Text("Configure Anchor Phrases")
-                            .font(.headline)
+                            .appFont(.headline)
                             .foregroundStyle(.black)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
@@ -192,7 +192,7 @@ struct StageModeOnboardingView: View {
                     }
                     
                     Text("\(setlist.bitCount) bits ready to configure")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.white.opacity(0.5))
                 }
                 .padding(.bottom, 20)
@@ -221,11 +221,11 @@ struct StageModeOnboardingView: View {
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.subheadline.weight(.semibold))
+                    .appFont(.subheadline, weight: .semibold)
                     .foregroundStyle(.white)
                 
                 Text(description)
-                    .font(.caption)
+                    .appFont(.caption)
                     .foregroundStyle(.white.opacity(0.6))
             }
         }
@@ -245,19 +245,19 @@ struct StageModeLaunchSheet: View {
             VStack(spacing: 24) {
                 VStack(spacing: 8) {
                     Text(setlist.title)
-                        .font(.title2.weight(.bold))
+                        .appFont(.title2, weight: .bold)
                         .foregroundStyle(.white)
                     
                     let enabledAnchors = setlist.stageAnchors.filter { $0.isEnabled }
                     Text("\(setlist.bitCount) bits - \(enabledAnchors.count) anchors")
-                        .font(.subheadline)
+                        .appFont(.subheadline)
                         .foregroundStyle(.white.opacity(0.6))
                 }
                 .padding(.top, 20)
                 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Venue (optional)")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.white.opacity(0.5))
                     
                     TextField("e.g., The Comedy Store", text: $venue)
@@ -297,7 +297,7 @@ struct StageModeLaunchSheet: View {
                             Image(systemName: "mic.fill")
                             Text("Begin Performance")
                         }
-                        .font(.headline)
+                        .appFont(.headline)
                         .foregroundStyle(.black)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
@@ -306,7 +306,7 @@ struct StageModeLaunchSheet: View {
                     }
                     
                     Text("Recording starts immediately")
-                        .font(.caption)
+                        .appFont(.caption)
                         .foregroundStyle(.white.opacity(0.5))
                 }
                 .padding(.horizontal, 20)
@@ -332,7 +332,7 @@ struct StageModeLaunchSheet: View {
                 .foregroundStyle(isChecked ? .green : .white.opacity(0.3))
             
             Text(text)
-                .font(.subheadline)
+                .appFont(.subheadline)
                 .foregroundStyle(.white.opacity(isChecked ? 0.9 : 0.5))
             
             Spacer()

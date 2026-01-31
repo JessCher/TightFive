@@ -120,7 +120,7 @@ To apply fonts to other views in the app:
 2. **Replace with `.appFont()`**
    ```swift
    // Old:
-   Text("Hello").font(.headline.weight(.bold))
+   Text("Hello").appFont(.headline, weight: .bold)
    
    // New:
    Text("Hello").appFont(.headline, weight: .bold)
@@ -187,14 +187,14 @@ Run this search to find all views that need updating:
 ```
 
 This will find patterns like:
-- `.font(.headline)`
-- `.font(.body)`
-- `.font(.title3.weight(.bold))`
+- `.appFont(.headline)`
+- `.appFont(.body)`
+- `.appFont(.title3, weight: .bold)`
 
 ### Bulk Replace Strategy
 For simple cases, you can use find and replace:
 ```
-Find: .font(.headline)
+Find: .appFont(.headline)
 Replace: .appFont(.headline)
 ```
 

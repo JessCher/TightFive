@@ -93,11 +93,11 @@ private struct SetlistMenuTile: View {
             VStack(alignment: .center, spacing: 4) {
                 Text(title)
                     .appFont(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(TFTheme.text)
 
                 Text(subtitle)
                     .appFont(.subheadline)
-                    .foregroundStyle(.white.opacity(0.62))
+                    .foregroundStyle(TFTheme.text.opacity(0.62))
                     .multilineTextAlignment(.center)
             }
 
@@ -157,13 +157,13 @@ struct InProgressSetlistsView: View {
             Spacer()
             Image(systemName: "hammer")
                 .appFont(size: 48)
-                .foregroundStyle(.white.opacity(0.3))
+                .foregroundStyle(TFTheme.text.opacity(0.3))
             Text("No setlists in progress")
                 .appFont(.title3, weight: .semibold)
-                .foregroundStyle(.white)
+                .foregroundStyle(TFTheme.text)
             Text("Create a new setlist to start building.")
                 .appFont(.subheadline)
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(TFTheme.text.opacity(0.6))
             Spacer()
         }
     }
@@ -173,7 +173,7 @@ struct InProgressSetlistsView: View {
             HStack(spacing: 8) {
                 Text(s.title)
                     .appFont(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(TFTheme.text)
                 
                 if s.hasConfiguredAnchors {
                     Image(systemName: "waveform")
@@ -187,18 +187,18 @@ struct InProgressSetlistsView: View {
             HStack(spacing: 8) {
                 Text(s.updatedAt, style: .date)
                     .appFont(.caption)
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(TFTheme.text.opacity(0.5))
                 
                 if s.bitCount > 0 {
                     Text("\(s.bitCount) bits")
                         .appFont(.caption)
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(TFTheme.text.opacity(0.5))
                 }
                 
                 if s.blockCount > s.bitCount {
                     Text("\(s.blockCount - s.bitCount) text")
                         .appFont(.caption)
-                        .foregroundStyle(.white.opacity(0.4))
+                        .foregroundStyle(TFTheme.text.opacity(0.4))
                 }
             }
         }
@@ -257,13 +257,13 @@ struct FinishedSetlistsView: View {
             Spacer()
             Image(systemName: "checkmark.seal")
                 .appFont(size: 48)
-                .foregroundStyle(.white.opacity(0.3))
+                .foregroundStyle(TFTheme.text.opacity(0.3))
             Text("No finished setlists")
                 .appFont(.title3, weight: .semibold)
-                .foregroundStyle(.white)
+                .foregroundStyle(TFTheme.text)
             Text("Mark a setlist as finished when it's stage-ready.")
                 .appFont(.subheadline)
-                .foregroundStyle(.white.opacity(0.6))
+                .foregroundStyle(TFTheme.text.opacity(0.6))
             Spacer()
         }
     }
@@ -273,7 +273,7 @@ struct FinishedSetlistsView: View {
             HStack(spacing: 8) {
                 Text(s.title)
                     .appFont(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(TFTheme.text)
                 
                 if s.isStageReady {
                     HStack(spacing: 4) {
@@ -309,12 +309,12 @@ struct FinishedSetlistsView: View {
                 
                 Text(s.updatedAt, style: .date)
                     .appFont(.caption)
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(TFTheme.text.opacity(0.5))
                 
                 if s.bitCount > 0 {
                     Text("\(s.bitCount) bits")
                         .appFont(.caption)
-                        .foregroundStyle(.white.opacity(0.5))
+                        .foregroundStyle(TFTheme.text.opacity(0.5))
                 }
             }
         }
