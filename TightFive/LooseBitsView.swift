@@ -1,59 +1,25 @@
 import SwiftUI
-import SwiftUI
 import Foundation
 import SwiftData
 import Combine
 
+/// View for managing loose (work-in-progress) bits only.
+/// For finished bits, see FinishedBitsView.
 struct LooseBitsView: View {
-    enum Mode {
-        case all
-        case loose
-        case finished
-        case favorites
-    }
-
-    let mode: Mode
-
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<Bit> { bit in
-        !bit.isDeleted
-    }, sort: \Bit.updatedAt, order: .reverse) private var allBits: [Bit]
-
-    @Query(sort: \Setlist.updatedAt, order: .reverse) private var allSetlists: [Setlist]
-
-    private var inProgressSetlists: [Setlist] {
-        allSetlists.filter { $0.isDraft }
-    }
+        !bit.isDeleted && bit.statusRaw == "loose"
+    }, sort: \Bit.updatedAt, order: .reverse) private var looseBits: [Bit]
 
     @State private var query: String = ""
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
 
-    private var title: String {
-        switch mode {
-        case .all: return "Bits"
-        case .loose: return "Loose ideas"
-        case .finished: return "Finished Bits"
-        case .favorites: return "Favorites"
-        }
-    }
-
-    /// Apply mode and search filters (deleted bits already excluded by @Query predicate)
+    /// Apply search filter to loose bits
     private var filtered: [Bit] {
-        // First: apply mode filter
-        let modeFiltered: [Bit] = {
-            switch mode {
-            case .all: return allBits
-            case .loose: return allBits.filter { $0.status == .loose }
-            case .finished: return allBits.filter { $0.status == .finished }
-            case .favorites: return allBits.filter { $0.isFavorite }
-            }
-        }()
-
-        // Second: apply search filter
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return modeFiltered }
-        return modeFiltered.filter { bit in
+        guard !q.isEmpty else { return looseBits }
+        return looseBits.filter { bit in
             bit.text.localizedCaseInsensitiveContains(q)
             || bit.title.localizedCaseInsensitiveContains(q)
             || bit.tags.contains(where: { $0.localizedCaseInsensitiveContains(q) })
@@ -62,315 +28,133 @@ struct LooseBitsView: View {
 
     var body: some View {
         ScrollView {
-                VStack(spacing: 12) {
-                    if filtered.isEmpty {
-                        emptyState
-                            .padding(.top, 40)
-                    } else {
-                        ForEach(filtered) { bit in
-                            // Custom Swipe Wrapper
-                            BitSwipeView(
-                                bit: bit,
-                                onFinish: {
-                                    withAnimation(.snappy) { toggleStatus(bit) }
-                                },
-                                onDelete: {
-                                    withAnimation(.snappy) { softDeleteBit(bit) }
-                                },
-                                onTap: {
-                                    // Handle navigation with state binding
-                                    selectedBit = bit
-                                }
-                            ) {
-                                // The Card Itself
-                                BitCardRow(bit: bit)
-                                    .contentShape(Rectangle())
-                                    .contextMenu {
-                                        // Favorite/Unfavorite action
-                                        Button {
-                                            withAnimation {
-                                                bit.isFavorite.toggle()
-                                                bit.updatedAt = Date()
-                                                try? modelContext.save()
-                                            }
-                                        } label: {
-                                            Label(
-                                                bit.isFavorite ? "Unfavorite" : "Favorite",
-                                                systemImage: bit.isFavorite ? "star.slash" : "star.fill"
-                                            )
-                                        }
-                                        
-                                        // Share action (finished bits only)
-                                        if bit.status == .finished {
-                                            Button {
-                                                shareBit(bit)
-                                            } label: {
-                                                Label("Share", systemImage: "square.and.arrow.up")
-                                            }
-                                        }
-                                        
-                                        if bit.status == .finished {
-                                            if inProgressSetlists.isEmpty {
-                                                Text("No in-progress setlists")
-                                            } else {
-                                                Menu("Add to setlist…") {
-                                                    ForEach(inProgressSetlists) { setlist in
-                                                        Button(setlist.title.isEmpty ? "Untitled Set" : setlist.title) {
-                                                            add(bit: bit, to: setlist)
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+            VStack(spacing: 12) {
+                if filtered.isEmpty {
+                    emptyState
+                        .padding(.top, 40)
+                } else {
+                    ForEach(filtered) { bit in
+                        BitSwipeView(
+                            bit: bit,
+                            onFinish: {
+                                withAnimation(.snappy) { markAsFinished(bit) }
+                            },
+                            onDelete: {
+                                withAnimation(.snappy) { softDeleteBit(bit) }
+                            },
+                            onTap: {
+                                selectedBit = bit
                             }
+                        ) {
+                            LooseBitCardRow(bit: bit)
+                                .contentShape(Rectangle())
+                                .contextMenu {
+                                    Button {
+                                        withAnimation {
+                                            bit.isFavorite.toggle()
+                                            bit.updatedAt = Date()
+                                            try? modelContext.save()
+                                        }
+                                    } label: {
+                                        Label(
+                                            bit.isFavorite ? "Unfavorite" : "Favorite",
+                                            systemImage: bit.isFavorite ? "star.slash" : "star.fill"
+                                        )
+                                    }
+
+                                    Button {
+                                        withAnimation(.snappy) { markAsFinished(bit) }
+                                    } label: {
+                                        Label("Mark as Finished", systemImage: "checkmark.seal.fill")
+                                    }
+                                }
                         }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 28)
             }
-            .tfBackground()
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $query, prompt: "Search bits")
-            // Handle Navigation Destination here
-            .navigationDestination(item: $selectedBit) { bit in
-                BitDetailView(bit: bit)
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 28)
+        }
+        .tfBackground()
+        .navigationTitle("Loose Ideas")
+        .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $query, prompt: "Search bits")
+        .navigationDestination(item: $selectedBit) { bit in
+            LooseBitDetailView(bit: bit)
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                TFWordmarkTitle(title: "Loose Ideas", size: 22)
+                    .offset(x: -6)
             }
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    TFWordmarkTitle(title: title, size: 22)
-                        .offset(x: -6)
-                }
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showQuickBit = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .appFont(size: 18, weight: .bold)
-                            .foregroundStyle(TFTheme.yellow)
-                            .frame(width: 44, height: 44)
-                            .background(Color.white.opacity(0.10))
-                            .clipShape(Circle())
-                            .overlay(
-                                Circle().stroke(Color("TFCardStroke").opacity(0.9), lineWidth: 1)
-                            )
-                    }
-                    .accessibilityLabel("New Bit")
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showQuickBit = true
+                } label: {
+                    Image(systemName: "plus")
+                        .appFont(size: 18, weight: .bold)
+                        .foregroundStyle(TFTheme.yellow)
+                        .frame(width: 44, height: 44)
+                        .background(Color.white.opacity(0.10))
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle().stroke(Color("TFCardStroke").opacity(0.9), lineWidth: 1)
+                        )
                 }
+                .accessibilityLabel("New Bit")
             }
-            .sheet(isPresented: $showQuickBit) {
-                QuickBitEditor()
-                    .presentationDetents([.medium, .large])
-            }
+        }
+        .sheet(isPresented: $showQuickBit) {
+            QuickBitEditor()
+                .presentationDetents([.medium, .large])
+        }
         .hideKeyboardInteractively()
     }
 
     private var emptyState: some View {
         VStack(spacing: 14) {
-            Text(emptyStateTitle)
+            Text("No loose ideas yet")
                 .appFont(.title3, weight: .semibold)
                 .foregroundStyle(TFTheme.text)
 
-            Text(emptyStateMessage)
+            Text("Tap + to capture an idea and it'll show up here.")
                 .appFont(.subheadline)
                 .foregroundStyle(TFTheme.text.opacity(0.65))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 26)
 
-            if mode != .favorites {
-                Button {
-                    showQuickBit = true
-                } label: {
-                    Text("Quick Bit")
-                        .appFont(.headline, weight: .semibold)
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
-                        .background(TFTheme.yellow)
-                        .clipShape(Capsule())
-                }
-                .padding(.top, 6)
+            Button {
+                showQuickBit = true
+            } label: {
+                Text("Quick Bit")
+                    .appFont(.headline, weight: .semibold)
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .background(TFTheme.yellow)
+                    .clipShape(Capsule())
             }
-        }
-    }
-    
-    private var emptyStateTitle: String {
-        switch mode {
-        case .finished: return "No finished bits yet"
-        case .favorites: return "No favorites yet"
-        default: return "No loose ideas yet"
-        }
-    }
-    
-    private var emptyStateMessage: String {
-        switch mode {
-        case .finished:
-            return "Move a bit to Finished when it's stage-ready."
-        case .favorites:
-            return "Favorite bits will appear here for quick access."
-        default:
-            return "Tap + to capture an idea and it'll show up here."
+            .padding(.top, 6)
         }
     }
 
-    private func toggleStatus(_ bit: Bit) {
-        bit.status = (bit.status == .loose) ? .finished : .loose
+    private func markAsFinished(_ bit: Bit) {
+        bit.status = .finished
         bit.updatedAt = Date()
+        try? modelContext.save()
     }
-    
-    /// Soft delete: marks bit as deleted, hard-deletes variations, preserves setlist assignments
+
     private func softDeleteBit(_ bit: Bit) {
         bit.softDelete(context: modelContext)
-        // Explicitly save to ensure the deletion persists immediately
         try? modelContext.save()
-    }
-
-    private func add(bit: Bit, to setlist: Setlist) {
-        setlist.insertBit(bit, at: nil, context: modelContext)
-        setlist.updatedAt = Date()
-        try? modelContext.save()
-    }
-    
-    private func shareBit(_ bit: Bit) {
-        // Fetch user profile name
-        let descriptor = FetchDescriptor<UserProfile>()
-        let userName = (try? modelContext.fetch(descriptor).first?.name) ?? ""
-        
-        let renderer = ImageRenderer(content: BitShareCard(bit: bit, userName: userName))
-        renderer.scale = 3.0 // High resolution for sharing
-        
-        if let image = renderer.uiImage {
-            let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
-            
-            // Present the share sheet
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let rootVC = windowScene.windows.first?.rootViewController {
-                var topVC = rootVC
-                while let presentedVC = topVC.presentedViewController {
-                    topVC = presentedVC
-                }
-                activityVC.popoverPresentationController?.sourceView = topVC.view
-                topVC.present(activityVC, animated: true)
-            }
-        }
     }
 }
 
-// MARK: - Custom Swipe View
-// This replaces the generic .swipeActions which only works in Lists
-struct BitSwipeView<Content: View>: View {
-    let bit: Bit
-    let onFinish: () -> Void
-    let onDelete: () -> Void
-    let onTap: () -> Void
-    let content: Content
+// MARK: - Loose Bit Card Row
 
-    @State private var offset: CGFloat = 0
-    @State private var isSwiping = false
-    
-    // Threshold to trigger the action automatically
-    private let actionThreshold: CGFloat = 100
-    
-    init(bit: Bit, onFinish: @escaping () -> Void, onDelete: @escaping () -> Void, onTap: @escaping () -> Void, @ViewBuilder content: () -> Content) {
-        self.bit = bit
-        self.onFinish = onFinish
-        self.onDelete = onDelete
-        self.onTap = onTap
-        self.content = content()
-    }
-
-    var body: some View {
-        ZStack {
-            // Background Layer (The Actions)
-            GeometryReader { geo in
-                HStack(spacing: 0) {
-                    // LEFT SIDE (Swipe Right)
-                    // - Loose bits: Finish action with checkmark
-                    // - Finished bits: Share action with share icon
-                    ZStack(alignment: .leading) {
-                        TFTheme.yellow
-                        Image(systemName: bit.status == .loose ? "checkmark.seal.fill" : "square.and.arrow.up")
-                            .appFont(.title2)
-                            .foregroundColor(.black)
-                            .padding(.leading, 30)
-                            .scaleEffect(offset > 0 ? 1.0 : 0.001)
-                            .opacity(offset > 0 ? 1 : 0)
-                    }
-                    .frame(width: geo.size.width / 2)
-                    .offset(x: offset > 0 ? 0 : -geo.size.width / 2)
-
-                    // RIGHT SIDE (Swipe Left -> Delete)
-                    ZStack(alignment: .trailing) {
-                        Color.red
-                        Image(systemName: "trash.fill")
-                            .appFont(.title2)
-                            .foregroundColor(.white)
-                            .padding(.trailing, 30)
-                            .scaleEffect(offset < 0 ? 1.0 : 0.001)
-                            .opacity(offset < 0 ? 1 : 0)
-                    }
-                    .frame(width: geo.size.width / 2)
-                    .offset(x: offset < 0 ? 0 : geo.size.width / 2)
-                }
-            }
-            .cornerRadius(18)
-
-            // Foreground Layer (The Card)
-            content
-                .offset(x: offset)
-                .highPriorityGesture(
-                    DragGesture(minimumDistance: 20)
-                        .onChanged { value in
-                            let translation = value.translation.width
-                            let vertical = abs(value.translation.height)
-                            
-                            // Only start swiping if it's mostly horizontal
-                            // This allows vertical scrolling to work naturally
-                            if abs(translation) > vertical * 1.5 {
-                                isSwiping = true
-                                withAnimation(.interactiveSpring(response: 0.3, dampingFraction: 0.8)) {
-                                    offset = translation
-                                }
-                            }
-                        }
-                        .onEnded { value in
-                            guard isSwiping else { return }
-                            
-                            let translation = value.translation.width
-                            withAnimation(.snappy) {
-                                if translation > actionThreshold {
-                                    // Swipe Right
-                                    // - Loose bits: Finish
-                                    // - Finished bits: Share
-                                    onFinish()
-                                    offset = 0
-                                } else if translation < -actionThreshold {
-                                    // Swipe Left -> Delete
-                                    onDelete()
-                                    offset = -500
-                                } else {
-                                    // Snap back
-                                    offset = 0
-                                }
-                            }
-                            isSwiping = false
-                        }
-                )
-                .onTapGesture {
-                    if offset == 0 {
-                        onTap()
-                    }
-                }
-        }
-    }
-}
-
-// MARK: - Bit row
-private struct BitCardRow: View {
+private struct LooseBitCardRow: View {
     let bit: Bit
 
     var body: some View {
@@ -439,87 +223,16 @@ private struct BitCardRow: View {
     }
 }
 
-// MARK: - Detail
-
-// UITextView wrapper with built-in undo support (matches RichTextEditor pattern)
-private struct UndoableTextEditor: UIViewRepresentable {
-    @Binding var text: String
-    let modelContext: ModelContext
-    let bit: Bit
-    var undoManager: UndoManager?
-    
-    func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
-        textView.font = .systemFont(ofSize: 17)
-        textView.backgroundColor = .clear
-        textView.textColor = .white
-        textView.delegate = context.coordinator
-        textView.allowsEditingTextAttributes = false
-        textView.isScrollEnabled = true
-        textView.autocapitalizationType = .sentences
-        textView.autocorrectionType = .yes
-        textView.spellCheckingType = .yes
-        
-        // Load initial text
-        textView.text = text
-        
-        return textView
-    }
-    
-    func updateUIView(_ textView: UITextView, context: Context) {
-        // Don't update if the change came from the text view itself
-        if !context.coordinator.isInternalUpdate && textView.text != text {
-            textView.text = text
-        }
-        context.coordinator.isInternalUpdate = false
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, modelContext: modelContext, bit: bit)
-    }
-    
-    class Coordinator: NSObject, UITextViewDelegate {
-        @Binding var text: String
-        let modelContext: ModelContext
-        let bit: Bit
-        var isInternalUpdate = false
-        
-        init(text: Binding<String>, modelContext: ModelContext, bit: Bit) {
-            self._text = text
-            self.modelContext = modelContext
-            self.bit = bit
-        }
-        
-        func textViewDidChange(_ textView: UITextView) {
-            isInternalUpdate = true
-            text = textView.text
-            bit.text = textView.text
-            bit.updatedAt = Date()
-            try? modelContext.save()
-        }
-    }
-}
-
-private struct BitDetailView: View {
-    @Bindable var bit: Bit
-    
-    var body: some View {
-        if bit.status == .finished {
-            FinishedBitDetailView(bit: bit)
-        } else {
-            LooseBitDetailView(bit: bit)
-        }
-    }
-}
-
 // MARK: - Loose Bit Detail View
-private struct LooseBitDetailView: View {
+
+/// Detail view for editing loose (work-in-progress) bits.
+struct LooseBitDetailView: View {
     @Bindable var bit: Bit
     @State private var showVariationComparison = false
     @ObservedObject private var keyboard = TFKeyboardState.shared
     @Environment(\.undoManager) private var undoManager
     @Environment(\.modelContext) private var modelContext
-    
+
     var body: some View {
         Form {
             Section("Title") {
@@ -529,9 +242,9 @@ private struct LooseBitDetailView: View {
                         try? modelContext.save()
                     }
             }
-            
+
             Section("Text") {
-                UndoableTextEditor(
+                LooseUndoableTextEditor(
                     text: $bit.text,
                     modelContext: modelContext,
                     bit: bit,
@@ -551,15 +264,15 @@ private struct LooseBitDetailView: View {
                     try? modelContext.save()
                 }
             }
-            
+
             Section("Tags") {
-                TagEditor(tags: $bit.tags) { updated in
+                LooseTagEditor(tags: $bit.tags) { updated in
                     bit.tags = updated
                     bit.updatedAt = Date()
                     try? modelContext.save()
                 }
             }
-            
+
             // Show variations section if any exist
             if !bit.variations.isEmpty {
                 Section {
@@ -569,12 +282,12 @@ private struct LooseBitDetailView: View {
                         HStack {
                             Image(systemName: "doc.on.doc")
                                 .foregroundStyle(TFTheme.yellow)
-                            
+
                             Text("Compare Variations")
                                 .foregroundStyle(TFTheme.text)
-                            
+
                             Spacer()
-                            
+
                             Text("\(bit.variationCount)")
                                 .appFont(.subheadline, weight: .semibold)
                                 .foregroundStyle(.black)
@@ -614,166 +327,65 @@ private struct LooseBitDetailView: View {
     }
 }
 
-// MARK: - Finished Bit Detail View
-private struct FinishedBitDetailView: View {
-    @Bindable var bit: Bit
-    @State private var showVariationComparison = false
-    @State private var showShareSheet = false
-    @ObservedObject private var keyboard = TFKeyboardState.shared
-    @Environment(\.undoManager) private var undoManager
-    @Environment(\.modelContext) private var modelContext
-    
-    private var displayTitle: String {
-        let trimmed = bit.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Add Bit Title" : trimmed
+// MARK: - Supporting Components
+
+/// UITextView wrapper with built-in undo support
+private struct LooseUndoableTextEditor: UIViewRepresentable {
+    @Binding var text: String
+    let modelContext: ModelContext
+    let bit: Bit
+    var undoManager: UndoManager?
+
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.font = .systemFont(ofSize: 17)
+        textView.backgroundColor = .clear
+        textView.textColor = .white
+        textView.delegate = context.coordinator
+        textView.allowsEditingTextAttributes = false
+        textView.isScrollEnabled = true
+        textView.autocapitalizationType = .sentences
+        textView.autocorrectionType = .yes
+        textView.spellCheckingType = .yes
+        textView.text = text
+        return textView
     }
-    
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                // Main Bit Card
-                VStack(alignment: .leading, spacing: 16) {
-                    TextField("Add Bit Title", text: $bit.title, axis: .vertical)
-                        .appFont(.title2, weight: .bold)
-                        .foregroundStyle(TFTheme.yellow)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                        .onChange(of: bit.title) { _, _ in
-                            bit.updatedAt = Date()
-                            try? modelContext.save()
-                        }
-                    
-                    Divider()
-                        .background(.white.opacity(0.2))
-                    
-                    // Editable text view that scales to content
-                    UndoableTextEditor(
-                        text: $bit.text,
-                        modelContext: modelContext,
-                        bit: bit,
-                        undoManager: undoManager
-                    )
-                    .frame(minHeight: 200)
-                }
-                .padding(20)
-                .tfDynamicCard(cornerRadius: 20)
-                
-                // Tags Card - Always show
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Tags")
-                        .appFont(.headline)
-                        .foregroundStyle(TFTheme.text)
-                    
-                    TagEditor(tags: $bit.tags) { updated in
-                        bit.tags = updated
-                        bit.updatedAt = Date()
-                        try? modelContext.save()
-                    }
-                }
-                .padding(20)
-                .tfDynamicCard(cornerRadius: 20)
-                
-                // Compare Variations Button
-                if !bit.variations.isEmpty {
-                    Button {
-                        showVariationComparison = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "doc.on.doc")
-                                .appFont(.headline)
-                            
-                            Text("Compare Variations")
-                                .appFont(.headline, weight: .semibold)
-                            
-                            Spacer()
-                            
-                            Text("\(bit.variationCount)")
-                                .appFont(.subheadline, weight: .semibold)
-                                .foregroundStyle(.black)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(.black.opacity(0.15))
-                                .clipShape(Capsule())
-                        }
-                        .foregroundStyle(.black)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 18)
-                        .frame(maxWidth: .infinity)
-                        .background(TFTheme.yellow)
-                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .strokeBorder(Color("TFCardStroke"), lineWidth: 1.5)
-                                .opacity(0.9)
-                                .blendMode(.overlay)
-                        )
-                        .shadow(color: .black.opacity(0.4), radius: 8, x: 0, y: 4)
-                    }
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 28)
+
+    func updateUIView(_ textView: UITextView, context: Context) {
+        if !context.coordinator.isInternalUpdate && textView.text != text {
+            textView.text = text
         }
-        .tfBackground()
-        .tfUndoRedoToolbar(isVisible: keyboard.isVisible)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 12) {
-                    // Share button
-                    Button {
-                        shareBit(bit)
-                    } label: {
-                        Image(systemName: "square.and.arrow.up")
-                            .foregroundStyle(TFTheme.yellow)
-                    }
-                    
-                    // Favorite button
-                    Button {
-                        bit.isFavorite.toggle()
-                        bit.updatedAt = Date()
-                        try? modelContext.save()
-                    } label: {
-                        Image(systemName: bit.isFavorite ? "star.fill" : "star")
-                            .foregroundStyle(TFTheme.yellow)
-                    }
-                }
-            }
-        }
-        .sheet(isPresented: $showVariationComparison) {
-            VariationComparisonView(bit: bit)
-        }
+        context.coordinator.isInternalUpdate = false
     }
-    
-    private func shareBit(_ bit: Bit) {
-        // Fetch user profile name
-        let descriptor = FetchDescriptor<UserProfile>()
-        let userName = (try? modelContext.fetch(descriptor).first?.name) ?? ""
-        
-        let renderer = ImageRenderer(content: BitShareCard(bit: bit, userName: userName))
-        renderer.scale = 3.0 // High resolution for sharing
-        
-        if let image = renderer.uiImage {
-            let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
-            
-            // Present the share sheet
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let rootVC = windowScene.windows.first?.rootViewController {
-                var topVC = rootVC
-                while let presentedVC = topVC.presentedViewController {
-                    topVC = presentedVC
-                }
-                activityVC.popoverPresentationController?.sourceView = topVC.view
-                topVC.present(activityVC, animated: true)
-            }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text, modelContext: modelContext, bit: bit)
+    }
+
+    class Coordinator: NSObject, UITextViewDelegate {
+        @Binding var text: String
+        let modelContext: ModelContext
+        let bit: Bit
+        var isInternalUpdate = false
+
+        init(text: Binding<String>, modelContext: ModelContext, bit: Bit) {
+            self._text = text
+            self.modelContext = modelContext
+            self.bit = bit
+        }
+
+        func textViewDidChange(_ textView: UITextView) {
+            isInternalUpdate = true
+            text = textView.text
+            bit.text = textView.text
+            bit.updatedAt = Date()
+            try? modelContext.save()
         }
     }
 }
 
-// MARK: - Tag Editor
-
-private struct TagEditor: View {
+/// Tag editor for loose bits
+private struct LooseTagEditor: View {
     @Binding var tags: [String]
     var onChange: ([String]) -> Void
     @State private var input: String = ""
@@ -818,6 +430,7 @@ private struct TagEditor: View {
             }
         }
     }
+
     private func addTag() {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -830,281 +443,3 @@ private struct TagEditor: View {
         input = ""
     }
 }
-
-// MARK: - Share Card
-
-/// A beautifully styled polaroid-style card for sharing bits externally
-private struct BitShareCard: View {
-    let bit: Bit
-    let userName: String
-    let frameColor: Color
-    let bottomBarColor: Color
-    let windowTheme: BitWindowTheme
-    
-    init(bit: Bit, userName: String) {
-        self.bit = bit
-        self.userName = userName
-        
-        // Resolve frame color (handle custom)
-        let frameColorEnum = AppSettings.shared.bitCardFrameColor
-        if frameColorEnum == .custom {
-            self.frameColor = Color(hex: AppSettings.shared.customFrameColorHex) ?? Color("TFCard")
-        } else {
-            self.frameColor = frameColorEnum.color(customHex: nil)
-        }
-        
-        // Resolve bottom bar color (handle custom)
-        let bottomBarColorEnum = AppSettings.shared.bitCardBottomBarColor
-        if bottomBarColorEnum == .custom {
-            self.bottomBarColor = Color(hex: AppSettings.shared.customBottomBarColorHex) ?? Color("TFCard")
-        } else {
-            self.bottomBarColor = bottomBarColorEnum.color(customHex: nil)
-        }
-        
-        self.windowTheme = AppSettings.shared.bitWindowTheme
-    }
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Main content area with dynamic card texture - rounded only at top
-            VStack(alignment: .leading, spacing: 16) {
-                // Bit text only (no title or tags)
-                Text(bit.text)
-                    .appFont(size: 18)
-                    .foregroundStyle(windowTheme == .chalkboard ? .white.opacity(0.95) : .black.opacity(0.85))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .lineSpacing(4)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(32)
-            .background(
-                ZStack {
-                    if windowTheme == .chalkboard {
-                        // Original chalkboard theme
-                        Color("TFCard")
-                        
-                        if AppSettings.shared.bitCardGritLevel > 0 {
-                            StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(300),
-                                opacity: 0.55,
-                                seed: 1234,
-                                particleColor: Color("TFYellow")
-                            )
-                            
-                            StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(300),
-                                opacity: 0.35,
-                                seed: 5678
-                            )
-                        }
-                    } else {
-                        // Yellow grit theme (matches Quick Bit button)
-                        Color("TFYellow")
-                        
-                        if AppSettings.shared.bitCardGritLevel > 0 {
-                            StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(800),
-                                opacity: 0.85,
-                                seed: 7777,
-                                particleColor: .brown
-                            )
-                            
-                            StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(100),
-                                opacity: 0.88,
-                                seed: 8888,
-                                particleColor: .black
-                            )
-                            
-                            StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(400),
-                                opacity: 0.88,
-                                seed: 8888,
-                                particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
-                            )
-                        }
-                    }
-                    
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 12,
-                        bottomLeadingRadius: 0,
-                        bottomTrailingRadius: 0,
-                        topTrailingRadius: 12,
-                        style: .continuous
-                    )
-                    .fill(
-                        RadialGradient(
-                            colors: [.clear, .black.opacity(windowTheme == .chalkboard ? 0.3 : 0.15)],
-                            center: .center,
-                            startRadius: 50,
-                            endRadius: 400
-                        )
-                    )
-                }
-                .clipShape(
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 12,
-                        bottomLeadingRadius: 0,
-                        bottomTrailingRadius: 0,
-                        topTrailingRadius: 12,
-                        style: .continuous
-                    )
-                )
-            )
-            .overlay(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 12,
-                    bottomLeadingRadius: 0,
-                    bottomTrailingRadius: 0,
-                    topTrailingRadius: 12,
-                    style: .continuous
-                )
-                .strokeBorder(Color("TFCardStroke"), lineWidth: 1.5)
-                .opacity(0.9)
-                .blendMode(.overlay)
-            )
-            
-            // Polaroid-style bar at the bottom - rounded only at bottom
-            VStack(spacing: 4) {
-                TFWordmarkTitle(title: "written in TightFive", size: 16)
-                
-                if !userName.isEmpty {
-                    Text("by \(userName)")
-                        .appFont(size: 14)
-                        .foregroundStyle(AppSettings.shared.bitCardBottomBarColor.hasTexture && AppSettings.shared.bitCardBottomBarColor == .yellowGrit ? .black.opacity(0.7) : .white.opacity(0.7))
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
-            .background(
-                ZStack {
-                    if AppSettings.shared.bitCardBottomBarColor.hasTexture, let theme = AppSettings.shared.bitCardBottomBarColor.textureTheme {
-                        // Render textured background
-                        if theme == .chalkboard {
-                            Color("TFCard")
-                            
-                            if AppSettings.shared.bitCardGritLevel > 0 {
-                                StaticGritLayer(
-                                    density: AppSettings.shared.adjustedBitCardGritDensity(300),
-                                    opacity: 0.55,
-                                    seed: 1234,
-                                    particleColor: Color("TFYellow")
-                                )
-                                
-                                StaticGritLayer(
-                                    density: AppSettings.shared.adjustedBitCardGritDensity(300),
-                                    opacity: 0.35,
-                                    seed: 5678
-                                )
-                            }
-                        } else {
-                            Color("TFYellow")
-                            
-                            if AppSettings.shared.bitCardGritLevel > 0 {
-                                StaticGritLayer(
-                                    density: AppSettings.shared.adjustedBitCardGritDensity(800),
-                                    opacity: 0.85,
-                                    seed: 7777,
-                                    particleColor: .brown
-                                )
-                                
-                                StaticGritLayer(
-                                    density: AppSettings.shared.adjustedBitCardGritDensity(100),
-                                    opacity: 0.88,
-                                    seed: 8888,
-                                    particleColor: .black
-                                )
-                                
-                                StaticGritLayer(
-                                    density: AppSettings.shared.adjustedBitCardGritDensity(400),
-                                    opacity: 0.88,
-                                    seed: 8888,
-                                    particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
-                                )
-                            }
-                        }
-                    }
-                    
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 0,
-                        bottomLeadingRadius: 12,
-                        bottomTrailingRadius: 12,
-                        topTrailingRadius: 0,
-                        style: .continuous
-                    )
-                    .fill(AppSettings.shared.bitCardBottomBarColor.hasTexture ? .clear : bottomBarColor)
-                }
-                .clipShape(
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 0,
-                        bottomLeadingRadius: 12,
-                        bottomTrailingRadius: 12,
-                        topTrailingRadius: 0,
-                        style: .continuous
-                    )
-                )
-            )
-        }
-        .frame(width: 500)
-        .padding(12) // This creates the frame effect around everything
-        .background(
-            ZStack {
-                if AppSettings.shared.bitCardFrameColor.hasTexture, let theme = AppSettings.shared.bitCardFrameColor.textureTheme {
-                    // Render textured frame background
-                    if theme == .chalkboard {
-                        Color("TFCard")
-                        
-                        if AppSettings.shared.bitCardGritLevel > 0 {
-                            StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(300),
-                                opacity: 0.55,
-                                seed: 9999,
-                                particleColor: Color("TFYellow")
-                            )
-                            
-                            StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(300),
-                                opacity: 0.35,
-                                seed: 1111
-                            )
-                        }
-                    } else if theme == .yellowGrit {
-                        Color("TFYellow")
-                        
-                        if AppSettings.shared.bitCardGritLevel > 0 {
-                            StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(800),
-                                opacity: 0.85,
-                                seed: 2222,
-                                particleColor: .brown
-                            )
-                            
-                            StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(100),
-                                opacity: 0.88,
-                                seed: 3333,
-                                particleColor: .black
-                            )
-                            
-                            StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(400),
-                                opacity: 0.88,
-                                seed: 4444,
-                                particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
-                            )
-                        }
-                    }
-                } else {
-                    // Solid color frame
-                    frameColor
-                }
-            }
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
-    }
-}
-
-
-
-

@@ -1,14 +1,15 @@
 import SwiftUI
-import SwiftUI
 import Foundation
 import SwiftData
 import Combine
 
+/// View for managing finished (stage-ready) bits.
+/// For loose bits, see LooseBitsView.
 struct FinishedBitsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<Bit> { bit in
-        !bit.isDeleted
-    }, sort: \Bit.updatedAt, order: .reverse) private var allBits: [Bit]
+        !bit.isDeleted && bit.statusRaw == "finished"
+    }, sort: \Bit.updatedAt, order: .reverse) private var finishedBits: [Bit]
 
     @Query(sort: \Setlist.updatedAt, order: .reverse) private var allSetlists: [Setlist]
 
@@ -20,18 +21,26 @@ struct FinishedBitsView: View {
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
     
-    private var title: String {
-        return "Finished Bits"
+    @State private var filterScope: FilterScope = .all
+    
+    private enum FilterScope: String, CaseIterable, Identifiable {
+        case all = "All"
+        case favorites = "Favorites"
+        var id: String { rawValue }
     }
 
-    /// Apply search filter to finished bits only
+    /// Apply search filter to finished bits
     private var filtered: [Bit] {
-        let finishedBits = allBits.filter { $0.status == .finished }
-        
-        // Apply search filter
+        let base: [Bit]
+        switch filterScope {
+        case .all:
+            base = finishedBits
+        case .favorites:
+            base = finishedBits.filter { $0.isFavorite }
+        }
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return finishedBits }
-        return finishedBits.filter { bit in
+        guard !q.isEmpty else { return base }
+        return base.filter { bit in
             bit.text.localizedCaseInsensitiveContains(q)
             || bit.title.localizedCaseInsensitiveContains(q)
             || bit.tags.contains(where: { $0.localizedCaseInsensitiveContains(q) })
@@ -41,6 +50,13 @@ struct FinishedBitsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
+                Picker("Scope", selection: $filterScope) {
+                    Text("All").tag(FilterScope.all)
+                    Text("Favorites").tag(FilterScope.favorites)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 2)
+                
                 if filtered.isEmpty {
                     emptyState
                         .padding(.top, 40)
@@ -106,15 +122,15 @@ struct FinishedBitsView: View {
             .padding(.bottom, 28)
         }
         .tfBackground()
-        .navigationTitle(title)
+        .navigationTitle("Finished Bits")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query, prompt: "Search bits")
         .navigationDestination(item: $selectedBit) { bit in
-            BitDetailView(bit: bit)
+            FinishedBitDetailView(bit: bit)
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                TFWordmarkTitle(title: title, size: 22)
+                TFWordmarkTitle(title: "Finished Bits", size: 22)
                     .offset(x: -6)
             }
 
@@ -205,8 +221,10 @@ struct FinishedBitsView: View {
     }
 }
 
-// MARK: - Bit Detail View
-private struct BitDetailView: View {
+// MARK: - Finished Bit Detail View
+
+/// Detail view for finished bits - used by both FinishedBitsView and BitsTabView
+struct FinishedBitDetailView: View {
     @Bindable var bit: Bit
     @State private var showVariationComparison = false
     @State private var showShareSheet = false
@@ -219,21 +237,46 @@ private struct BitDetailView: View {
             VStack(spacing: 16) {
                 // Main Bit Card
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(bit.titleLine)
-                        .appFont(.title2, weight: .bold)
-                        .foregroundStyle(TFTheme.yellow)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .multilineTextAlignment(.center)
+                    TextField("Title", text: Binding(
+                        get: { bit.title },
+                        set: { newValue in
+                            bit.title = newValue
+                            bit.updatedAt = Date()
+                            try? modelContext.save()
+                        }
+                    ))
+                    .appFont(.title2, weight: .bold)
+                    .foregroundStyle(TFTheme.yellow)
+                    .multilineTextAlignment(.center)
+                    .submitLabel(.done)
+                    .textInputAutocapitalization(.words)
+                    .disableAutocorrection(true)
                     
                     Divider()
                         .background(.white.opacity(0.2))
                     
-                    // Read-only text view that scales to content
-                    Text(bit.text)
+                    ZStack(alignment: .topLeading) {
+                        // Placeholder when empty
+                        if bit.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("Body")
+                                .appFont(.body)
+                                .foregroundStyle(TFTheme.text.opacity(0.35))
+                                .padding(.top, 8)
+                        }
+                        TextEditor(text: Binding(
+                            get: { bit.text },
+                            set: { newValue in
+                                bit.text = newValue
+                                bit.updatedAt = Date()
+                                try? modelContext.save()
+                            }
+                        ))
+                        .scrollContentBackground(.hidden)
+                        .background(Color.clear)
                         .appFont(.body)
                         .foregroundStyle(TFTheme.text)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(minHeight: 140)
+                    }
                     
                     // Duration info
                     HStack(spacing: 6) {
@@ -423,7 +466,8 @@ private struct TagEditor: View {
     }
 }
 
-// MARK: - Bit Card Row (shared component)
+// MARK: - Finished Bit Card Row
+
 private struct BitCardRow: View {
     let bit: Bit
 
@@ -433,9 +477,20 @@ private struct BitCardRow: View {
             Text(bit.titleLine)
                 .appFont(.title3, weight: .semibold)
                 .foregroundStyle(TFTheme.text)
-                .lineLimit(4)
+                .lineLimit(3)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
+            
+            // Estimated duration row
+            HStack(spacing: 6) {
+                Image(systemName: "clock")
+                    .appFont(.caption)
+                    .foregroundStyle(TFTheme.yellow)
+                Text(bit.formattedDuration)
+                    .appFont(.subheadline)
+                    .foregroundStyle(TFTheme.text.opacity(0.7))
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
 
             // Date - Variations - Favorite row
             HStack(spacing: 8) {
@@ -443,22 +498,29 @@ private struct BitCardRow: View {
                     .appFont(.subheadline)
                     .foregroundStyle(TFTheme.text.opacity(0.55))
 
-                Text("•")
-                    .appFont(.subheadline)
-                    .foregroundStyle(TFTheme.text.opacity(0.4))
+                if bit.variationCount > 0 {
+                    Text("•")
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.text.opacity(0.4))
 
-                Text("\(bit.variationCount) var")
-                    .appFont(.subheadline)
-                    .foregroundStyle(TFTheme.text.opacity(0.55))
+                    Text("\(bit.variationCount) variation\(bit.variationCount == 1 ? "" : "s")")
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.text.opacity(0.55))
+                }
 
-                Text("•")
-                    .appFont(.subheadline)
-                    .foregroundStyle(TFTheme.text.opacity(0.4))
+                if bit.isFavorite {
+                    Text("•")
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.text.opacity(0.4))
 
-                HStack(spacing: 4) {
-                    Image(systemName: bit.isFavorite ? "star.fill" : "star")
-                        .appFont(.caption)
-                        .foregroundStyle(TFTheme.yellow)
+                    HStack(spacing: 4) {
+                        Image(systemName: "star.fill")
+                            .appFont(.caption)
+                            .foregroundStyle(TFTheme.yellow)
+                        Text("Favorite")
+                            .appFont(.subheadline)
+                            .foregroundStyle(TFTheme.text.opacity(0.55))
+                    }
                 }
             }
 
@@ -757,3 +819,4 @@ private struct BitShareCard: View {
         .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
     }
 }
+

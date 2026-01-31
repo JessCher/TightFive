@@ -9,7 +9,7 @@ struct RootTabs: View {
             .tabItem { Label("Home", systemImage: "house.fill") }
 
             NavigationStack {
-                LooseBitsView(mode: .all)
+                BitsTabView()
             }
             .tabItem { Label("Bits", systemImage: "square.stack.3d.up.fill") }
 
