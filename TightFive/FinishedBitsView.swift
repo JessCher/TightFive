@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUI
 import Foundation
 import SwiftData
 import Combine
@@ -233,6 +234,18 @@ private struct BitDetailView: View {
                         .foregroundStyle(TFTheme.text)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)
+                    
+                    // Duration info
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock")
+                            .appFont(.subheadline)
+                            .foregroundStyle(TFTheme.yellow)
+                        
+                        Text("Estimated: \(bit.formattedDuration)")
+                            .appFont(.subheadline)
+                            .foregroundStyle(TFTheme.text.opacity(0.7))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .padding(20)
                 .tfDynamicCard(cornerRadius: 20)
@@ -454,9 +467,25 @@ private struct BitCardRow: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(bit.updatedAt, style: .date)
-                .appFont(.subheadline)
-                .foregroundStyle(TFTheme.text.opacity(0.55))
+            HStack(spacing: 8) {
+                Text(bit.updatedAt, style: .date)
+                    .appFont(.subheadline)
+                    .foregroundStyle(TFTheme.text.opacity(0.55))
+                
+                Text("•")
+                    .appFont(.subheadline)
+                    .foregroundStyle(TFTheme.text.opacity(0.4))
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .appFont(.caption)
+                        .foregroundStyle(TFTheme.yellow)
+                    
+                    Text(bit.formattedDuration)
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.text.opacity(0.55))
+                }
+            }
             
             if !bit.tags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {

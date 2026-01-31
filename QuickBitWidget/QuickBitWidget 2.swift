@@ -210,10 +210,6 @@ struct QuickBitWidgetView: View {
     @ViewBuilder
     private var buttonContent: some View {
         VStack(spacing: 4) {
-            Image(systemName: "lightbulb.fill")
-                .font(.system(size: iconSize, weight: .semibold))
-                .foregroundStyle(textColor)
-            
             if entry.showLabel && family != .accessoryCircular {
                 Text("Quick Bit")
                     .font(.system(size: labelSize, weight: .bold, design: .rounded))

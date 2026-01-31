@@ -1,39 +1,652 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @State private var selectedFrameColor: BitCardFrameColor = AppSettings.shared.bitCardFrameColor
-    @State private var selectedBottomBarColor: BitCardFrameColor = AppSettings.shared.bitCardBottomBarColor
-    @State private var selectedWindowTheme: BitWindowTheme = AppSettings.shared.bitWindowTheme
-    @State private var bitCardGritLevel: Double = AppSettings.shared.bitCardGritLevel
-    
-    @State private var selectedTileCardTheme: TileCardTheme = AppSettings.shared.tileCardTheme
-    @State private var selectedQuickBitTheme: TileCardTheme = AppSettings.shared.quickBitTheme
-    @State private var appGritLevel: Double = AppSettings.shared.appGritLevel
+    var body: some View {
+        Form {
+            Section {
+                NavigationLink {
+                    ThemeAndCustomizationView()
+                } label: {
+                    Text("Theme and Customization")
+                        .foregroundStyle(.white)
+                }
+            } footer: {
+                Text("Customize the appearance and style of your app and shareable content.")
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .tfBackground()
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                TFWordmarkTitle(title: "Settings", size: 22)
+            }
+        }
+    }
+}
+
+// MARK: - Theme and Customization
+
+struct ThemeAndCustomizationView: View {
+    var body: some View {
+        Form {
+            Section {
+                NavigationLink {
+                    QuickBitAndTileCardsSettingsView()
+                } label: {
+                    Text("Quick Bit and Tile Cards")
+                        .foregroundStyle(.white)
+                }
+
+                NavigationLink {
+                    ShareableBitCardSettingsView()
+                } label: {
+                    Text("Shareable Bit Card")
+                        .foregroundStyle(.white)
+                }
+
+                NavigationLink {
+                    FontOptionsView()
+                } label: {
+                    Text("Font Options")
+                        .foregroundStyle(.white)
+                }
+            } footer: {
+                Text("Customize how your content appears throughout the app.")
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .tfBackground()
+        .navigationTitle("Theme and Customization")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                TFWordmarkTitle(title: "Theme and Customization", size: 18)
+            }
+        }
+    }
+}
+
+// MARK: - Font Options View
+
+struct FontOptionsView: View {
     @State private var selectedAppFont: AppFont = AppSettings.shared.appFont
-    
-    // Font customization
     @State private var appFontColor: Color = Color(hex: AppSettings.shared.appFontColorHex) ?? .white
     @State private var appFontSizeMultiplier: Double = AppSettings.shared.appFontSizeMultiplier
-    
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("App Font", selection: $selectedAppFont) {
+                    ForEach(AppFont.allCases) { font in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(font.displayName)
+                                .appFont(.body)
+                            Text(font.description)
+                                .appFont(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .tag(font)
+                    }
+                }
+                .pickerStyle(.navigationLink)
+                .onChange(of: selectedAppFont) { _, newValue in
+                    AppSettings.shared.appFont = newValue
+                    AppSettings.shared.syncQuickBitThemeToWidget()
+                }
+
+                // Font Color Picker
+                VStack(alignment: .leading, spacing: 8) {
+                    ColorPicker("Font Color", selection: $appFontColor, supportsOpacity: false)
+                        .onChange(of: appFontColor) { _, newValue in
+                            if let hex = newValue.toHex() {
+                                AppSettings.shared.appFontColorHex = hex
+                                AppSettings.shared.syncQuickBitThemeToWidget()
+                            }
+                        }
+
+                    Text("Current: \(AppSettings.shared.appFontColorHex)")
+                        .appFont(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("", text: Binding(
+                        get: { AppSettings.shared.appFontColorHex },
+                        set: { newValue in
+                            AppSettings.shared.appFontColorHex = newValue
+                            if let color = Color(hex: newValue) {
+                                appFontColor = color
+                            }
+                        }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                }
+
+                // Font Size Slider
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Font Size")
+                            .appFont(.headline)
+
+                        Spacer()
+
+                        Text("\(Int(appFontSizeMultiplier * 100))%")
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack(spacing: 12) {
+                        Text("Small")
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Slider(value: $appFontSizeMultiplier, in: 0.8...1.4, step: 0.05)
+                            .tint(TFTheme.yellow)
+                            .onChange(of: appFontSizeMultiplier) { _, newValue in
+                                AppSettings.shared.appFontSizeMultiplier = newValue
+                                AppSettings.shared.syncQuickBitThemeToWidget()
+                            }
+
+                        Text("Large")
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Button("Reset to Default (100%)") {
+                        appFontSizeMultiplier = 1.0
+                        AppSettings.shared.appFontSizeMultiplier = 1.0
+                    }
+                    .appFont(.caption)
+                    .foregroundStyle(TFTheme.yellow)
+                }
+                .padding(.vertical, 4)
+            } footer: {
+                Text("Customize the font style, color, and size used throughout the app.")
+            }
+
+            // Font Preview section
+            Section {
+                FontPreview(
+                    appFont: selectedAppFont,
+                    fontColor: appFontColor,
+                    fontSizeMultiplier: appFontSizeMultiplier
+                )
+            } header: {
+                Text("Preview")
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .tfBackground()
+        .navigationTitle("Font Options")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                TFWordmarkTitle(title: "Font Options", size: 18)
+            }
+        }
+    }
+}
+
+// MARK: - Quick Bit and Tile Cards Settings
+
+struct QuickBitAndTileCardsSettingsView: View {
+    @State private var selectedQuickBitTheme: TileCardTheme = AppSettings.shared.quickBitTheme
+    @State private var selectedTileCardTheme: TileCardTheme = AppSettings.shared.tileCardTheme
+    @State private var appGritLevel: Double = AppSettings.shared.appGritLevel
+    @State private var selectedAppFont: AppFont = AppSettings.shared.appFont
+
     // Quick Bit advanced customization
     @State private var quickBitCustomColor: Color = Color(hex: AppSettings.shared.quickBitCustomColorHex) ?? Color("TFYellow")
     @State private var quickBitGritEnabled: Bool = AppSettings.shared.quickBitGritEnabled
     @State private var quickBitGritLayer1Color: Color = Color(hex: AppSettings.shared.quickBitGritLayer1ColorHex) ?? .brown
     @State private var quickBitGritLayer2Color: Color = Color(hex: AppSettings.shared.quickBitGritLayer2ColorHex) ?? .black
     @State private var quickBitGritLayer3Color: Color = Color(hex: AppSettings.shared.quickBitGritLayer3ColorHex) ?? Color(red: 0.8, green: 0.4, blue: 0.0)
-    
+
     // Tile Card advanced customization
     @State private var tileCardCustomColor: Color = Color(hex: AppSettings.shared.tileCardCustomColorHex) ?? Color("TFCard")
     @State private var tileCardGritEnabled: Bool = AppSettings.shared.tileCardGritEnabled
     @State private var tileCardGritLayer1Color: Color = Color(hex: AppSettings.shared.tileCardGritLayer1ColorHex) ?? Color("TFYellow")
     @State private var tileCardGritLayer2Color: Color = Color(hex: AppSettings.shared.tileCardGritLayer2ColorHex) ?? .white.opacity(0.3)
     @State private var tileCardGritLayer3Color: Color = Color(hex: AppSettings.shared.tileCardGritLayer3ColorHex) ?? .white.opacity(0.1)
-    
+
+    var body: some View {
+        Form {
+            // Quick Bit Button and Widget Section
+            Section {
+                Text("Quick Bit Button and Widget")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .padding(.vertical, 4)
+
+                Picker("Quick Bit Theme", selection: $selectedQuickBitTheme) {
+                    ForEach(TileCardTheme.allCases) { theme in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(theme.displayName)
+                                .appFont(.body)
+                            Text(theme.description)
+                                .appFont(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .tag(theme)
+                    }
+                }
+                .pickerStyle(.navigationLink)
+                .onChange(of: selectedQuickBitTheme) { _, newValue in
+                    AppSettings.shared.quickBitTheme = newValue
+                    AppSettings.shared.syncQuickBitThemeToWidget()
+                }
+
+                // Advanced Quick Bit Customization (only show if custom theme is selected)
+                if selectedQuickBitTheme == .custom {
+                    DisclosureGroup("Advanced Quick Bit Customization") {
+                        VStack(spacing: 16) {
+                            // Custom background color with hex input
+                            VStack(alignment: .leading, spacing: 8) {
+                                ColorPicker("Background Color", selection: $quickBitCustomColor, supportsOpacity: false)
+                                    .onChange(of: quickBitCustomColor) { _, newValue in
+                                        if let hex = newValue.toHex() {
+                                            AppSettings.shared.quickBitCustomColorHex = hex
+                                            AppSettings.shared.syncQuickBitThemeToWidget()
+                                        }
+                                    }
+
+                                HStack {
+                                    Text("Hex:")
+                                        .appFont(.caption)
+                                        .foregroundStyle(.secondary)
+                                    TextField("", text: Binding(
+                                        get: { AppSettings.shared.quickBitCustomColorHex },
+                                        set: { newValue in
+                                            AppSettings.shared.quickBitCustomColorHex = newValue
+                                            if let color = Color(hex: newValue) {
+                                                quickBitCustomColor = color
+                                            }
+                                        }
+                                    ))
+                                    .textInputAutocapitalization(.characters)
+                                    .autocorrectionDisabled()
+                                    .font(.system(.body, design: .monospaced))
+                                    .textFieldStyle(.roundedBorder)
+                                }
+                            }
+
+                            Divider()
+
+                            // Grit toggle
+                            Toggle("Enable Grit Texture", isOn: $quickBitGritEnabled)
+                                .onChange(of: quickBitGritEnabled) { _, newValue in
+                                    AppSettings.shared.quickBitGritEnabled = newValue
+                                    AppSettings.shared.syncQuickBitThemeToWidget()
+                                }
+
+                            if quickBitGritEnabled {
+                                VStack(spacing: 16) {
+                                    Text("Grit Layer Colors")
+                                        .appFont(.caption, weight: .semibold)
+                                        .foregroundStyle(.white.opacity(0.6))
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                                    // Layer 1
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        ColorPicker("Layer 1 (Primary)", selection: $quickBitGritLayer1Color, supportsOpacity: false)
+                                            .onChange(of: quickBitGritLayer1Color) { _, newValue in
+                                                if let hex = newValue.toHex() {
+                                                    AppSettings.shared.quickBitGritLayer1ColorHex = hex
+                                                    AppSettings.shared.syncQuickBitThemeToWidget()
+                                                }
+                                            }
+
+                                        HStack {
+                                            Text("Hex:")
+                                                .appFont(.caption)
+                                                .foregroundStyle(.secondary)
+                                            TextField("", text: Binding(
+                                                get: { AppSettings.shared.quickBitGritLayer1ColorHex },
+                                                set: { newValue in
+                                                    AppSettings.shared.quickBitGritLayer1ColorHex = newValue
+                                                    if let color = Color(hex: newValue) {
+                                                        quickBitGritLayer1Color = color
+                                                    }
+                                                }
+                                            ))
+                                            .textInputAutocapitalization(.characters)
+                                            .autocorrectionDisabled()
+                                            .font(.system(.caption, design: .monospaced))
+                                            .textFieldStyle(.roundedBorder)
+                                        }
+                                    }
+
+                                    // Layer 2
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        ColorPicker("Layer 2 (Secondary)", selection: $quickBitGritLayer2Color, supportsOpacity: false)
+                                            .onChange(of: quickBitGritLayer2Color) { _, newValue in
+                                                if let hex = newValue.toHex() {
+                                                    AppSettings.shared.quickBitGritLayer2ColorHex = hex
+                                                    AppSettings.shared.syncQuickBitThemeToWidget()
+                                                }
+                                            }
+
+                                        HStack {
+                                            Text("Hex:")
+                                                .appFont(.caption)
+                                                .foregroundStyle(.secondary)
+                                            TextField("", text: Binding(
+                                                get: { AppSettings.shared.quickBitGritLayer2ColorHex },
+                                                set: { newValue in
+                                                    AppSettings.shared.quickBitGritLayer2ColorHex = newValue
+                                                    if let color = Color(hex: newValue) {
+                                                        quickBitGritLayer2Color = color
+                                                    }
+                                                }
+                                            ))
+                                            .textInputAutocapitalization(.characters)
+                                            .autocorrectionDisabled()
+                                            .font(.system(.caption, design: .monospaced))
+                                            .textFieldStyle(.roundedBorder)
+                                        }
+                                    }
+
+                                    // Layer 3
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        ColorPicker("Layer 3 (Accent)", selection: $quickBitGritLayer3Color, supportsOpacity: false)
+                                            .onChange(of: quickBitGritLayer3Color) { _, newValue in
+                                                if let hex = newValue.toHex() {
+                                                    AppSettings.shared.quickBitGritLayer3ColorHex = hex
+                                                    AppSettings.shared.syncQuickBitThemeToWidget()
+                                                }
+                                            }
+
+                                        HStack {
+                                            Text("Hex:")
+                                                .appFont(.caption)
+                                                .foregroundStyle(.secondary)
+                                            TextField("", text: Binding(
+                                                get: { AppSettings.shared.quickBitGritLayer3ColorHex },
+                                                set: { newValue in
+                                                    AppSettings.shared.quickBitGritLayer3ColorHex = newValue
+                                                    if let color = Color(hex: newValue) {
+                                                        quickBitGritLayer3Color = color
+                                                    }
+                                                }
+                                            ))
+                                            .textInputAutocapitalization(.characters)
+                                            .autocorrectionDisabled()
+                                            .font(.system(.caption, design: .monospaced))
+                                            .textFieldStyle(.roundedBorder)
+                                        }
+                                    }
+                                }
+                                .padding(.leading, 8)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
+
+                // Preview
+                VStack(spacing: 8) {
+                    Text("Preview")
+                        .appFont(.caption, weight: .semibold)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    QuickBitButtonPreview(
+                        theme: selectedQuickBitTheme,
+                        gritLevel: appGritLevel,
+                        customColor: quickBitCustomColor,
+                        gritEnabled: quickBitGritEnabled,
+                        gritLayer1Color: quickBitGritLayer1Color,
+                        gritLayer2Color: quickBitGritLayer2Color,
+                        gritLayer3Color: quickBitGritLayer3Color,
+                        appFont: selectedAppFont
+                    )
+                }
+            }
+
+            // Tile Cards Section
+            Section {
+                Text("Tile Cards")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .padding(.vertical, 4)
+
+                Picker("Tile Card Theme", selection: $selectedTileCardTheme) {
+                    ForEach(TileCardTheme.allCases) { theme in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(theme.displayName)
+                                .appFont(.body)
+                            Text(theme.description)
+                                .appFont(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .tag(theme)
+                    }
+                }
+                .pickerStyle(.navigationLink)
+                .onChange(of: selectedTileCardTheme) { _, newValue in
+                    AppSettings.shared.tileCardTheme = newValue
+                }
+
+                // Advanced Tile Card Customization (only show if custom theme is selected)
+                if selectedTileCardTheme == .custom {
+                    DisclosureGroup("Advanced Tile Card Customization") {
+                        VStack(spacing: 16) {
+                            // Custom background color with hex input
+                            VStack(alignment: .leading, spacing: 8) {
+                                ColorPicker("Background Color", selection: $tileCardCustomColor, supportsOpacity: false)
+                                    .onChange(of: tileCardCustomColor) { _, newValue in
+                                        if let hex = newValue.toHex() {
+                                            AppSettings.shared.tileCardCustomColorHex = hex
+                                        }
+                                    }
+
+                                HStack {
+                                    Text("Hex:")
+                                        .appFont(.caption)
+                                        .foregroundStyle(.secondary)
+                                    TextField("", text: Binding(
+                                        get: { AppSettings.shared.tileCardCustomColorHex },
+                                        set: { newValue in
+                                            AppSettings.shared.tileCardCustomColorHex = newValue
+                                            if let color = Color(hex: newValue) {
+                                                tileCardCustomColor = color
+                                            }
+                                        }
+                                    ))
+                                    .textInputAutocapitalization(.characters)
+                                    .autocorrectionDisabled()
+                                    .font(.system(.body, design: .monospaced))
+                                    .textFieldStyle(.roundedBorder)
+                                }
+                            }
+
+                            Divider()
+
+                            // Grit toggle
+                            Toggle("Enable Grit Texture", isOn: $tileCardGritEnabled)
+                                .onChange(of: tileCardGritEnabled) { _, newValue in
+                                    AppSettings.shared.tileCardGritEnabled = newValue
+                                }
+
+                            if tileCardGritEnabled {
+                                VStack(spacing: 16) {
+                                    Text("Grit Layer Colors")
+                                        .appFont(.caption, weight: .semibold)
+                                        .foregroundStyle(.white.opacity(0.6))
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                                    // Layer 1
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        ColorPicker("Layer 1 (Primary)", selection: $tileCardGritLayer1Color, supportsOpacity: false)
+                                            .onChange(of: tileCardGritLayer1Color) { _, newValue in
+                                                if let hex = newValue.toHex() {
+                                                    AppSettings.shared.tileCardGritLayer1ColorHex = hex
+                                                }
+                                            }
+
+                                        HStack {
+                                            Text("Hex:")
+                                                .appFont(.caption)
+                                                .foregroundStyle(.secondary)
+                                            TextField("", text: Binding(
+                                                get: { AppSettings.shared.tileCardGritLayer1ColorHex },
+                                                set: { newValue in
+                                                    AppSettings.shared.tileCardGritLayer1ColorHex = newValue
+                                                    if let color = Color(hex: newValue) {
+                                                        tileCardGritLayer1Color = color
+                                                    }
+                                                }
+                                            ))
+                                            .textInputAutocapitalization(.characters)
+                                            .autocorrectionDisabled()
+                                            .font(.system(.caption, design: .monospaced))
+                                            .textFieldStyle(.roundedBorder)
+                                        }
+                                    }
+
+                                    // Layer 2
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        ColorPicker("Layer 2 (Secondary)", selection: $tileCardGritLayer2Color, supportsOpacity: false)
+                                            .onChange(of: tileCardGritLayer2Color) { _, newValue in
+                                                if let hex = newValue.toHex() {
+                                                    AppSettings.shared.tileCardGritLayer2ColorHex = hex
+                                                }
+                                            }
+
+                                        HStack {
+                                            Text("Hex:")
+                                                .appFont(.caption)
+                                                .foregroundStyle(.secondary)
+                                            TextField("", text: Binding(
+                                                get: { AppSettings.shared.tileCardGritLayer2ColorHex },
+                                                set: { newValue in
+                                                    AppSettings.shared.tileCardGritLayer2ColorHex = newValue
+                                                    if let color = Color(hex: newValue) {
+                                                        tileCardGritLayer2Color = color
+                                                    }
+                                                }
+                                            ))
+                                            .textInputAutocapitalization(.characters)
+                                            .autocorrectionDisabled()
+                                            .font(.system(.caption, design: .monospaced))
+                                            .textFieldStyle(.roundedBorder)
+                                        }
+                                    }
+
+                                    // Layer 3
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        ColorPicker("Layer 3 (Accent)", selection: $tileCardGritLayer3Color, supportsOpacity: false)
+                                            .onChange(of: tileCardGritLayer3Color) { _, newValue in
+                                                if let hex = newValue.toHex() {
+                                                    AppSettings.shared.tileCardGritLayer3ColorHex = hex
+                                                }
+                                            }
+
+                                        HStack {
+                                            Text("Hex:")
+                                                .appFont(.caption)
+                                                .foregroundStyle(.secondary)
+                                            TextField("", text: Binding(
+                                                get: { AppSettings.shared.tileCardGritLayer3ColorHex },
+                                                set: { newValue in
+                                                    AppSettings.shared.tileCardGritLayer3ColorHex = newValue
+                                                    if let color = Color(hex: newValue) {
+                                                        tileCardGritLayer3Color = color
+                                                    }
+                                                }
+                                            ))
+                                            .textInputAutocapitalization(.characters)
+                                            .autocorrectionDisabled()
+                                            .font(.system(.caption, design: .monospaced))
+                                            .textFieldStyle(.roundedBorder)
+                                        }
+                                    }
+                                }
+                                .padding(.leading, 8)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
+
+                // Grit level slider for app UI elements (tile cards, Quick Bit button)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Grit Level")
+                            .appFont(.body)
+                        Spacer()
+                        Text(appGritLevel == 0 ? "None" : appGritLevel == 1.0 ? "Max" : "\(Int(appGritLevel * 100))%")
+                            .font(.body.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack(spacing: 12) {
+                        Text("0")
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Slider(value: $appGritLevel, in: 0...1.0, step: 0.05)
+                            .tint(TFTheme.yellow)
+                            .onChange(of: appGritLevel) { _, newValue in
+                                AppSettings.shared.appGritLevel = newValue
+                                AppSettings.shared.syncQuickBitThemeToWidget()
+                            }
+
+                        Text("Max")
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+
+                // Tile Card Preview
+                VStack(spacing: 8) {
+                    Text("Preview")
+                        .appFont(.caption, weight: .semibold)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    TileCardPreview(
+                        theme: selectedTileCardTheme,
+                        gritLevel: appGritLevel,
+                        customColor: tileCardCustomColor,
+                        gritEnabled: tileCardGritEnabled,
+                        gritLayer1Color: tileCardGritLayer1Color,
+                        gritLayer2Color: tileCardGritLayer2Color,
+                        gritLayer3Color: tileCardGritLayer3Color,
+                        appFont: selectedAppFont
+                    )
+                }
+            } footer: {
+                Text("Customize the appearance of tile cards and the Quick Bit button throughout the app.")
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .tfBackground()
+        .navigationTitle("Quick Bit and Tile Cards")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                TFWordmarkTitle(title: "Quick Bit and Tile Cards", size: 18)
+            }
+        }
+    }
+}
+
+// MARK: - Shareable Bit Card Settings
+
+struct ShareableBitCardSettingsView: View {
+    @State private var selectedFrameColor: BitCardFrameColor = AppSettings.shared.bitCardFrameColor
+    @State private var selectedBottomBarColor: BitCardFrameColor = AppSettings.shared.bitCardBottomBarColor
+    @State private var selectedWindowTheme: BitWindowTheme = AppSettings.shared.bitWindowTheme
+    @State private var bitCardGritLevel: Double = AppSettings.shared.bitCardGritLevel
+
     @State private var showFrameColorPicker = false
     @State private var showBottomBarColorPicker = false
     @State private var customFrameColor: Color = Color(hex: AppSettings.shared.customFrameColorHex) ?? Color("TFCard")
     @State private var customBottomBarColor: Color = Color(hex: AppSettings.shared.customBottomBarColorHex) ?? Color("TFCard")
-    
+
     var body: some View {
         Form {
             Section {
@@ -47,7 +660,7 @@ struct SettingsView: View {
                                     Circle()
                                         .strokeBorder(Color.white.opacity(0.3), lineWidth: 1)
                                 )
-                            
+
                             Text(color.displayName)
                         }
                         .tag(color)
@@ -60,7 +673,7 @@ struct SettingsView: View {
                         showFrameColorPicker = true
                     }
                 }
-                
+
                 // Show custom color picker button if custom is selected
                 if selectedFrameColor == .custom {
                     Button {
@@ -80,7 +693,7 @@ struct SettingsView: View {
                         }
                     }
                 }
-                
+
                 Picker("Bottom Bar", selection: $selectedBottomBarColor) {
                     ForEach(BitCardFrameColor.allCases) { color in
                         HStack {
@@ -91,7 +704,7 @@ struct SettingsView: View {
                                     Circle()
                                         .strokeBorder(Color.white.opacity(0.3), lineWidth: 1)
                                 )
-                            
+
                             Text(color.displayName)
                         }
                         .tag(color)
@@ -104,7 +717,7 @@ struct SettingsView: View {
                         showBottomBarColorPicker = true
                     }
                 }
-                
+
                 // Show custom color picker button if custom is selected
                 if selectedBottomBarColor == .custom {
                     Button {
@@ -124,7 +737,7 @@ struct SettingsView: View {
                         }
                     }
                 }
-                
+
                 Picker("Bit Window Theme", selection: $selectedWindowTheme) {
                     ForEach(BitWindowTheme.allCases) { theme in
                         VStack(alignment: .leading, spacing: 2) {
@@ -141,7 +754,7 @@ struct SettingsView: View {
                 .onChange(of: selectedWindowTheme) { _, newValue in
                     AppSettings.shared.bitWindowTheme = newValue
                 }
-                
+
                 // Grit level slider for shareable bit cards (only if using textured theme)
                 if AppSettings.shared.hasAnyTexturedTheme {
                     VStack(alignment: .leading, spacing: 8) {
@@ -153,18 +766,18 @@ struct SettingsView: View {
                                 .font(.body.monospacedDigit())
                                 .foregroundStyle(.secondary)
                         }
-                        
+
                         HStack(spacing: 12) {
                             Text("0")
                                 .appFont(.caption)
                                 .foregroundStyle(.secondary)
-                            
+
                             Slider(value: $bitCardGritLevel, in: 0...1.0, step: 0.05)
                                 .tint(TFTheme.yellow)
                                 .onChange(of: bitCardGritLevel) { _, newValue in
                                     AppSettings.shared.bitCardGritLevel = newValue
                                 }
-                            
+
                             Text("Max")
                                 .appFont(.caption)
                                 .foregroundStyle(.secondary)
@@ -181,7 +794,7 @@ struct SettingsView: View {
                     Text("Customize the colors and theme for your shareable bit cards. The background frame wraps the entire card, the bottom bar displays your branding, and the bit window theme styles the text area.")
                 }
             }
-            
+
             // Preview section
             Section {
                 VStack(spacing: 12) {
@@ -189,7 +802,7 @@ struct SettingsView: View {
                         .appFont(.caption, weight: .semibold)
                         .foregroundStyle(.white.opacity(0.6))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    
+
                     BitCardPreview(
                         frameColor: selectedFrameColor,
                         bottomBarColor: selectedBottomBarColor,
@@ -200,511 +813,14 @@ struct SettingsView: View {
             } header: {
                 Text("Preview")
             }
-            
-            // App Customization section
-            Section {
-                Picker("Tile Card Theme", selection: $selectedTileCardTheme) {
-                    ForEach(TileCardTheme.allCases) { theme in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(theme.displayName)
-                                .appFont(.body)
-                            Text(theme.description)
-                                .appFont(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .tag(theme)
-                    }
-                }
-                .pickerStyle(.navigationLink)
-                .onChange(of: selectedTileCardTheme) { _, newValue in
-                    AppSettings.shared.tileCardTheme = newValue
-                }
-                
-                // Advanced Tile Card Customization (only show if custom theme is selected)
-                if selectedTileCardTheme == .custom {
-                    DisclosureGroup("Advanced Tile Card Customization") {
-                    VStack(spacing: 16) {
-                        // Custom background color with hex input
-                        VStack(alignment: .leading, spacing: 8) {
-                            ColorPicker("Background Color", selection: $tileCardCustomColor, supportsOpacity: false)
-                                .onChange(of: tileCardCustomColor) { _, newValue in
-                                    if let hex = newValue.toHex() {
-                                        AppSettings.shared.tileCardCustomColorHex = hex
-                                    }
-                                }
-                            
-                            HStack {
-                                Text("Hex:")
-                                    .appFont(.caption)
-                                    .foregroundStyle(.secondary)
-                                TextField("", text: Binding(
-                                    get: { AppSettings.shared.tileCardCustomColorHex },
-                                    set: { newValue in
-                                        AppSettings.shared.tileCardCustomColorHex = newValue
-                                        if let color = Color(hex: newValue) {
-                                            tileCardCustomColor = color
-                                        }
-                                    }
-                                ))
-                                .textInputAutocapitalization(.characters)
-                                .autocorrectionDisabled()
-                                .font(.system(.body, design: .monospaced))
-                                .textFieldStyle(.roundedBorder)
-                            }
-                        }
-                        
-                        Divider()
-                        
-                        // Grit toggle
-                        Toggle("Enable Grit Texture", isOn: $tileCardGritEnabled)
-                            .onChange(of: tileCardGritEnabled) { _, newValue in
-                                AppSettings.shared.tileCardGritEnabled = newValue
-                            }
-                        
-                        if tileCardGritEnabled {
-                            VStack(spacing: 16) {
-                                Text("Grit Layer Colors")
-                                    .appFont(.caption, weight: .semibold)
-                                    .foregroundStyle(.white.opacity(0.6))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                
-                                // Layer 1
-                                VStack(alignment: .leading, spacing: 8) {
-                                    ColorPicker("Layer 1 (Primary)", selection: $tileCardGritLayer1Color, supportsOpacity: false)
-                                        .onChange(of: tileCardGritLayer1Color) { _, newValue in
-                                            if let hex = newValue.toHex() {
-                                                AppSettings.shared.tileCardGritLayer1ColorHex = hex
-                                            }
-                                        }
-                                    
-                                    HStack {
-                                        Text("Hex:")
-                                            .appFont(.caption)
-                                            .foregroundStyle(.secondary)
-                                        TextField("", text: Binding(
-                                            get: { AppSettings.shared.tileCardGritLayer1ColorHex },
-                                            set: { newValue in
-                                                AppSettings.shared.tileCardGritLayer1ColorHex = newValue
-                                                if let color = Color(hex: newValue) {
-                                                    tileCardGritLayer1Color = color
-                                                }
-                                            }
-                                        ))
-                                        .textInputAutocapitalization(.characters)
-                                        .autocorrectionDisabled()
-                                        .font(.system(.caption, design: .monospaced))
-                                        .textFieldStyle(.roundedBorder)
-                                    }
-                                }
-                                
-                                // Layer 2
-                                VStack(alignment: .leading, spacing: 8) {
-                                    ColorPicker("Layer 2 (Secondary)", selection: $tileCardGritLayer2Color, supportsOpacity: false)
-                                        .onChange(of: tileCardGritLayer2Color) { _, newValue in
-                                            if let hex = newValue.toHex() {
-                                                AppSettings.shared.tileCardGritLayer2ColorHex = hex
-                                            }
-                                        }
-                                    
-                                    HStack {
-                                        Text("Hex:")
-                                            .appFont(.caption)
-                                            .foregroundStyle(.secondary)
-                                        TextField("", text: Binding(
-                                            get: { AppSettings.shared.tileCardGritLayer2ColorHex },
-                                            set: { newValue in
-                                                AppSettings.shared.tileCardGritLayer2ColorHex = newValue
-                                                if let color = Color(hex: newValue) {
-                                                    tileCardGritLayer2Color = color
-                                                }
-                                            }
-                                        ))
-                                        .textInputAutocapitalization(.characters)
-                                        .autocorrectionDisabled()
-                                        .font(.system(.caption, design: .monospaced))
-                                        .textFieldStyle(.roundedBorder)
-                                    }
-                                }
-                                
-                                // Layer 3
-                                VStack(alignment: .leading, spacing: 8) {
-                                    ColorPicker("Layer 3 (Accent)", selection: $tileCardGritLayer3Color, supportsOpacity: false)
-                                        .onChange(of: tileCardGritLayer3Color) { _, newValue in
-                                            if let hex = newValue.toHex() {
-                                                AppSettings.shared.tileCardGritLayer3ColorHex = hex
-                                            }
-                                        }
-                                    
-                                    HStack {
-                                        Text("Hex:")
-                                            .appFont(.caption)
-                                            .foregroundStyle(.secondary)
-                                        TextField("", text: Binding(
-                                            get: { AppSettings.shared.tileCardGritLayer3ColorHex },
-                                            set: { newValue in
-                                                AppSettings.shared.tileCardGritLayer3ColorHex = newValue
-                                                if let color = Color(hex: newValue) {
-                                                    tileCardGritLayer3Color = color
-                                                }
-                                            }
-                                        ))
-                                        .textInputAutocapitalization(.characters)
-                                        .autocorrectionDisabled()
-                                        .font(.system(.caption, design: .monospaced))
-                                        .textFieldStyle(.roundedBorder)
-                                    }
-                                }
-                            }
-                            .padding(.leading, 8)
-                        }
-                    }
-                    .padding(.vertical, 8)
-                }
-                }
-                
-                Picker("Quick Bit Button", selection: $selectedQuickBitTheme) {
-                    ForEach(TileCardTheme.allCases) { theme in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(theme.displayName)
-                                .appFont(.body)
-                            Text(theme.description)
-                                .appFont(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .tag(theme)
-                    }
-                }
-                .pickerStyle(.navigationLink)
-                .onChange(of: selectedQuickBitTheme) { _, newValue in
-                    AppSettings.shared.quickBitTheme = newValue
-                    AppSettings.shared.syncQuickBitThemeToWidget()
-                }
-                
-                // Advanced Quick Bit Customization (only show if custom theme is selected)
-                if selectedQuickBitTheme == .custom {
-                    DisclosureGroup("Advanced Quick Bit Customization") {
-                    VStack(spacing: 16) {
-                        // Custom background color with hex input
-                        VStack(alignment: .leading, spacing: 8) {
-                            ColorPicker("Background Color", selection: $quickBitCustomColor, supportsOpacity: false)
-                                .onChange(of: quickBitCustomColor) { _, newValue in
-                                    if let hex = newValue.toHex() {
-                                        AppSettings.shared.quickBitCustomColorHex = hex
-                                        AppSettings.shared.syncQuickBitThemeToWidget()
-                                    }
-                                }
-                            
-                            HStack {
-                                Text("Hex:")
-                                    .appFont(.caption)
-                                    .foregroundStyle(.secondary)
-                                TextField("", text: Binding(
-                                    get: { AppSettings.shared.quickBitCustomColorHex },
-                                    set: { newValue in
-                                        AppSettings.shared.quickBitCustomColorHex = newValue
-                                        if let color = Color(hex: newValue) {
-                                            quickBitCustomColor = color
-                                        }
-                                    }
-                                ))
-                                .textInputAutocapitalization(.characters)
-                                .autocorrectionDisabled()
-                                .font(.system(.body, design: .monospaced))
-                                .textFieldStyle(.roundedBorder)
-                            }
-                        }
-                        
-                        Divider()
-                        
-                        // Grit toggle
-                        Toggle("Enable Grit Texture", isOn: $quickBitGritEnabled)
-                            .onChange(of: quickBitGritEnabled) { _, newValue in
-                                AppSettings.shared.quickBitGritEnabled = newValue
-                                AppSettings.shared.syncQuickBitThemeToWidget()
-                            }
-                        
-                        if quickBitGritEnabled {
-                            VStack(spacing: 16) {
-                                Text("Grit Layer Colors")
-                                    .appFont(.caption, weight: .semibold)
-                                    .foregroundStyle(.white.opacity(0.6))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                
-                                // Layer 1
-                                VStack(alignment: .leading, spacing: 8) {
-                                    ColorPicker("Layer 1 (Primary)", selection: $quickBitGritLayer1Color, supportsOpacity: false)
-                                        .onChange(of: quickBitGritLayer1Color) { _, newValue in
-                                            if let hex = newValue.toHex() {
-                                                AppSettings.shared.quickBitGritLayer1ColorHex = hex
-                                                AppSettings.shared.syncQuickBitThemeToWidget()
-                                            }
-                                        }
-                                    
-                                    HStack {
-                                        Text("Hex:")
-                                            .appFont(.caption)
-                                            .foregroundStyle(.secondary)
-                                        TextField("", text: Binding(
-                                            get: { AppSettings.shared.quickBitGritLayer1ColorHex },
-                                            set: { newValue in
-                                                AppSettings.shared.quickBitGritLayer1ColorHex = newValue
-                                                if let color = Color(hex: newValue) {
-                                                    quickBitGritLayer1Color = color
-                                                }
-                                            }
-                                        ))
-                                        .textInputAutocapitalization(.characters)
-                                        .autocorrectionDisabled()
-                                        .font(.system(.caption, design: .monospaced))
-                                        .textFieldStyle(.roundedBorder)
-                                    }
-                                }
-                                
-                                // Layer 2
-                                VStack(alignment: .leading, spacing: 8) {
-                                    ColorPicker("Layer 2 (Secondary)", selection: $quickBitGritLayer2Color, supportsOpacity: false)
-                                        .onChange(of: quickBitGritLayer2Color) { _, newValue in
-                                            if let hex = newValue.toHex() {
-                                                AppSettings.shared.quickBitGritLayer2ColorHex = hex
-                                                AppSettings.shared.syncQuickBitThemeToWidget()
-                                            }
-                                        }
-                                    
-                                    HStack {
-                                        Text("Hex:")
-                                            .appFont(.caption)
-                                            .foregroundStyle(.secondary)
-                                        TextField("", text: Binding(
-                                            get: { AppSettings.shared.quickBitGritLayer2ColorHex },
-                                            set: { newValue in
-                                                AppSettings.shared.quickBitGritLayer2ColorHex = newValue
-                                                if let color = Color(hex: newValue) {
-                                                    quickBitGritLayer2Color = color
-                                                }
-                                            }
-                                        ))
-                                        .textInputAutocapitalization(.characters)
-                                        .autocorrectionDisabled()
-                                        .font(.system(.caption, design: .monospaced))
-                                        .textFieldStyle(.roundedBorder)
-                                    }
-                                }
-                                
-                                // Layer 3
-                                VStack(alignment: .leading, spacing: 8) {
-                                    ColorPicker("Layer 3 (Accent)", selection: $quickBitGritLayer3Color, supportsOpacity: false)
-                                        .onChange(of: quickBitGritLayer3Color) { _, newValue in
-                                            if let hex = newValue.toHex() {
-                                                AppSettings.shared.quickBitGritLayer3ColorHex = hex
-                                                AppSettings.shared.syncQuickBitThemeToWidget()
-                                            }
-                                        }
-                                    
-                                    HStack {
-                                        Text("Hex:")
-                                            .appFont(.caption)
-                                            .foregroundStyle(.secondary)
-                                        TextField("", text: Binding(
-                                            get: { AppSettings.shared.quickBitGritLayer3ColorHex },
-                                            set: { newValue in
-                                                AppSettings.shared.quickBitGritLayer3ColorHex = newValue
-                                                if let color = Color(hex: newValue) {
-                                                    quickBitGritLayer3Color = color
-                                                }
-                                            }
-                                        ))
-                                        .textInputAutocapitalization(.characters)
-                                        .autocorrectionDisabled()
-                                        .font(.system(.caption, design: .monospaced))
-                                        .textFieldStyle(.roundedBorder)
-                                    }
-                                }
-                            }
-                            .padding(.leading, 8)
-                        }
-                    }
-                    .padding(.vertical, 8)
-                }
-                }
-                
-                // Grit level slider for app UI elements (tile cards, Quick Bit button)
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Grit Level")
-                            .appFont(.body)
-                        Spacer()
-                        Text(appGritLevel == 0 ? "None" : appGritLevel == 1.0 ? "Max" : "\(Int(appGritLevel * 100))%")
-                            .font(.body.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    HStack(spacing: 12) {
-                        Text("0")
-                            .appFont(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        Slider(value: $appGritLevel, in: 0...1.0, step: 0.05)
-                            .tint(TFTheme.yellow)
-                            .onChange(of: appGritLevel) { _, newValue in
-                                AppSettings.shared.appGritLevel = newValue
-                                AppSettings.shared.syncQuickBitThemeToWidget()
-                            }
-                        
-                        Text("Max")
-                            .appFont(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(.vertical, 4)
-                
-                Picker("App Font", selection: $selectedAppFont) {
-                    ForEach(AppFont.allCases) { font in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(font.displayName)
-                                .appFont(.body)
-                            Text(font.description)
-                                .appFont(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .tag(font)
-                    }
-                }
-                .pickerStyle(.navigationLink)
-                .onChange(of: selectedAppFont) { _, newValue in
-                    AppSettings.shared.appFont = newValue
-                    AppSettings.shared.syncQuickBitThemeToWidget()
-                }
-                
-                // Font Color Picker
-                VStack(alignment: .leading, spacing: 8) {
-                    ColorPicker("Font Color", selection: $appFontColor, supportsOpacity: false)
-                        .onChange(of: appFontColor) { _, newValue in
-                            if let hex = newValue.toHex() {
-                                AppSettings.shared.appFontColorHex = hex
-                                AppSettings.shared.syncQuickBitThemeToWidget()
-                            }
-                        }
-                    
-                    Text("Current: \(AppSettings.shared.appFontColorHex)")
-                        .appFont(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("", text: Binding(
-                        get: { AppSettings.shared.appFontColorHex },
-                        set: { newValue in
-                            AppSettings.shared.appFontColorHex = newValue
-                            if let color = Color(hex: newValue) {
-                                appFontColor = color
-                            }
-                        }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                }
-                
-                // Font Size Slider
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Font Size")
-                            .appFont(.headline)
-                        
-                        Spacer()
-                        
-                        Text("\(Int(appFontSizeMultiplier * 100))%")
-                            .appFont(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    HStack(spacing: 12) {
-                        Text("Small")
-                            .appFont(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        Slider(value: $appFontSizeMultiplier, in: 0.8...1.4, step: 0.05)
-                            .tint(TFTheme.yellow)
-                            .onChange(of: appFontSizeMultiplier) { _, newValue in
-                                AppSettings.shared.appFontSizeMultiplier = newValue
-                                AppSettings.shared.syncQuickBitThemeToWidget()
-                            }
-                        
-                        Text("Large")
-                            .appFont(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Button("Reset to Default (100%)") {
-                        appFontSizeMultiplier = 1.0
-                        AppSettings.shared.appFontSizeMultiplier = 1.0
-                    }
-                    .appFont(.caption)
-                    .foregroundStyle(TFTheme.yellow)
-                }
-                .padding(.vertical, 4)
-            } header: {
-                Text("Theme Customization")
-            } footer: {
-                Text("Customize the appearance of tile cards, Quick Bit button, fonts, and colors throughout the app. The Grit Level controls texture density for these elements only.")
-            }
-            
-            // Theme Preview section
-            Section {
-                VStack(spacing: 16) {
-                    Text("Font Preview")
-                        .appFont(.caption, weight: .semibold)
-                        .foregroundStyle(.white.opacity(0.6))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    FontPreview(
-                        appFont: selectedAppFont,
-                        fontColor: appFontColor,
-                        fontSizeMultiplier: appFontSizeMultiplier
-                    )
-                    
-                    Text("Quick Bit Button Preview")
-                        .appFont(.caption, weight: .semibold)
-                        .foregroundStyle(.white.opacity(0.6))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 8)
-                    
-                    QuickBitButtonPreview(
-                        theme: selectedQuickBitTheme,
-                        gritLevel: appGritLevel,
-                        customColor: quickBitCustomColor,
-                        gritEnabled: quickBitGritEnabled,
-                        gritLayer1Color: quickBitGritLayer1Color,
-                        gritLayer2Color: quickBitGritLayer2Color,
-                        gritLayer3Color: quickBitGritLayer3Color,
-                        appFont: selectedAppFont
-                    )
-                    
-                    Text("Tile Card Preview")
-                        .appFont(.caption, weight: .semibold)
-                        .foregroundStyle(.white.opacity(0.6))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 8)
-                    
-                    TileCardPreview(
-                        theme: selectedTileCardTheme,
-                        gritLevel: appGritLevel,
-                        customColor: tileCardCustomColor,
-                        gritEnabled: tileCardGritEnabled,
-                        gritLayer1Color: tileCardGritLayer1Color,
-                        gritLayer2Color: tileCardGritLayer2Color,
-                        gritLayer3Color: tileCardGritLayer3Color,
-                        appFont: selectedAppFont
-                    )
-                }
-            } header: {
-                Text("Theme Preview")
-            }
         }
         .scrollContentBackground(.hidden)
         .tfBackground()
-        .navigationTitle("Settings")
+        .navigationTitle("Shareable Bit Card")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                TFWordmarkTitle(title: "Settings", size: 22)
+                TFWordmarkTitle(title: "Shareable Bit Card", size: 18)
             }
         }
         .sheet(isPresented: $showFrameColorPicker) {
@@ -732,28 +848,28 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Preview Component
+// MARK: - Bit Card Preview
 
 private struct BitCardPreview: View {
     let frameColor: BitCardFrameColor
     let bottomBarColor: BitCardFrameColor
     let windowTheme: BitWindowTheme
     let gritLevel: Double
-    
+
     private var resolvedFrameColor: Color {
         if frameColor == .custom {
             return Color(hex: AppSettings.shared.customFrameColorHex) ?? Color("TFCard")
         }
         return frameColor.color(customHex: nil)
     }
-    
+
     private var resolvedBottomBarColor: Color {
         if bottomBarColor == .custom {
             return Color(hex: AppSettings.shared.customBottomBarColorHex) ?? Color("TFCard")
         }
         return bottomBarColor.color(customHex: nil)
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Main content area with rounded top corners
@@ -770,7 +886,7 @@ private struct BitCardPreview: View {
                     if windowTheme == .chalkboard {
                         // Original chalkboard theme
                         Color("TFCard")
-                        
+
                         if gritLevel > 0 {
                             StaticGritLayer(
                                 density: Int(300 * gritLevel),
@@ -778,7 +894,7 @@ private struct BitCardPreview: View {
                                 seed: 1234,
                                 particleColor: Color("TFYellow")
                             )
-                            
+
                             StaticGritLayer(
                                 density: Int(300 * gritLevel),
                                 opacity: 0.35,
@@ -788,7 +904,7 @@ private struct BitCardPreview: View {
                     } else {
                         // Yellow grit theme
                         Color("TFYellow")
-                        
+
                         if gritLevel > 0 {
                             StaticGritLayer(
                                 density: Int(800 * gritLevel),
@@ -796,14 +912,14 @@ private struct BitCardPreview: View {
                                 seed: 7777,
                                 particleColor: .brown
                             )
-                            
+
                             StaticGritLayer(
                                 density: Int(100 * gritLevel),
                                 opacity: 0.88,
                                 seed: 8888,
                                 particleColor: .black
                             )
-                            
+
                             StaticGritLayer(
                                 density: Int(400 * gritLevel),
                                 opacity: 0.88,
@@ -812,7 +928,7 @@ private struct BitCardPreview: View {
                             )
                         }
                     }
-                    
+
                     UnevenRoundedRectangle(
                         topLeadingRadius: 8,
                         bottomLeadingRadius: 0,
@@ -851,14 +967,14 @@ private struct BitCardPreview: View {
                 .opacity(0.6)
                 .blendMode(.overlay)
             )
-            
+
             // Polaroid bar at bottom with rounded bottom corners
             HStack(spacing: 6) {
                 Spacer()
                 Image(systemName: "5.square.fill")
                     .font(.system(size: 12, weight: .black))
                     .foregroundStyle(bottomBarColor.hasTexture && bottomBarColor == .yellowGrit ? .black.opacity(0.85) : TFTheme.yellow)
-                
+
                 Text("written in TightFive")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(bottomBarColor.hasTexture && bottomBarColor == .yellowGrit ? .black.opacity(0.85) : .white)
@@ -873,7 +989,7 @@ private struct BitCardPreview: View {
                         // Render textured background
                         if theme == .chalkboard {
                             Color("TFCard")
-                            
+
                             if gritLevel > 0 {
                                 StaticGritLayer(
                                     density: Int(300 * gritLevel),
@@ -881,7 +997,7 @@ private struct BitCardPreview: View {
                                     seed: 1234,
                                     particleColor: Color("TFYellow")
                                 )
-                                
+
                                 StaticGritLayer(
                                     density: Int(300 * gritLevel),
                                     opacity: 0.35,
@@ -890,7 +1006,7 @@ private struct BitCardPreview: View {
                             }
                         } else {
                             Color("TFYellow")
-                            
+
                             if gritLevel > 0 {
                                 StaticGritLayer(
                                     density: Int(800 * gritLevel),
@@ -898,14 +1014,14 @@ private struct BitCardPreview: View {
                                     seed: 7777,
                                     particleColor: .brown
                                 )
-                                
+
                                 StaticGritLayer(
                                     density: Int(100 * gritLevel),
                                     opacity: 0.88,
                                     seed: 8888,
                                     particleColor: .black
                                 )
-                                
+
                                 StaticGritLayer(
                                     density: Int(400 * gritLevel),
                                     opacity: 0.88,
@@ -915,7 +1031,7 @@ private struct BitCardPreview: View {
                             }
                         }
                     }
-                    
+
                     UnevenRoundedRectangle(
                         topLeadingRadius: 0,
                         bottomLeadingRadius: 8,
@@ -943,7 +1059,7 @@ private struct BitCardPreview: View {
                     // Render textured frame background
                     if theme == .chalkboard {
                         Color("TFCard")
-                        
+
                         if gritLevel > 0 {
                             StaticGritLayer(
                                 density: Int(300 * gritLevel),
@@ -951,7 +1067,7 @@ private struct BitCardPreview: View {
                                 seed: 9999,
                                 particleColor: Color("TFYellow")
                             )
-                            
+
                             StaticGritLayer(
                                 density: Int(300 * gritLevel),
                                 opacity: 0.35,
@@ -960,7 +1076,7 @@ private struct BitCardPreview: View {
                         }
                     } else if theme == .yellowGrit {
                         Color("TFYellow")
-                        
+
                         if gritLevel > 0 {
                             StaticGritLayer(
                                 density: Int(800 * gritLevel),
@@ -968,14 +1084,14 @@ private struct BitCardPreview: View {
                                 seed: 2222,
                                 particleColor: .brown
                             )
-                            
+
                             StaticGritLayer(
                                 density: Int(100 * gritLevel),
                                 opacity: 0.88,
                                 seed: 3333,
                                 particleColor: .black
                             )
-                            
+
                             StaticGritLayer(
                                 density: Int(400 * gritLevel),
                                 opacity: 0.88,
@@ -1006,7 +1122,7 @@ private struct QuickBitButtonPreview: View {
     let gritLayer2Color: Color
     let gritLayer3Color: Color
     let appFont: AppFont
-    
+
     private func textColor(for theme: TileCardTheme, customColor: Color) -> Color {
         switch theme {
         case .yellowGrit:
@@ -1025,11 +1141,11 @@ private struct QuickBitButtonPreview: View {
             return .white
         }
     }
-    
+
     var body: some View {
         HStack {
             Spacer()
-            
+
             Button {
                 // Preview only
             } label: {
@@ -1037,7 +1153,7 @@ private struct QuickBitButtonPreview: View {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 20, weight: .semibold))
                         .foregroundStyle(textColor(for: theme, customColor: customColor))
-                    
+
                     Text("Quick Bit")
                         .font(appFont.font(size: 16).weight(.bold))
                         .foregroundStyle(textColor(for: theme, customColor: customColor))
@@ -1048,7 +1164,7 @@ private struct QuickBitButtonPreview: View {
                     ZStack {
                         if theme == .darkGrit {
                             Color("TFCard")
-                            
+
                             if gritLevel > 0 {
                                 StaticGritLayer(
                                     density: Int(300 * gritLevel),
@@ -1056,7 +1172,7 @@ private struct QuickBitButtonPreview: View {
                                     seed: 9001,
                                     particleColor: Color("TFYellow")
                                 )
-                                
+
                                 StaticGritLayer(
                                     density: Int(300 * gritLevel),
                                     opacity: 0.35,
@@ -1065,7 +1181,7 @@ private struct QuickBitButtonPreview: View {
                             }
                         } else if theme == .yellowGrit {
                             Color("TFYellow")
-                            
+
                             if gritLevel > 0 {
                                 StaticGritLayer(
                                     density: Int(800 * gritLevel),
@@ -1073,14 +1189,14 @@ private struct QuickBitButtonPreview: View {
                                     seed: 9003,
                                     particleColor: .brown
                                 )
-                                
+
                                 StaticGritLayer(
                                     density: Int(100 * gritLevel),
                                     opacity: 0.88,
                                     seed: 9004,
                                     particleColor: .black
                                 )
-                                
+
                                 StaticGritLayer(
                                     density: Int(400 * gritLevel),
                                     opacity: 0.88,
@@ -1090,7 +1206,7 @@ private struct QuickBitButtonPreview: View {
                             }
                         } else if theme == .custom {
                             customColor
-                            
+
                             if gritEnabled && gritLevel > 0 {
                                 StaticGritLayer(
                                     density: Int(800 * gritLevel),
@@ -1098,14 +1214,14 @@ private struct QuickBitButtonPreview: View {
                                     seed: 9006,
                                     particleColor: gritLayer1Color
                                 )
-                                
+
                                 StaticGritLayer(
                                     density: Int(100 * gritLevel),
                                     opacity: 0.88,
                                     seed: 9007,
                                     particleColor: gritLayer2Color
                                 )
-                                
+
                                 StaticGritLayer(
                                     density: Int(400 * gritLevel),
                                     opacity: 0.88,
@@ -1125,7 +1241,7 @@ private struct QuickBitButtonPreview: View {
                 )
             }
             .buttonStyle(.plain)
-            
+
             Spacer()
         }
         .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
@@ -1143,7 +1259,7 @@ private struct TileCardPreview: View {
     let gritLayer2Color: Color
     let gritLayer3Color: Color
     let appFont: AppFont
-    
+
     private func textColor(for theme: TileCardTheme, customColor: Color) -> Color {
         switch theme {
         case .yellowGrit:
@@ -1162,13 +1278,13 @@ private struct TileCardPreview: View {
             return .white
         }
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Sample Bit")
                 .font(appFont.font(size: 16).weight(.bold))
                 .foregroundStyle(textColor(for: theme, customColor: customColor))
-            
+
             Text("This is a preview of how your tile cards will appear in the app.")
                 .font(appFont.font(size: 13).weight(.regular))
                 .foregroundStyle(textColor(for: theme, customColor: customColor).opacity(0.9))
@@ -1180,7 +1296,7 @@ private struct TileCardPreview: View {
             ZStack {
                 if theme == .yellowGrit {
                     Color("TFYellow")
-                    
+
                     if gritLevel > 0 {
                         StaticGritLayer(
                             density: Int(800 * gritLevel),
@@ -1188,14 +1304,14 @@ private struct TileCardPreview: View {
                             seed: 8003,
                             particleColor: .brown
                         )
-                        
+
                         StaticGritLayer(
                             density: Int(100 * gritLevel),
                             opacity: 0.88,
                             seed: 8004,
                             particleColor: .black
                         )
-                        
+
                         StaticGritLayer(
                             density: Int(400 * gritLevel),
                             opacity: 0.88,
@@ -1205,7 +1321,7 @@ private struct TileCardPreview: View {
                     }
                 } else if theme == .custom {
                     customColor
-                    
+
                     if gritEnabled && gritLevel > 0 {
                         StaticGritLayer(
                             density: Int(300 * gritLevel),
@@ -1213,14 +1329,14 @@ private struct TileCardPreview: View {
                             seed: 8006,
                             particleColor: gritLayer1Color
                         )
-                        
+
                         StaticGritLayer(
                             density: Int(300 * gritLevel),
                             opacity: 0.35,
                             seed: 8007,
                             particleColor: gritLayer2Color
                         )
-                        
+
                         StaticGritLayer(
                             density: Int(200 * gritLevel),
                             opacity: 0.25,
@@ -1231,7 +1347,7 @@ private struct TileCardPreview: View {
                 } else {
                     // Default darkGrit theme
                     Color("TFCard")
-                    
+
                     if gritLevel > 0 {
                         StaticGritLayer(
                             density: Int(300 * gritLevel),
@@ -1239,7 +1355,7 @@ private struct TileCardPreview: View {
                             seed: 8001,
                             particleColor: Color("TFYellow")
                         )
-                        
+
                         StaticGritLayer(
                             density: Int(300 * gritLevel),
                             opacity: 0.35,
@@ -1267,9 +1383,9 @@ private struct ColorPickerSheet: View {
     let title: String
     @Binding var selectedColor: Color
     let onSave: () -> Void
-    
+
     @State private var hexInput: String = ""
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -1278,7 +1394,7 @@ private struct ColorPickerSheet: View {
                 } header: {
                     Text("Visual Picker")
                 }
-                
+
                 Section {
                     HStack {
                         TextField("Hex Code", text: $hexInput)
@@ -1289,7 +1405,7 @@ private struct ColorPickerSheet: View {
                                     selectedColor = color
                                 }
                             }
-                        
+
                         Button("Paste") {
                             if let clipboardString = UIPasteboard.general.string {
                                 hexInput = clipboardString
@@ -1298,14 +1414,14 @@ private struct ColorPickerSheet: View {
                         .buttonStyle(.bordered)
                         .tint(TFTheme.yellow)
                     }
-                    
+
                     Text("Enter a 6-digit hex code (e.g., #FF5733)")
                         .appFont(.caption)
                         .foregroundStyle(.secondary)
                 } header: {
                     Text("Hex Color Code")
                 }
-                
+
                 Section {
                     HStack(spacing: 12) {
                         Circle()
@@ -1315,7 +1431,7 @@ private struct ColorPickerSheet: View {
                                 Circle()
                                     .strokeBorder(Color.white.opacity(0.3), lineWidth: 2)
                             )
-                        
+
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Preview")
                                 .appFont(.headline)
@@ -1341,7 +1457,7 @@ private struct ColorPickerSheet: View {
                     }
                     .foregroundStyle(Color("TFYellow"))
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         onSave()
@@ -1360,19 +1476,19 @@ private struct FontPreview: View {
     let appFont: AppFont
     let fontColor: Color
     let fontSizeMultiplier: Double
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Sample Text")
                 .font(appFont.font(size: 20 * fontSizeMultiplier).weight(.bold))
                 .foregroundStyle(fontColor)
-            
+
             Text("This is how your custom font, color, and size will appear throughout the app. The quick brown fox jumps over the lazy dog.")
                 .font(appFont.font(size: 15 * fontSizeMultiplier))
                 .foregroundStyle(fontColor.opacity(0.85))
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
-            
+
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Font")
@@ -1382,9 +1498,9 @@ private struct FontPreview: View {
                         .appFont(.caption)
                         .foregroundStyle(fontColor.opacity(0.7))
                 }
-                
+
                 Spacer()
-                
+
                 VStack(alignment: .trailing, spacing: 4) {
                     Text("Size")
                         .appFont(.caption2)
