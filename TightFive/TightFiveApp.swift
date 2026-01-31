@@ -5,6 +5,7 @@ import SwiftData
 struct TightFiveApp: App {
     // Use @State instead of @StateObject for @Observable classes
     @State private var appSettings = AppSettings.shared
+    @State private var showQuickBit = false
     
     init() {
         TFTheme.applySystemAppearance()
@@ -18,6 +19,11 @@ struct TightFiveApp: App {
             ContentView()
                 .tint(TFTheme.yellow)
                 .environment(appSettings)
+                .syncWithWidget(showQuickBit: $showQuickBit)
+                .sheet(isPresented: $showQuickBit) {
+                    QuickBitEditor()
+                        .presentationDetents([.medium, .large])
+                }
                 .onAppear {
                     // Refresh global appearance when view appears
                     configureGlobalAppearance()

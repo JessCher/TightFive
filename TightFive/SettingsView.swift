@@ -377,6 +377,7 @@ struct SettingsView: View {
                 .pickerStyle(.navigationLink)
                 .onChange(of: selectedQuickBitTheme) { _, newValue in
                     AppSettings.shared.quickBitTheme = newValue
+                    AppSettings.shared.syncQuickBitThemeToWidget()
                 }
                 
                 // Advanced Quick Bit Customization (only show if custom theme is selected)
@@ -389,6 +390,7 @@ struct SettingsView: View {
                                 .onChange(of: quickBitCustomColor) { _, newValue in
                                     if let hex = newValue.toHex() {
                                         AppSettings.shared.quickBitCustomColorHex = hex
+                                        AppSettings.shared.syncQuickBitThemeToWidget()
                                     }
                                 }
                             
@@ -418,6 +420,7 @@ struct SettingsView: View {
                         Toggle("Enable Grit Texture", isOn: $quickBitGritEnabled)
                             .onChange(of: quickBitGritEnabled) { _, newValue in
                                 AppSettings.shared.quickBitGritEnabled = newValue
+                                AppSettings.shared.syncQuickBitThemeToWidget()
                             }
                         
                         if quickBitGritEnabled {
@@ -433,6 +436,7 @@ struct SettingsView: View {
                                         .onChange(of: quickBitGritLayer1Color) { _, newValue in
                                             if let hex = newValue.toHex() {
                                                 AppSettings.shared.quickBitGritLayer1ColorHex = hex
+                                                AppSettings.shared.syncQuickBitThemeToWidget()
                                             }
                                         }
                                     
@@ -462,6 +466,7 @@ struct SettingsView: View {
                                         .onChange(of: quickBitGritLayer2Color) { _, newValue in
                                             if let hex = newValue.toHex() {
                                                 AppSettings.shared.quickBitGritLayer2ColorHex = hex
+                                                AppSettings.shared.syncQuickBitThemeToWidget()
                                             }
                                         }
                                     
@@ -491,6 +496,7 @@ struct SettingsView: View {
                                         .onChange(of: quickBitGritLayer3Color) { _, newValue in
                                             if let hex = newValue.toHex() {
                                                 AppSettings.shared.quickBitGritLayer3ColorHex = hex
+                                                AppSettings.shared.syncQuickBitThemeToWidget()
                                             }
                                         }
                                     
@@ -541,6 +547,7 @@ struct SettingsView: View {
                             .tint(TFTheme.yellow)
                             .onChange(of: appGritLevel) { _, newValue in
                                 AppSettings.shared.appGritLevel = newValue
+                                AppSettings.shared.syncQuickBitThemeToWidget()
                             }
                         
                         Text("Max")
@@ -565,6 +572,7 @@ struct SettingsView: View {
                 .pickerStyle(.navigationLink)
                 .onChange(of: selectedAppFont) { _, newValue in
                     AppSettings.shared.appFont = newValue
+                    AppSettings.shared.syncQuickBitThemeToWidget()
                 }
                 
                 // Font Color Picker
@@ -573,6 +581,7 @@ struct SettingsView: View {
                         .onChange(of: appFontColor) { _, newValue in
                             if let hex = newValue.toHex() {
                                 AppSettings.shared.appFontColorHex = hex
+                                AppSettings.shared.syncQuickBitThemeToWidget()
                             }
                         }
                     
@@ -615,6 +624,7 @@ struct SettingsView: View {
                             .tint(TFTheme.yellow)
                             .onChange(of: appFontSizeMultiplier) { _, newValue in
                                 AppSettings.shared.appFontSizeMultiplier = newValue
+                                AppSettings.shared.syncQuickBitThemeToWidget()
                             }
                         
                         Text("Large")
