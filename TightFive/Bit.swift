@@ -32,7 +32,10 @@ final class Bit {
     
     /// Free-form tags for quick filtering/search
     var tags: [String] = []
-    
+
+    /// Notes for the bit (variant punchlines, alternate wording, delivery ideas, etc.)
+    var notes: String = ""
+
     var createdAt: Date
     var updatedAt: Date
     

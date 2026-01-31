@@ -55,6 +55,7 @@ private struct LooseBitsContent: View {
     @State private var query: String = ""
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
+    @State private var flippedBitIds: Set<UUID> = []
 
     private var filtered: [Bit] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -74,6 +75,17 @@ private struct LooseBitsContent: View {
                         .padding(.top, 40)
                 } else {
                     ForEach(filtered) { bit in
+                        let isFlipped = Binding(
+                            get: { flippedBitIds.contains(bit.id) },
+                            set: { newValue in
+                                if newValue {
+                                    flippedBitIds.insert(bit.id)
+                                } else {
+                                    flippedBitIds.remove(bit.id)
+                                }
+                            }
+                        )
+
                         BitSwipeView(
                             bit: bit,
                             onFinish: {
@@ -83,10 +95,12 @@ private struct LooseBitsContent: View {
                                 withAnimation(.snappy) { softDeleteBit(bit) }
                             },
                             onTap: {
-                                selectedBit = bit
+                                if !isFlipped.wrappedValue {
+                                    selectedBit = bit
+                                }
                             }
                         ) {
-                            BitsTabCardRow(bit: bit)
+                            LooseFlippableBitCard(bit: bit, isFlipped: isFlipped)
                                 .contentShape(Rectangle())
                                 .contextMenu {
                                     Button {
@@ -200,6 +214,7 @@ private struct FinishedBitsContent: View {
     @State private var query: String = ""
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
+    @State private var flippedBitIds: Set<UUID> = []
 
     private var filtered: [Bit] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -219,6 +234,17 @@ private struct FinishedBitsContent: View {
                         .padding(.top, 40)
                 } else {
                     ForEach(filtered) { bit in
+                        let isFlipped = Binding(
+                            get: { flippedBitIds.contains(bit.id) },
+                            set: { newValue in
+                                if newValue {
+                                    flippedBitIds.insert(bit.id)
+                                } else {
+                                    flippedBitIds.remove(bit.id)
+                                }
+                            }
+                        )
+
                         BitSwipeView(
                             bit: bit,
                             onFinish: {
@@ -228,10 +254,12 @@ private struct FinishedBitsContent: View {
                                 withAnimation(.snappy) { softDeleteBit(bit) }
                             },
                             onTap: {
-                                selectedBit = bit
+                                if !isFlipped.wrappedValue {
+                                    selectedBit = bit
+                                }
                             }
                         ) {
-                            BitsTabCardRow(bit: bit)
+                            FinishedFlippableBitCard(bit: bit, isFlipped: isFlipped)
                                 .contentShape(Rectangle())
                                 .contextMenu {
                                     Button {
@@ -256,7 +284,7 @@ private struct FinishedBitsContent: View {
                                     if inProgressSetlists.isEmpty {
                                         Text("No in-progress setlists")
                                     } else {
-                                        Menu("Add to setlist…") {
+                                        Menu("Add to setlist\u{2026}") {
                                             ForEach(inProgressSetlists) { setlist in
                                                 Button(setlist.title.isEmpty ? "Untitled Set" : setlist.title) {
                                                     add(bit: bit, to: setlist)

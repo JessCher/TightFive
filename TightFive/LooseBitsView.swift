@@ -14,6 +14,7 @@ struct LooseBitsView: View {
     @State private var query: String = ""
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
+    @State private var flippedBitIds: Set<UUID> = []
 
     /// Apply search filter to loose bits
     private var filtered: [Bit] {
@@ -34,6 +35,17 @@ struct LooseBitsView: View {
                         .padding(.top, 40)
                 } else {
                     ForEach(filtered) { bit in
+                        let isFlipped = Binding(
+                            get: { flippedBitIds.contains(bit.id) },
+                            set: { newValue in
+                                if newValue {
+                                    flippedBitIds.insert(bit.id)
+                                } else {
+                                    flippedBitIds.remove(bit.id)
+                                }
+                            }
+                        )
+
                         BitSwipeView(
                             bit: bit,
                             onFinish: {
@@ -43,10 +55,12 @@ struct LooseBitsView: View {
                                 withAnimation(.snappy) { softDeleteBit(bit) }
                             },
                             onTap: {
-                                selectedBit = bit
+                                if !isFlipped.wrappedValue {
+                                    selectedBit = bit
+                                }
                             }
                         ) {
-                            LooseBitCardRow(bit: bit)
+                            LooseFlippableBitCard(bit: bit, isFlipped: isFlipped)
                                 .contentShape(Rectangle())
                                 .contextMenu {
                                     Button {
@@ -273,6 +287,21 @@ struct LooseBitDetailView: View {
                 }
             }
 
+            Section {
+                LooseUndoableTextEditor(
+                    text: $bit.notes,
+                    modelContext: modelContext,
+                    bit: bit,
+                    undoManager: undoManager,
+                    isNotesField: true
+                )
+                .frame(minHeight: 100)
+            } header: {
+                Text("Notes")
+            } footer: {
+                Text("Variant punchlines, alternate wording, delivery ideas, etc.")
+            }
+
             // Show variations section if any exist
             if !bit.variations.isEmpty {
                 Section {
@@ -335,6 +364,7 @@ private struct LooseUndoableTextEditor: UIViewRepresentable {
     let modelContext: ModelContext
     let bit: Bit
     var undoManager: UndoManager?
+    var isNotesField: Bool = false
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
@@ -359,25 +389,31 @@ private struct LooseUndoableTextEditor: UIViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, modelContext: modelContext, bit: bit)
+        Coordinator(text: $text, modelContext: modelContext, bit: bit, isNotesField: isNotesField)
     }
 
     class Coordinator: NSObject, UITextViewDelegate {
         @Binding var text: String
         let modelContext: ModelContext
         let bit: Bit
+        let isNotesField: Bool
         var isInternalUpdate = false
 
-        init(text: Binding<String>, modelContext: ModelContext, bit: Bit) {
+        init(text: Binding<String>, modelContext: ModelContext, bit: Bit, isNotesField: Bool) {
             self._text = text
             self.modelContext = modelContext
             self.bit = bit
+            self.isNotesField = isNotesField
         }
 
         func textViewDidChange(_ textView: UITextView) {
             isInternalUpdate = true
             text = textView.text
-            bit.text = textView.text
+            if isNotesField {
+                bit.notes = textView.text
+            } else {
+                bit.text = textView.text
+            }
             bit.updatedAt = Date()
             try? modelContext.save()
         }

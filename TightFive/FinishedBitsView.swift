@@ -20,7 +20,8 @@ struct FinishedBitsView: View {
     @State private var query: String = ""
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
-    
+    @State private var flippedBitIds: Set<UUID> = []
+
     @State private var filterScope: FilterScope = .all
     
     private enum FilterScope: String, CaseIterable, Identifiable {
@@ -62,6 +63,17 @@ struct FinishedBitsView: View {
                         .padding(.top, 40)
                 } else {
                     ForEach(filtered) { bit in
+                        let isFlipped = Binding(
+                            get: { flippedBitIds.contains(bit.id) },
+                            set: { newValue in
+                                if newValue {
+                                    flippedBitIds.insert(bit.id)
+                                } else {
+                                    flippedBitIds.remove(bit.id)
+                                }
+                            }
+                        )
+
                         // Use BitSwipeView with custom share action
                         BitSwipeView(
                             bit: bit,
@@ -73,11 +85,13 @@ struct FinishedBitsView: View {
                                 withAnimation(.snappy) { softDeleteBit(bit) }
                             },
                             onTap: {
-                                selectedBit = bit
+                                if !isFlipped.wrappedValue {
+                                    selectedBit = bit
+                                }
                             }
                         ) {
-                            // The Card Itself
-                            BitCardRow(bit: bit)
+                            // The Card Itself with flip capability
+                            FinishedFlippableBitCard(bit: bit, isFlipped: isFlipped)
                                 .contentShape(Rectangle())
                                 .contextMenu {
                                     // Favorite/Unfavorite action
@@ -93,18 +107,18 @@ struct FinishedBitsView: View {
                                             systemImage: bit.isFavorite ? "star.slash" : "star.fill"
                                         )
                                     }
-                                    
+
                                     // Share action
                                     Button {
                                         shareBit(bit)
                                     } label: {
                                         Label("Share", systemImage: "square.and.arrow.up")
                                     }
-                                    
+
                                     if inProgressSetlists.isEmpty {
                                         Text("No in-progress setlists")
                                     } else {
-                                        Menu("Add to setlist…") {
+                                        Menu("Add to setlist\u{2026}") {
                                             ForEach(inProgressSetlists) { setlist in
                                                 Button(setlist.title.isEmpty ? "Untitled Set" : setlist.title) {
                                                     add(bit: bit, to: setlist)
@@ -298,7 +312,7 @@ struct FinishedBitDetailView: View {
                     Text("Tags")
                         .appFont(.headline)
                         .foregroundStyle(TFTheme.text)
-                    
+
                     TagEditor(tags: $bit.tags) { updated in
                         bit.tags = updated
                         bit.updatedAt = Date()
@@ -307,7 +321,50 @@ struct FinishedBitDetailView: View {
                 }
                 .padding(20)
                 .tfDynamicCard(cornerRadius: 20)
-                
+
+                // Notes Card
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "note.text")
+                            .appFont(.headline)
+                            .foregroundStyle(TFTheme.yellow)
+                        Text("Notes")
+                            .appFont(.headline)
+                            .foregroundStyle(TFTheme.text)
+                    }
+
+                    Text("Variant punchlines, alternate wording, delivery ideas...")
+                        .appFont(.caption)
+                        .foregroundStyle(TFTheme.text.opacity(0.5))
+
+                    ZStack(alignment: .topLeading) {
+                        if bit.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("Tap to add notes...")
+                                .appFont(.body)
+                                .foregroundStyle(TFTheme.text.opacity(0.35))
+                                .padding(.top, 8)
+                        }
+                        TextEditor(text: Binding(
+                            get: { bit.notes },
+                            set: { newValue in
+                                bit.notes = newValue
+                                bit.updatedAt = Date()
+                                try? modelContext.save()
+                            }
+                        ))
+                        .scrollContentBackground(.hidden)
+                        .background(Color.clear)
+                        .appFont(.body)
+                        .foregroundStyle(TFTheme.text)
+                        .frame(minHeight: 80)
+                    }
+                    .padding(8)
+                    .background(Color.black.opacity(0.2))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .padding(20)
+                .tfDynamicCard(cornerRadius: 20)
+
                 // Compare Variations Button
                 if !bit.variations.isEmpty {
                     Button {
