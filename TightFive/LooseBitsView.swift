@@ -288,16 +288,33 @@ struct LooseBitDetailView: View {
             }
 
             Section {
-                LooseUndoableTextEditor(
-                    text: $bit.notes,
-                    modelContext: modelContext,
-                    bit: bit,
-                    undoManager: undoManager,
-                    isNotesField: true
-                )
-                .frame(minHeight: 100)
+                ZStack(alignment: .topLeading) {
+                    if bit.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("Tap to add notes...")
+                            .appFont(.body)
+                            .foregroundStyle(TFTheme.text.opacity(0.35))
+                            .padding(.top, 8)
+                    }
+                    TextEditor(text: Binding(
+                        get: { bit.notes },
+                        set: { newValue in
+                            bit.notes = newValue
+                            bit.updatedAt = Date()
+                            try? modelContext.save()
+                        }
+                    ))
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
+                    .appFont(.body)
+                    .foregroundStyle(TFTheme.text)
+                    .frame(minHeight: 100)
+                }
             } header: {
-                Text("Notes")
+                HStack {
+                    Image(systemName: "note.text")
+                        .foregroundStyle(TFTheme.yellow)
+                    Text("Notes")
+                }
             } footer: {
                 Text("Variant punchlines, alternate wording, delivery ideas, etc.")
             }

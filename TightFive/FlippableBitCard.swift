@@ -19,26 +19,31 @@ struct FlippableBitCard<FrontContent: View, BackContent: View>: View {
     }
 
     var body: some View {
-        ZStack {
-            // Front side (bit content)
-            frontContent
-                .opacity(isFlipped ? 0 : 1)
-                .rotation3DEffect(
-                    .degrees(isFlipped ? 180 : 0),
-                    axis: (x: 0, y: 1, z: 0),
-                    perspective: 0.5
-                )
-
-            // Back side (notes)
-            backContent
+        // Use the front content as the sizing reference
+        // Back content is overlaid on top and clipped to match front's bounds
+        frontContent
+            .opacity(isFlipped ? 0 : 1)
+            .rotation3DEffect(
+                .degrees(isFlipped ? 180 : 0),
+                axis: (x: 0, y: 1, z: 0),
+                perspective: 0.5
+            )
+            .overlay {
+                // Use GeometryReader to get exact size, then constrain back content
+                GeometryReader { geo in
+                    backContent
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
+                }
                 .opacity(isFlipped ? 1 : 0)
                 .rotation3DEffect(
                     .degrees(isFlipped ? 0 : -180),
                     axis: (x: 0, y: 1, z: 0),
                     perspective: 0.5
                 )
-        }
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped)
+                .allowsHitTesting(isFlipped)
+            }
+            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped)
     }
 }
 
@@ -73,7 +78,7 @@ struct BitFlipButton: View {
     }
 }
 
-// MARK: - Loose Bit Flippable Card
+// MARK: - Loose Bit Flippable Card (List View)
 
 struct LooseFlippableBitCard: View {
     let bit: Bit
@@ -84,10 +89,8 @@ struct LooseFlippableBitCard: View {
 
     var body: some View {
         FlippableBitCard(isFlipped: $isFlipped) {
-            // Front: Bit content card
             frontCard
         } back: {
-            // Back: Notes card
             backCard
         }
         .onAppear {
@@ -98,7 +101,6 @@ struct LooseFlippableBitCard: View {
     private var frontCard: some View {
         ZStack(alignment: .bottomTrailing) {
             VStack(alignment: .center, spacing: 8) {
-                // Title
                 Text(bit.titleLine)
                     .appFont(.title3, weight: .semibold)
                     .foregroundStyle(TFTheme.text)
@@ -106,7 +108,6 @@ struct LooseFlippableBitCard: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
 
-                // Date - Variations - Favorite row
                 HStack(spacing: 8) {
                     Text(bit.updatedAt, style: .date)
                         .appFont(.subheadline)
@@ -116,7 +117,6 @@ struct LooseFlippableBitCard: View {
                         Text("\u{2022}")
                             .appFont(.subheadline)
                             .foregroundStyle(TFTheme.text.opacity(0.4))
-
                         Text("\(bit.variationCount) variation\(bit.variationCount == 1 ? "" : "s")")
                             .appFont(.subheadline)
                             .foregroundStyle(TFTheme.text.opacity(0.55))
@@ -126,7 +126,6 @@ struct LooseFlippableBitCard: View {
                         Text("\u{2022}")
                             .appFont(.subheadline)
                             .foregroundStyle(TFTheme.text.opacity(0.4))
-
                         HStack(spacing: 4) {
                             Image(systemName: "star.fill")
                                 .appFont(.caption)
@@ -138,7 +137,6 @@ struct LooseFlippableBitCard: View {
                     }
                 }
 
-                // Tags row
                 if !bit.tags.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
@@ -154,20 +152,14 @@ struct LooseFlippableBitCard: View {
                         }
                     }
                 }
-
-                // Spacer for flip button
-                Spacer().frame(height: 24)
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 20)
             .padding(.vertical, 18)
             .tfDynamicCard(cornerRadius: 18)
 
-            // Flip button
             BitFlipButton(isFlipped: false, hasNotes: !bit.notes.isEmpty) {
-                withAnimation {
-                    isFlipped = true
-                }
+                withAnimation { isFlipped = true }
             }
             .padding(.trailing, 12)
             .padding(.bottom, 12)
@@ -176,64 +168,51 @@ struct LooseFlippableBitCard: View {
 
     private var backCard: some View {
         ZStack(alignment: .bottomTrailing) {
-            VStack(alignment: .leading, spacing: 12) {
-                // Header
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Image(systemName: "note.text")
-                        .appFont(.headline)
+                        .appFont(.subheadline)
                         .foregroundStyle(TFTheme.yellow)
                     Text("Notes")
-                        .appFont(.headline, weight: .semibold)
+                        .appFont(.subheadline, weight: .semibold)
                         .foregroundStyle(TFTheme.text)
                     Spacer()
                 }
 
-                // Notes description
-                Text("Variant punchlines, alternate wording, delivery ideas...")
-                    .appFont(.caption)
-                    .foregroundStyle(TFTheme.text.opacity(0.5))
-
-                // Notes text editor
                 ZStack(alignment: .topLeading) {
                     if notesText.isEmpty && !isNotesFocused {
                         Text("Tap to add notes...")
-                            .appFont(.body)
+                            .appFont(.caption)
                             .foregroundStyle(TFTheme.text.opacity(0.35))
-                            .padding(.top, 8)
+                            .padding(.top, 6)
                             .padding(.leading, 4)
                     }
 
                     TextEditor(text: $notesText)
                         .scrollContentBackground(.hidden)
                         .background(Color.clear)
-                        .appFont(.body)
+                        .appFont(.caption)
                         .foregroundStyle(TFTheme.text)
                         .focused($isNotesFocused)
-                        .frame(minHeight: 80)
                         .onChange(of: notesText) { _, newValue in
                             bit.notes = newValue
                             bit.updatedAt = Date()
                             try? modelContext.save()
                         }
                 }
-                .padding(8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(6)
                 .background(Color.black.opacity(0.2))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-
-                // Spacer for flip button
-                Spacer().frame(height: 24)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 18)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
             .tfDynamicCard(cornerRadius: 18)
 
-            // Flip button (back to front)
             BitFlipButton(isFlipped: true, hasNotes: !bit.notes.isEmpty) {
                 isNotesFocused = false
-                withAnimation {
-                    isFlipped = false
-                }
+                withAnimation { isFlipped = false }
             }
             .padding(.trailing, 12)
             .padding(.bottom, 12)
@@ -241,7 +220,7 @@ struct LooseFlippableBitCard: View {
     }
 }
 
-// MARK: - Finished Bit Flippable Card
+// MARK: - Finished Bit Flippable Card (List View)
 
 struct FinishedFlippableBitCard: View {
     let bit: Bit
@@ -252,10 +231,8 @@ struct FinishedFlippableBitCard: View {
 
     var body: some View {
         FlippableBitCard(isFlipped: $isFlipped) {
-            // Front: Bit content card
             frontCard
         } back: {
-            // Back: Notes card
             backCard
         }
         .onAppear {
@@ -266,7 +243,6 @@ struct FinishedFlippableBitCard: View {
     private var frontCard: some View {
         ZStack(alignment: .bottomTrailing) {
             VStack(alignment: .center, spacing: 8) {
-                // Title
                 Text(bit.titleLine)
                     .appFont(.title3, weight: .semibold)
                     .foregroundStyle(TFTheme.text)
@@ -274,7 +250,6 @@ struct FinishedFlippableBitCard: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
 
-                // Estimated duration row
                 HStack(spacing: 6) {
                     Image(systemName: "clock")
                         .appFont(.caption)
@@ -285,7 +260,6 @@ struct FinishedFlippableBitCard: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
 
-                // Date - Variations - Favorite row
                 HStack(spacing: 8) {
                     Text(bit.updatedAt, style: .date)
                         .appFont(.subheadline)
@@ -295,7 +269,6 @@ struct FinishedFlippableBitCard: View {
                         Text("\u{2022}")
                             .appFont(.subheadline)
                             .foregroundStyle(TFTheme.text.opacity(0.4))
-
                         Text("\(bit.variationCount) variation\(bit.variationCount == 1 ? "" : "s")")
                             .appFont(.subheadline)
                             .foregroundStyle(TFTheme.text.opacity(0.55))
@@ -305,7 +278,6 @@ struct FinishedFlippableBitCard: View {
                         Text("\u{2022}")
                             .appFont(.subheadline)
                             .foregroundStyle(TFTheme.text.opacity(0.4))
-
                         HStack(spacing: 4) {
                             Image(systemName: "star.fill")
                                 .appFont(.caption)
@@ -317,7 +289,6 @@ struct FinishedFlippableBitCard: View {
                     }
                 }
 
-                // Tags row
                 if !bit.tags.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 6) {
@@ -333,20 +304,14 @@ struct FinishedFlippableBitCard: View {
                         }
                     }
                 }
-
-                // Spacer for flip button
-                Spacer().frame(height: 24)
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.horizontal, 20)
             .padding(.vertical, 18)
             .tfDynamicCard(cornerRadius: 18)
 
-            // Flip button
             BitFlipButton(isFlipped: false, hasNotes: !bit.notes.isEmpty) {
-                withAnimation {
-                    isFlipped = true
-                }
+                withAnimation { isFlipped = true }
             }
             .padding(.trailing, 12)
             .padding(.bottom, 12)
@@ -355,8 +320,146 @@ struct FinishedFlippableBitCard: View {
 
     private var backCard: some View {
         ZStack(alignment: .bottomTrailing) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "note.text")
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.yellow)
+                    Text("Notes")
+                        .appFont(.subheadline, weight: .semibold)
+                        .foregroundStyle(TFTheme.text)
+                    Spacer()
+                }
+
+                ZStack(alignment: .topLeading) {
+                    if notesText.isEmpty && !isNotesFocused {
+                        Text("Tap to add notes...")
+                            .appFont(.caption)
+                            .foregroundStyle(TFTheme.text.opacity(0.35))
+                            .padding(.top, 6)
+                            .padding(.leading, 4)
+                    }
+
+                    TextEditor(text: $notesText)
+                        .scrollContentBackground(.hidden)
+                        .background(Color.clear)
+                        .appFont(.caption)
+                        .foregroundStyle(TFTheme.text)
+                        .focused($isNotesFocused)
+                        .onChange(of: notesText) { _, newValue in
+                            bit.notes = newValue
+                            bit.updatedAt = Date()
+                            try? modelContext.save()
+                        }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(6)
+                .background(Color.black.opacity(0.2))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .tfDynamicCard(cornerRadius: 18)
+
+            BitFlipButton(isFlipped: true, hasNotes: !bit.notes.isEmpty) {
+                isNotesFocused = false
+                withAnimation { isFlipped = false }
+            }
+            .padding(.trailing, 12)
+            .padding(.bottom, 12)
+        }
+    }
+}
+
+// MARK: - Detail View Flippable Card
+
+/// Flippable card for the Finished Bit Detail View - editable text on front, notes on back
+struct FinishedDetailFlippableCard: View {
+    @Bindable var bit: Bit
+    @Binding var isFlipped: Bool
+    @Environment(\.modelContext) private var modelContext
+    @State private var notesText: String = ""
+    @FocusState private var isNotesFocused: Bool
+
+    var body: some View {
+        FlippableBitCard(isFlipped: $isFlipped) {
+            frontCard
+        } back: {
+            backCard
+        }
+        .onAppear {
+            notesText = bit.notes
+        }
+    }
+
+    private var frontCard: some View {
+        ZStack(alignment: .bottomTrailing) {
+            VStack(alignment: .leading, spacing: 16) {
+                TextField("Title", text: Binding(
+                    get: { bit.title },
+                    set: { newValue in
+                        bit.title = newValue
+                        bit.updatedAt = Date()
+                        try? modelContext.save()
+                    }
+                ))
+                .appFont(.title2, weight: .bold)
+                .foregroundStyle(TFTheme.yellow)
+                .multilineTextAlignment(.center)
+                .submitLabel(.done)
+                .textInputAutocapitalization(.words)
+                .disableAutocorrection(true)
+
+                Divider()
+                    .background(.white.opacity(0.2))
+
+                ZStack(alignment: .topLeading) {
+                    if bit.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("Body")
+                            .appFont(.body)
+                            .foregroundStyle(TFTheme.text.opacity(0.35))
+                            .padding(.top, 8)
+                    }
+                    TextEditor(text: Binding(
+                        get: { bit.text },
+                        set: { newValue in
+                            bit.text = newValue
+                            bit.updatedAt = Date()
+                            try? modelContext.save()
+                        }
+                    ))
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
+                    .appFont(.body)
+                    .foregroundStyle(TFTheme.text)
+                    .frame(minHeight: 140)
+                }
+
+                HStack(spacing: 6) {
+                    Image(systemName: "clock")
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.yellow)
+                    Text("Estimated: \(bit.formattedDuration)")
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.text.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .padding(20)
+            .tfDynamicCard(cornerRadius: 20)
+
+            BitFlipButton(isFlipped: false, hasNotes: !bit.notes.isEmpty) {
+                withAnimation { isFlipped = true }
+            }
+            .padding(.trailing, 16)
+            .padding(.bottom, 16)
+        }
+    }
+
+    private var backCard: some View {
+        ZStack(alignment: .bottomTrailing) {
             VStack(alignment: .leading, spacing: 12) {
-                // Header
                 HStack {
                     Image(systemName: "note.text")
                         .appFont(.headline)
@@ -367,12 +470,10 @@ struct FinishedFlippableBitCard: View {
                     Spacer()
                 }
 
-                // Notes description
                 Text("Variant punchlines, alternate wording, delivery ideas...")
                     .appFont(.caption)
                     .foregroundStyle(TFTheme.text.opacity(0.5))
 
-                // Notes text editor
                 ZStack(alignment: .topLeading) {
                     if notesText.isEmpty && !isNotesFocused {
                         Text("Tap to add notes...")
@@ -388,34 +489,27 @@ struct FinishedFlippableBitCard: View {
                         .appFont(.body)
                         .foregroundStyle(TFTheme.text)
                         .focused($isNotesFocused)
-                        .frame(minHeight: 80)
                         .onChange(of: notesText) { _, newValue in
                             bit.notes = newValue
                             bit.updatedAt = Date()
                             try? modelContext.save()
                         }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(8)
                 .background(Color.black.opacity(0.2))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-
-                // Spacer for flip button
-                Spacer().frame(height: 24)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 18)
-            .tfDynamicCard(cornerRadius: 18)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .padding(20)
+            .tfDynamicCard(cornerRadius: 20)
 
-            // Flip button (back to front)
             BitFlipButton(isFlipped: true, hasNotes: !bit.notes.isEmpty) {
                 isNotesFocused = false
-                withAnimation {
-                    isFlipped = false
-                }
+                withAnimation { isFlipped = false }
             }
-            .padding(.trailing, 12)
-            .padding(.bottom, 12)
+            .padding(.trailing, 16)
+            .padding(.bottom, 16)
         }
     }
 }

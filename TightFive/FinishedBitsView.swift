@@ -242,71 +242,17 @@ struct FinishedBitDetailView: View {
     @Bindable var bit: Bit
     @State private var showVariationComparison = false
     @State private var showShareSheet = false
+    @State private var isCardFlipped = false
     @ObservedObject private var keyboard = TFKeyboardState.shared
     @Environment(\.undoManager) private var undoManager
     @Environment(\.modelContext) private var modelContext
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Main Bit Card
-                VStack(alignment: .leading, spacing: 16) {
-                    TextField("Title", text: Binding(
-                        get: { bit.title },
-                        set: { newValue in
-                            bit.title = newValue
-                            bit.updatedAt = Date()
-                            try? modelContext.save()
-                        }
-                    ))
-                    .appFont(.title2, weight: .bold)
-                    .foregroundStyle(TFTheme.yellow)
-                    .multilineTextAlignment(.center)
-                    .submitLabel(.done)
-                    .textInputAutocapitalization(.words)
-                    .disableAutocorrection(true)
-                    
-                    Divider()
-                        .background(.white.opacity(0.2))
-                    
-                    ZStack(alignment: .topLeading) {
-                        // Placeholder when empty
-                        if bit.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text("Body")
-                                .appFont(.body)
-                                .foregroundStyle(TFTheme.text.opacity(0.35))
-                                .padding(.top, 8)
-                        }
-                        TextEditor(text: Binding(
-                            get: { bit.text },
-                            set: { newValue in
-                                bit.text = newValue
-                                bit.updatedAt = Date()
-                                try? modelContext.save()
-                            }
-                        ))
-                        .scrollContentBackground(.hidden)
-                        .background(Color.clear)
-                        .appFont(.body)
-                        .foregroundStyle(TFTheme.text)
-                        .frame(minHeight: 140)
-                    }
-                    
-                    // Duration info
-                    HStack(spacing: 6) {
-                        Image(systemName: "clock")
-                            .appFont(.subheadline)
-                            .foregroundStyle(TFTheme.yellow)
-                        
-                        Text("Estimated: \(bit.formattedDuration)")
-                            .appFont(.subheadline)
-                            .foregroundStyle(TFTheme.text.opacity(0.7))
-                    }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                }
-                .padding(20)
-                .tfDynamicCard(cornerRadius: 20)
-                
+                // Main Bit Card with flip for notes
+                FinishedDetailFlippableCard(bit: bit, isFlipped: $isCardFlipped)
+
                 // Tags Card - Always show
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Tags")
@@ -318,49 +264,6 @@ struct FinishedBitDetailView: View {
                         bit.updatedAt = Date()
                         try? modelContext.save()
                     }
-                }
-                .padding(20)
-                .tfDynamicCard(cornerRadius: 20)
-
-                // Notes Card
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image(systemName: "note.text")
-                            .appFont(.headline)
-                            .foregroundStyle(TFTheme.yellow)
-                        Text("Notes")
-                            .appFont(.headline)
-                            .foregroundStyle(TFTheme.text)
-                    }
-
-                    Text("Variant punchlines, alternate wording, delivery ideas...")
-                        .appFont(.caption)
-                        .foregroundStyle(TFTheme.text.opacity(0.5))
-
-                    ZStack(alignment: .topLeading) {
-                        if bit.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text("Tap to add notes...")
-                                .appFont(.body)
-                                .foregroundStyle(TFTheme.text.opacity(0.35))
-                                .padding(.top, 8)
-                        }
-                        TextEditor(text: Binding(
-                            get: { bit.notes },
-                            set: { newValue in
-                                bit.notes = newValue
-                                bit.updatedAt = Date()
-                                try? modelContext.save()
-                            }
-                        ))
-                        .scrollContentBackground(.hidden)
-                        .background(Color.clear)
-                        .appFont(.body)
-                        .foregroundStyle(TFTheme.text)
-                        .frame(minHeight: 80)
-                    }
-                    .padding(8)
-                    .background(Color.black.opacity(0.2))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 .padding(20)
                 .tfDynamicCard(cornerRadius: 20)
