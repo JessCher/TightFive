@@ -375,37 +375,7 @@ private struct BitCardRow: View {
 
     var body: some View {
         VStack(alignment: .center, spacing: 8) {
-            // MARK: - HIDDEN: Favorite and variation badges removed for consistency
-            // HStack {
-            //     Text(bit.titleLine)
-            //         .appFont(.title3, weight: .semibold)
-            //         .foregroundStyle(TFTheme.text)
-            //         .lineLimit(3)
-            //         .fixedSize(horizontal: false, vertical: true)
-            //     
-            //     Spacer()
-            //     
-            //     HStack(spacing: 8) {
-            //         // Favorite indicator
-            //         if bit.isFavorite {
-            //             Image(systemName: "star.fill")
-            //                 .appFont(.caption)
-            //                 .foregroundStyle(TFTheme.yellow)
-            //         }
-            //         
-            //         // Show variation count badge if any
-            //         if bit.variationCount > 0 {
-            //             Text("\(bit.variationCount)")
-            //                 .appFont(.caption, weight: .semibold)
-            //                 .foregroundStyle(.black)
-            //                 .padding(.horizontal, 8)
-            //                 .padding(.vertical, 4)
-            //                 .background(TFTheme.yellow)
-            //                 .clipShape(Capsule())
-            //         }
-            //     }
-            // }
-
+            // Title
             Text(bit.titleLine)
                 .appFont(.title3, weight: .semibold)
                 .foregroundStyle(TFTheme.text)
@@ -413,10 +383,39 @@ private struct BitCardRow: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(bit.updatedAt, style: .date)
-                .appFont(.subheadline)
-                .foregroundStyle(TFTheme.text.opacity(0.55))
-            
+            // Date - Variations - Favorite row
+            HStack(spacing: 8) {
+                Text(bit.updatedAt, style: .date)
+                    .appFont(.subheadline)
+                    .foregroundStyle(TFTheme.text.opacity(0.55))
+
+                if bit.variationCount > 0 {
+                    Text("•")
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.text.opacity(0.4))
+
+                    Text("\(bit.variationCount) variation\(bit.variationCount == 1 ? "" : "s")")
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.text.opacity(0.55))
+                }
+
+                if bit.isFavorite {
+                    Text("•")
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.text.opacity(0.4))
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "star.fill")
+                            .appFont(.caption)
+                            .foregroundStyle(TFTheme.yellow)
+                        Text("Favorite")
+                            .appFont(.subheadline)
+                            .foregroundStyle(TFTheme.text.opacity(0.55))
+                    }
+                }
+            }
+
+            // Tags row
             if !bit.tags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
