@@ -24,7 +24,7 @@ struct SettingsView: View {
             } header: {
                 Text("Stage Mode")
             } footer: {
-                Text("Configure your Stage Mode cue card experience.")
+                Text("Configure your Stage Mode experience.")
             }
             
             Section {

@@ -9,34 +9,41 @@ class StageModeScriptSettings {
     // MARK: - Display Settings
     
     /// Font size for script (points)
-    var fontSize: Double {
-        get {
-            let value = UserDefaults.standard.double(forKey: "stageScript_fontSize")
-            return value > 0 ? value : 24.0 // Default 24pt
-        }
-        set { UserDefaults.standard.set(newValue, forKey: "stageScript_fontSize") }
+    var fontSize: Double = 24.0 {
+        didSet { UserDefaults.standard.set(fontSize, forKey: "stageScript_fontSize") }
     }
     
     /// Line spacing
-    var lineSpacing: Double {
-        get {
-            let value = UserDefaults.standard.double(forKey: "stageScript_lineSpacing")
-            return value > 0 ? value : 10.0 // Default 10pt
-        }
-        set { UserDefaults.standard.set(newValue, forKey: "stageScript_lineSpacing") }
+    var lineSpacing: Double = 10.0 {
+        didSet { UserDefaults.standard.set(lineSpacing, forKey: "stageScript_lineSpacing") }
     }
     
     /// Text color for script
-    var textColor: ScriptTextColor {
-        get {
-            let rawValue = UserDefaults.standard.string(forKey: "stageScript_textColor") ?? "white"
-            return ScriptTextColor(rawValue: rawValue) ?? .white
-        }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: "stageScript_textColor") }
+    var textColor: ScriptTextColor = .white {
+        didSet { UserDefaults.standard.set(textColor.rawValue, forKey: "stageScript_textColor") }
     }
     
     private init() {
         registerDefaults()
+        loadFromUserDefaults()
+    }
+    
+    /// Load values from UserDefaults
+    private func loadFromUserDefaults() {
+        let defaults = UserDefaults.standard
+        
+        if let fontSizeValue = defaults.object(forKey: "stageScript_fontSize") as? Double {
+            fontSize = fontSizeValue
+        }
+        
+        if let lineSpacingValue = defaults.object(forKey: "stageScript_lineSpacing") as? Double {
+            lineSpacing = lineSpacingValue
+        }
+        
+        if let textColorRaw = defaults.string(forKey: "stageScript_textColor"),
+           let textColorValue = ScriptTextColor(rawValue: textColorRaw) {
+            textColor = textColorValue
+        }
     }
     
     private func registerDefaults() {

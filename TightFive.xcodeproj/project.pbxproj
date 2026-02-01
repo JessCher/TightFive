@@ -73,7 +73,6 @@
 				BitDrawerView.swift = (ios, );
 				BitVariation.swift = (ios, );
 				ContentView.swift = (ios, );
-				ContinuousScrollEngine.swift = (ios, );
 				DynamicChalkboardBackground.swift = (ios, );
 				DynamicTexturedCard.swift = (ios, );
 				HomeView.swift = (ios, );
@@ -105,16 +104,13 @@
 				StageAnchorEditorView.swift = (ios, );
 				StageAnchorMatcher.swift = (ios, );
 				StageAnchorRecognizer.swift = (ios, );
-				StageModeView_legacy.swift = (ios, );
 				StageTeleprompterEngine.swift = (ios, );
 				TFBackground.swift = (ios, );
 				TFIcons.swift = (ios, );
 				TFTheme.swift = (ios, );
 				TFWordmarkTitle.swift = (ios, );
-				TeleprompterScrollTracker.swift = (ios, );
 				TeleprompterSettingsDrawer.swift = (ios, );
 				TeleprompterSettingsDrawerHandle.swift = (ios, );
-				TeleprompterSpeechEngine.swift = (ios, );
 				TeleprompterTextView.swift = (ios, );
 				TightFiveApp.swift = (ios, );
 				TightFiveWordmark.swift = (ios, );
@@ -122,7 +118,6 @@
 				UserProfile.swift = (ios, );
 				VariationComparisonView.swift = (ios, );
 				"View+Extensions.swift" = (ios, );
-				VoiceAwareScrollController.swift = (ios, );
 			};
 			target = 888E3FD72F20526900678706 /* TightFive */;
 		};

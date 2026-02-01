@@ -9,99 +9,109 @@ class CueCardSettingsStore {
     // MARK: - Stage Mode Type
     
     /// Stage mode presentation type
-    var stageModeType: StageModeType {
-        get {
-            let rawValue = UserDefaults.standard.string(forKey: "cueCard_stageModeType") ?? "cueCards"
-            return StageModeType(rawValue: rawValue) ?? .cueCards
-        }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: "cueCard_stageModeType") }
+    var stageModeType: StageModeType = .cueCards {
+        didSet { UserDefaults.standard.set(stageModeType.rawValue, forKey: "cueCard_stageModeType") }
     }
     
     // MARK: - Auto-Advance Settings
     
     /// Enable automatic card advancement via speech recognition
-    var autoAdvanceEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: "cueCard_autoAdvanceEnabled") }
-        set { UserDefaults.standard.set(newValue, forKey: "cueCard_autoAdvanceEnabled") }
+    var autoAdvanceEnabled: Bool = true {
+        didSet { UserDefaults.standard.set(autoAdvanceEnabled, forKey: "cueCard_autoAdvanceEnabled") }
     }
     
     /// Show phrase detection feedback UI
-    var showPhraseFeedback: Bool {
-        get { UserDefaults.standard.bool(forKey: "cueCard_showPhraseFeedback") }
-        set { UserDefaults.standard.set(newValue, forKey: "cueCard_showPhraseFeedback") }
+    var showPhraseFeedback: Bool = true {
+        didSet { UserDefaults.standard.set(showPhraseFeedback, forKey: "cueCard_showPhraseFeedback") }
     }
     
     // MARK: - Display Settings
     
     /// Font size for cue cards (points)
-    var fontSize: Double {
-        get { 
-            let value = UserDefaults.standard.double(forKey: "cueCard_fontSize")
-            return value > 0 ? value : 36.0 // Default 36pt
-        }
-        set { UserDefaults.standard.set(newValue, forKey: "cueCard_fontSize") }
+    var fontSize: Double = 36.0 {
+        didSet { UserDefaults.standard.set(fontSize, forKey: "cueCard_fontSize") }
     }
     
     /// Line spacing multiplier
-    var lineSpacing: Double {
-        get {
-            let value = UserDefaults.standard.double(forKey: "cueCard_lineSpacing")
-            return value > 0 ? value : 12.0 // Default 12pt
-        }
-        set { UserDefaults.standard.set(newValue, forKey: "cueCard_lineSpacing") }
+    var lineSpacing: Double = 12.0 {
+        didSet { UserDefaults.standard.set(lineSpacing, forKey: "cueCard_lineSpacing") }
     }
     
     /// Text color for cards
-    var textColor: CueCardTextColor {
-        get {
-            let rawValue = UserDefaults.standard.string(forKey: "cueCard_textColor") ?? "white"
-            return CueCardTextColor(rawValue: rawValue) ?? .white
-        }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: "cueCard_textColor") }
+    var textColor: CueCardTextColor = .white {
+        didSet { UserDefaults.standard.set(textColor.rawValue, forKey: "cueCard_textColor") }
     }
     
     // MARK: - Recognition Settings
     
     /// Sensitivity for exit phrase detection (0.0 - 1.0)
-    var exitPhraseSensitivity: Double {
-        get {
-            let value = UserDefaults.standard.double(forKey: "cueCard_exitSensitivity")
-            return value > 0 ? value : 0.6 // Default 60%
-        }
-        set { UserDefaults.standard.set(newValue, forKey: "cueCard_exitSensitivity") }
+    var exitPhraseSensitivity: Double = 0.6 {
+        didSet { UserDefaults.standard.set(exitPhraseSensitivity, forKey: "cueCard_exitSensitivity") }
     }
     
     /// Sensitivity for anchor phrase detection (0.0 - 1.0)
-    var anchorPhraseSensitivity: Double {
-        get {
-            let value = UserDefaults.standard.double(forKey: "cueCard_anchorSensitivity")
-            return value > 0 ? value : 0.5 // Default 50%
-        }
-        set { UserDefaults.standard.set(newValue, forKey: "cueCard_anchorSensitivity") }
+    var anchorPhraseSensitivity: Double = 0.5 {
+        didSet { UserDefaults.standard.set(anchorPhraseSensitivity, forKey: "cueCard_anchorSensitivity") }
     }
     
     // MARK: - Animation Settings
     
     /// Enable card transition animations
-    var enableAnimations: Bool {
-        get { UserDefaults.standard.bool(forKey: "cueCard_enableAnimations") }
-        set { UserDefaults.standard.set(newValue, forKey: "cueCard_enableAnimations") }
+    var enableAnimations: Bool = true {
+        didSet { UserDefaults.standard.set(enableAnimations, forKey: "cueCard_enableAnimations") }
     }
     
     /// Transition style
-    var transitionStyle: CardTransitionStyle {
-        get {
-            let rawValue = UserDefaults.standard.string(forKey: "cueCard_transitionStyle") ?? "slide"
-            return CardTransitionStyle(rawValue: rawValue) ?? .slide
-        }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: "cueCard_transitionStyle") }
+    var transitionStyle: CardTransitionStyle = .slide {
+        didSet { UserDefaults.standard.set(transitionStyle.rawValue, forKey: "cueCard_transitionStyle") }
     }
     
     // MARK: - Initialization
     
     private init() {
-        // Set defaults on first launch
         registerDefaults()
+        loadFromUserDefaults()
+    }
+    
+    /// Load values from UserDefaults
+    private func loadFromUserDefaults() {
+        let defaults = UserDefaults.standard
+        
+        if let stageModeTypeRaw = defaults.string(forKey: "cueCard_stageModeType"),
+           let stageModeTypeValue = StageModeType(rawValue: stageModeTypeRaw) {
+            stageModeType = stageModeTypeValue
+        }
+        
+        autoAdvanceEnabled = defaults.bool(forKey: "cueCard_autoAdvanceEnabled")
+        showPhraseFeedback = defaults.bool(forKey: "cueCard_showPhraseFeedback")
+        
+        if let fontSizeValue = defaults.object(forKey: "cueCard_fontSize") as? Double {
+            fontSize = fontSizeValue
+        }
+        
+        if let lineSpacingValue = defaults.object(forKey: "cueCard_lineSpacing") as? Double {
+            lineSpacing = lineSpacingValue
+        }
+        
+        if let textColorRaw = defaults.string(forKey: "cueCard_textColor"),
+           let textColorValue = CueCardTextColor(rawValue: textColorRaw) {
+            textColor = textColorValue
+        }
+        
+        if let exitSensitivityValue = defaults.object(forKey: "cueCard_exitSensitivity") as? Double {
+            exitPhraseSensitivity = exitSensitivityValue
+        }
+        
+        if let anchorSensitivityValue = defaults.object(forKey: "cueCard_anchorSensitivity") as? Double {
+            anchorPhraseSensitivity = anchorSensitivityValue
+        }
+        
+        enableAnimations = defaults.bool(forKey: "cueCard_enableAnimations")
+        
+        if let transitionStyleRaw = defaults.string(forKey: "cueCard_transitionStyle"),
+           let transitionStyleValue = CardTransitionStyle(rawValue: transitionStyleRaw) {
+            transitionStyle = transitionStyleValue
+        }
     }
     
     private func registerDefaults() {

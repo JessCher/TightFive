@@ -15,8 +15,8 @@ struct StageModeViewScript: View {
     @State private var showSaveConfirmation = false
     @State private var isInitialized = false
     
-    // Access settings directly - it's an @Observable singleton
-    private var settings: StageModeScriptSettings { .shared }
+    // Access settings - using @State to enable bindings to the @Observable singleton
+    @State private var settings: StageModeScriptSettings = .shared
     
     private var hasContent: Bool {
         setlist.hasScriptContent

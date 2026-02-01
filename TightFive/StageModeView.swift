@@ -7,8 +7,8 @@ struct StageModeView: View {
     let setlist: Setlist
     var venue: String = ""
     
-    // Access settings directly - it's an @Observable singleton  
-    private var settings: CueCardSettingsStore { .shared }
+    // Access settings - using @State to enable observation of the @Observable singleton
+    @State private var settings: CueCardSettingsStore = .shared
     
     var body: some View {
         switch settings.stageModeType {
@@ -44,8 +44,8 @@ struct StageModeViewCueCard: View {
     @State private var dragOffset: CGFloat = 0
     @State private var cardScale: CGFloat = 1.0
     
-    // Access settings directly - it's an @Observable singleton
-    private var settings: CueCardSettingsStore { .shared }
+    // Access settings - using @State to enable bindings to the @Observable singleton
+    @State private var settings: CueCardSettingsStore = .shared
     
     private var hasContent: Bool {
         !engine.cards.isEmpty

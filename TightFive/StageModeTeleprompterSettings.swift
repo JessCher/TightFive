@@ -9,67 +9,76 @@ class StageModeTeleprompterSettings {
     // MARK: - Display Settings
     
     /// Font size for teleprompter (points)
-    var fontSize: Double {
-        get {
-            let value = UserDefaults.standard.double(forKey: "stageTeleprompter_fontSize")
-            return value > 0 ? value : 34.0 // Default 34pt
-        }
-        set { UserDefaults.standard.set(newValue, forKey: "stageTeleprompter_fontSize") }
+    var fontSize: Double = 34.0 {
+        didSet { UserDefaults.standard.set(fontSize, forKey: "stageTeleprompter_fontSize") }
     }
     
     /// Line spacing
-    var lineSpacing: Double {
-        get {
-            let value = UserDefaults.standard.double(forKey: "stageTeleprompter_lineSpacing")
-            return value > 0 ? value : 14.0 // Default 14pt
-        }
-        set { UserDefaults.standard.set(newValue, forKey: "stageTeleprompter_lineSpacing") }
+    var lineSpacing: Double = 14.0 {
+        didSet { UserDefaults.standard.set(lineSpacing, forKey: "stageTeleprompter_lineSpacing") }
     }
     
     /// Text color for teleprompter
-    var textColor: StageModeTeleprompterTextColor {
-        get {
-            let rawValue = UserDefaults.standard.string(forKey: "stageTeleprompter_textColor") ?? "white"
-            return StageModeTeleprompterTextColor(rawValue: rawValue) ?? .white
-        }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: "stageTeleprompter_textColor") }
+    var textColor: StageModeTeleprompterTextColor = .white {
+        didSet { UserDefaults.standard.set(textColor.rawValue, forKey: "stageTeleprompter_textColor") }
     }
     
     /// Scroll speed (points per second)
-    var scrollSpeed: Double {
-        get {
-            let value = UserDefaults.standard.double(forKey: "stageTeleprompter_scrollSpeed")
-            return value > 0 ? value : 40.0 // Default 40 pts/sec
-        }
-        set { UserDefaults.standard.set(newValue, forKey: "stageTeleprompter_scrollSpeed") }
+    var scrollSpeed: Double = 40.0 {
+        didSet { UserDefaults.standard.set(scrollSpeed, forKey: "stageTeleprompter_scrollSpeed") }
     }
     
     /// Context window height
-    var contextWindowHeight: Double {
-        get {
-            let value = UserDefaults.standard.double(forKey: "stageTeleprompter_contextWindowHeight")
-            return value > 0 ? value : 180.0 // Default 180pt
-        }
-        set { UserDefaults.standard.set(newValue, forKey: "stageTeleprompter_contextWindowHeight") }
+    var contextWindowHeight: Double = 180.0 {
+        didSet { UserDefaults.standard.set(contextWindowHeight, forKey: "stageTeleprompter_contextWindowHeight") }
     }
     
     /// Context window color
-    var contextWindowColor: StageModeContextWindowColor {
-        get {
-            let rawValue = UserDefaults.standard.string(forKey: "stageTeleprompter_contextWindowColor") ?? "yellow"
-            return StageModeContextWindowColor(rawValue: rawValue) ?? .yellow
-        }
-        set { UserDefaults.standard.set(newValue.rawValue, forKey: "stageTeleprompter_contextWindowColor") }
+    var contextWindowColor: StageModeContextWindowColor = .yellow {
+        didSet { UserDefaults.standard.set(contextWindowColor.rawValue, forKey: "stageTeleprompter_contextWindowColor") }
     }
     
     /// Auto-start scrolling
-    var autoStartScrolling: Bool {
-        get { UserDefaults.standard.bool(forKey: "stageTeleprompter_autoStart") }
-        set { UserDefaults.standard.set(newValue, forKey: "stageTeleprompter_autoStart") }
+    var autoStartScrolling: Bool = true {
+        didSet { UserDefaults.standard.set(autoStartScrolling, forKey: "stageTeleprompter_autoStart") }
     }
     
     private init() {
         registerDefaults()
+        loadFromUserDefaults()
+    }
+    
+    /// Load values from UserDefaults
+    private func loadFromUserDefaults() {
+        let defaults = UserDefaults.standard
+        
+        if let fontSizeValue = defaults.object(forKey: "stageTeleprompter_fontSize") as? Double {
+            fontSize = fontSizeValue
+        }
+        
+        if let lineSpacingValue = defaults.object(forKey: "stageTeleprompter_lineSpacing") as? Double {
+            lineSpacing = lineSpacingValue
+        }
+        
+        if let textColorRaw = defaults.string(forKey: "stageTeleprompter_textColor"),
+           let textColorValue = StageModeTeleprompterTextColor(rawValue: textColorRaw) {
+            textColor = textColorValue
+        }
+        
+        if let scrollSpeedValue = defaults.object(forKey: "stageTeleprompter_scrollSpeed") as? Double {
+            scrollSpeed = scrollSpeedValue
+        }
+        
+        if let contextWindowHeightValue = defaults.object(forKey: "stageTeleprompter_contextWindowHeight") as? Double {
+            contextWindowHeight = contextWindowHeightValue
+        }
+        
+        if let contextWindowColorRaw = defaults.string(forKey: "stageTeleprompter_contextWindowColor"),
+           let contextWindowColorValue = StageModeContextWindowColor(rawValue: contextWindowColorRaw) {
+            contextWindowColor = contextWindowColorValue
+        }
+        
+        autoStartScrolling = defaults.bool(forKey: "stageTeleprompter_autoStart")
     }
     
     private func registerDefaults() {
