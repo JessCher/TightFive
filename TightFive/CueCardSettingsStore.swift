@@ -1,0 +1,200 @@
+import SwiftUI
+import Observation
+
+/// Settings store for Cue Card (Stage Mode) configuration
+@Observable
+class CueCardSettingsStore {
+    static let shared = CueCardSettingsStore()
+    
+    // MARK: - Stage Mode Type
+    
+    /// Stage mode presentation type
+    var stageModeType: StageModeType = .cueCards {
+        didSet { UserDefaults.standard.set(stageModeType.rawValue, forKey: "cueCard_stageModeType") }
+    }
+    
+    // MARK: - Auto-Advance Settings
+    
+    /// Enable automatic card advancement via speech recognition
+    var autoAdvanceEnabled: Bool = true {
+        didSet { UserDefaults.standard.set(autoAdvanceEnabled, forKey: "cueCard_autoAdvanceEnabled") }
+    }
+    
+    /// Show phrase detection feedback UI
+    var showPhraseFeedback: Bool = true {
+        didSet { UserDefaults.standard.set(showPhraseFeedback, forKey: "cueCard_showPhraseFeedback") }
+    }
+    
+    // MARK: - Display Settings
+    
+    /// Font size for cue cards (points)
+    var fontSize: Double = 36.0 {
+        didSet { UserDefaults.standard.set(fontSize, forKey: "cueCard_fontSize") }
+    }
+    
+    /// Line spacing multiplier
+    var lineSpacing: Double = 12.0 {
+        didSet { UserDefaults.standard.set(lineSpacing, forKey: "cueCard_lineSpacing") }
+    }
+    
+    /// Text color for cards
+    var textColor: CueCardTextColor = .white {
+        didSet { UserDefaults.standard.set(textColor.rawValue, forKey: "cueCard_textColor") }
+    }
+    
+    // MARK: - Recognition Settings
+    
+    /// Sensitivity for exit phrase detection (0.0 - 1.0)
+    var exitPhraseSensitivity: Double = 0.6 {
+        didSet { UserDefaults.standard.set(exitPhraseSensitivity, forKey: "cueCard_exitSensitivity") }
+    }
+    
+    /// Sensitivity for anchor phrase detection (0.0 - 1.0)
+    var anchorPhraseSensitivity: Double = 0.5 {
+        didSet { UserDefaults.standard.set(anchorPhraseSensitivity, forKey: "cueCard_anchorSensitivity") }
+    }
+    
+    // MARK: - Animation Settings
+    
+    /// Enable card transition animations
+    var enableAnimations: Bool = true {
+        didSet { UserDefaults.standard.set(enableAnimations, forKey: "cueCard_enableAnimations") }
+    }
+    
+    /// Transition style
+    var transitionStyle: CardTransitionStyle = .slide {
+        didSet { UserDefaults.standard.set(transitionStyle.rawValue, forKey: "cueCard_transitionStyle") }
+    }
+    
+    // MARK: - Initialization
+    
+    private init() {
+        registerDefaults()
+        loadFromUserDefaults()
+    }
+    
+    /// Load values from UserDefaults
+    private func loadFromUserDefaults() {
+        let defaults = UserDefaults.standard
+        
+        if let stageModeTypeRaw = defaults.string(forKey: "cueCard_stageModeType"),
+           let stageModeTypeValue = StageModeType(rawValue: stageModeTypeRaw) {
+            stageModeType = stageModeTypeValue
+        }
+        
+        autoAdvanceEnabled = defaults.bool(forKey: "cueCard_autoAdvanceEnabled")
+        showPhraseFeedback = defaults.bool(forKey: "cueCard_showPhraseFeedback")
+        
+        if let fontSizeValue = defaults.object(forKey: "cueCard_fontSize") as? Double {
+            fontSize = fontSizeValue
+        }
+        
+        if let lineSpacingValue = defaults.object(forKey: "cueCard_lineSpacing") as? Double {
+            lineSpacing = lineSpacingValue
+        }
+        
+        if let textColorRaw = defaults.string(forKey: "cueCard_textColor"),
+           let textColorValue = CueCardTextColor(rawValue: textColorRaw) {
+            textColor = textColorValue
+        }
+        
+        if let exitSensitivityValue = defaults.object(forKey: "cueCard_exitSensitivity") as? Double {
+            exitPhraseSensitivity = exitSensitivityValue
+        }
+        
+        if let anchorSensitivityValue = defaults.object(forKey: "cueCard_anchorSensitivity") as? Double {
+            anchorPhraseSensitivity = anchorSensitivityValue
+        }
+        
+        enableAnimations = defaults.bool(forKey: "cueCard_enableAnimations")
+        
+        if let transitionStyleRaw = defaults.string(forKey: "cueCard_transitionStyle"),
+           let transitionStyleValue = CardTransitionStyle(rawValue: transitionStyleRaw) {
+            transitionStyle = transitionStyleValue
+        }
+    }
+    
+    private func registerDefaults() {
+        UserDefaults.standard.register(defaults: [
+            "cueCard_autoAdvanceEnabled": true,
+            "cueCard_showPhraseFeedback": true,
+            "cueCard_fontSize": 36.0,
+            "cueCard_lineSpacing": 12.0,
+            "cueCard_exitSensitivity": 0.6,
+            "cueCard_anchorSensitivity": 0.5,
+            "cueCard_enableAnimations": true
+        ])
+    }
+    
+    /// Reset all settings to defaults
+    func resetToDefaults() {
+        stageModeType = .cueCards
+        autoAdvanceEnabled = true
+        showPhraseFeedback = true
+        fontSize = 36.0
+        lineSpacing = 12.0
+        textColor = .white
+        exitPhraseSensitivity = 0.6
+        anchorPhraseSensitivity = 0.5
+        enableAnimations = true
+        transitionStyle = .slide
+    }
+}
+
+// MARK: - Supporting Types
+
+enum StageModeType: String, CaseIterable, Identifiable {
+    case cueCards = "cueCards"
+    case script = "script"
+    case teleprompter = "teleprompter"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .cueCards: return "Cue Cards"
+        case .script: return "Script"
+        case .teleprompter: return "Teleprompter"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .cueCards: return "Voice-driven cards with anchor and exit phrases"
+        case .script: return "Static scrollable script view"
+        case .teleprompter: return "Auto-scrolling teleprompter view"
+        }
+    }
+}
+
+enum CueCardTextColor: String, CaseIterable, Identifiable {
+    case white = "white"
+    case yellow = "yellow"
+    case green = "green"
+    
+    var id: String { rawValue }
+    
+    var color: Color {
+        switch self {
+        case .white: return .white
+        case .yellow: return Color("TFYellow")
+        case .green: return .green
+        }
+    }
+    
+    var displayName: String {
+        rawValue.capitalized
+    }
+}
+
+enum CardTransitionStyle: String, CaseIterable, Identifiable {
+    case slide = "slide"
+    case fade = "fade"
+    case scale = "scale"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        rawValue.capitalized
+    }
+}

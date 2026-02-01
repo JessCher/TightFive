@@ -7,6 +7,9 @@ struct ProfileView: View {
     @Environment(\.dismiss) private var dismiss
     
     @Query private var profiles: [UserProfile]
+    @Query(filter: #Predicate<Bit> { bit in !bit.isDeleted && bit.statusRaw == "loose" }, sort: \Bit.updatedAt, order: .reverse) private var looseBits: [Bit]
+    @Query(filter: #Predicate<Bit> { bit in !bit.isDeleted && bit.statusRaw == "finished" }, sort: \Bit.updatedAt, order: .reverse) private var finishedBits: [Bit]
+    @Query(sort: \Setlist.updatedAt, order: .reverse) private var setlists: [Setlist]
     
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var profileImage: UIImage?
@@ -20,6 +23,7 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             Form {
+                
                 Section {
                     profileImageSection
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -58,16 +62,27 @@ struct ProfileView: View {
                     Text("Track how many live comedy shows you've performed.")
                 }
                 
-                if let profile = profile, !name.isEmpty {
+                if profile != nil, !name.isEmpty {
                     Section {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 12) {
                             Text("Profile Summary")
                                 .appFont(.headline)
                                 .foregroundStyle(.white)
-                            
+
                             Text("\(name) has performed \(showsPerformed) show\(showsPerformed == 1 ? "" : "s").")
                                 .appFont(.subheadline)
                                 .foregroundStyle(.white.opacity(0.7))
+
+                            // Counters
+                            HStack(spacing: 12) {
+                                counterCard(icon: "doc.text", color: TFTheme.yellow, value: "\(looseBits.count)", label: "Loose Ideas")
+                                counterCard(icon: "checkmark.seal.fill", color: .green, value: "\(finishedBits.count)", label: "Finished Bits")
+                            }
+
+                            HStack(spacing: 12) {
+                                counterCard(icon: "list.bullet.rectangle", color: .cyan, value: "\(setlists.count)", label: "Setlists")
+                                Spacer(minLength: 0)
+                            }
                         }
                         .padding(.vertical, 8)
                     }
@@ -216,6 +231,26 @@ struct ProfileView: View {
         } catch {
             print("Error saving profile: \(error.localizedDescription)")
         }
+    }
+    
+    private func counterCard(icon: String, color: Color, value: String, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(color)
+                Spacer()
+            }
+            Text(value)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+            Text(label)
+                .appFont(.caption)
+                .foregroundStyle(.white.opacity(0.6))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .tfDynamicCard(cornerRadius: 14)
     }
 }
 

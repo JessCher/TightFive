@@ -138,7 +138,7 @@ struct TexturedCardModifier: ViewModifier {
                     .opacity(0.9)
                     .blendMode(.overlay)
             )
-            .shadow(color: .black.opacity(0.8), radius: 10, x: 0, y: 8)
+            .shadow(color: .black.opacity(0.6), radius: 4, x: 0, y: 2)
     }
 }
 

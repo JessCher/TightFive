@@ -19,6 +19,7 @@ struct TightFiveApp: App {
             ContentView()
                 .tint(TFTheme.yellow)
                 .environment(appSettings)
+                .globalKeyboardDismiss()
                 .syncWithWidget(showQuickBit: $showQuickBit)
                 .sheet(isPresented: $showQuickBit) {
                     QuickBitEditor()

@@ -4,6 +4,7 @@ import Combine
 enum RunModeDefaultMode: String, CaseIterable, Identifiable {
     case script = "Script"
     case teleprompter = "Teleprompter"
+    case cueCard = "Cue Card"
     var id: String { rawValue }
 }
 
@@ -96,6 +97,24 @@ final class RunModeSettingsStore: ObservableObject {
     }
     
     @AppStorage("run_timerSize") var timerSize: Double = 32 {
+        willSet { objectWillChange.send() }
+    }
+    
+    // MARK: - Cue Card Settings
+    
+    @AppStorage("cueCard_autoAdvance") var cueCardAutoAdvance: Bool = true {
+        willSet { objectWillChange.send() }
+    }
+    
+    @AppStorage("cueCard_showPhraseFeedback") var cueCardShowPhraseFeedback: Bool = true {
+        willSet { objectWillChange.send() }
+    }
+    
+    @AppStorage("cueCard_exitPhraseThreshold") var cueCardExitPhraseThreshold: Double = 0.6 {
+        willSet { objectWillChange.send() }
+    }
+    
+    @AppStorage("cueCard_fontSize") var cueCardFontSize: Double = 36 {
         willSet { objectWillChange.send() }
     }
 

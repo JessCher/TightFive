@@ -1,14 +1,15 @@
 import SwiftUI
-import SwiftUI
 import Foundation
 import SwiftData
 import Combine
 
+/// View for managing finished (stage-ready) bits.
+/// For loose bits, see LooseBitsView.
 struct FinishedBitsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<Bit> { bit in
-        !bit.isDeleted
-    }, sort: \Bit.updatedAt, order: .reverse) private var allBits: [Bit]
+        !bit.isDeleted && bit.statusRaw == "finished"
+    }, sort: \Bit.updatedAt, order: .reverse) private var finishedBits: [Bit]
 
     @Query(sort: \Setlist.updatedAt, order: .reverse) private var allSetlists: [Setlist]
 
@@ -19,19 +20,28 @@ struct FinishedBitsView: View {
     @State private var query: String = ""
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
+    @State private var flippedBitIds: Set<UUID> = []
+
+    @State private var filterScope: FilterScope = .all
     
-    private var title: String {
-        return "Finished Bits"
+    private enum FilterScope: String, CaseIterable, Identifiable {
+        case all = "All"
+        case favorites = "Favorites"
+        var id: String { rawValue }
     }
 
-    /// Apply search filter to finished bits only
+    /// Apply search filter to finished bits
     private var filtered: [Bit] {
-        let finishedBits = allBits.filter { $0.status == .finished }
-        
-        // Apply search filter
+        let base: [Bit]
+        switch filterScope {
+        case .all:
+            base = finishedBits
+        case .favorites:
+            base = finishedBits.filter { $0.isFavorite }
+        }
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return finishedBits }
-        return finishedBits.filter { bit in
+        guard !q.isEmpty else { return base }
+        return base.filter { bit in
             bit.text.localizedCaseInsensitiveContains(q)
             || bit.title.localizedCaseInsensitiveContains(q)
             || bit.tags.contains(where: { $0.localizedCaseInsensitiveContains(q) })
@@ -41,11 +51,29 @@ struct FinishedBitsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
+                Picker("Scope", selection: $filterScope) {
+                    Text("All").tag(FilterScope.all)
+                    Text("Favorites").tag(FilterScope.favorites)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 2)
+                
                 if filtered.isEmpty {
                     emptyState
                         .padding(.top, 40)
                 } else {
                     ForEach(filtered) { bit in
+                        let isFlipped = Binding(
+                            get: { flippedBitIds.contains(bit.id) },
+                            set: { newValue in
+                                if newValue {
+                                    flippedBitIds.insert(bit.id)
+                                } else {
+                                    flippedBitIds.remove(bit.id)
+                                }
+                            }
+                        )
+
                         // Use BitSwipeView with custom share action
                         BitSwipeView(
                             bit: bit,
@@ -57,11 +85,13 @@ struct FinishedBitsView: View {
                                 withAnimation(.snappy) { softDeleteBit(bit) }
                             },
                             onTap: {
-                                selectedBit = bit
+                                if !isFlipped.wrappedValue {
+                                    selectedBit = bit
+                                }
                             }
                         ) {
-                            // The Card Itself
-                            BitCardRow(bit: bit)
+                            // The Card Itself with flip capability
+                            FinishedFlippableBitCard(bit: bit, isFlipped: isFlipped)
                                 .contentShape(Rectangle())
                                 .contextMenu {
                                     // Favorite/Unfavorite action
@@ -77,18 +107,18 @@ struct FinishedBitsView: View {
                                             systemImage: bit.isFavorite ? "star.slash" : "star.fill"
                                         )
                                     }
-                                    
+
                                     // Share action
                                     Button {
                                         shareBit(bit)
                                     } label: {
                                         Label("Share", systemImage: "square.and.arrow.up")
                                     }
-                                    
+
                                     if inProgressSetlists.isEmpty {
                                         Text("No in-progress setlists")
                                     } else {
-                                        Menu("Add to setlist…") {
+                                        Menu("Add to setlist\u{2026}") {
                                             ForEach(inProgressSetlists) { setlist in
                                                 Button(setlist.title.isEmpty ? "Untitled Set" : setlist.title) {
                                                     add(bit: bit, to: setlist)
@@ -106,15 +136,15 @@ struct FinishedBitsView: View {
             .padding(.bottom, 28)
         }
         .tfBackground()
-        .navigationTitle(title)
+        .navigationTitle("Finished Bits")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query, prompt: "Search bits")
         .navigationDestination(item: $selectedBit) { bit in
-            BitDetailView(bit: bit)
+            FinishedBitDetailView(bit: bit)
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                TFWordmarkTitle(title: title, size: 22)
+                TFWordmarkTitle(title: "Finished Bits", size: 22)
                     .offset(x: -6)
             }
 
@@ -205,57 +235,30 @@ struct FinishedBitsView: View {
     }
 }
 
-// MARK: - Bit Detail View
-private struct BitDetailView: View {
+// MARK: - Finished Bit Detail View
+
+/// Detail view for finished bits - used by both FinishedBitsView and BitsTabView
+struct FinishedBitDetailView: View {
     @Bindable var bit: Bit
     @State private var showVariationComparison = false
     @State private var showShareSheet = false
+    @State private var isCardFlipped = false
     @ObservedObject private var keyboard = TFKeyboardState.shared
     @Environment(\.undoManager) private var undoManager
     @Environment(\.modelContext) private var modelContext
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Main Bit Card
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(bit.titleLine)
-                        .appFont(.title2, weight: .bold)
-                        .foregroundStyle(TFTheme.yellow)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .multilineTextAlignment(.center)
-                    
-                    Divider()
-                        .background(.white.opacity(0.2))
-                    
-                    // Read-only text view that scales to content
-                    Text(bit.text)
-                        .appFont(.body)
-                        .foregroundStyle(TFTheme.text)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                    
-                    // Duration info
-                    HStack(spacing: 6) {
-                        Image(systemName: "clock")
-                            .appFont(.subheadline)
-                            .foregroundStyle(TFTheme.yellow)
-                        
-                        Text("Estimated: \(bit.formattedDuration)")
-                            .appFont(.subheadline)
-                            .foregroundStyle(TFTheme.text.opacity(0.7))
-                    }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                }
-                .padding(20)
-                .tfDynamicCard(cornerRadius: 20)
-                
+                // Main Bit Card with flip for notes
+                FinishedDetailFlippableCard(bit: bit, isFlipped: $isCardFlipped)
+
                 // Tags Card - Always show
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Tags")
                         .appFont(.headline)
                         .foregroundStyle(TFTheme.text)
-                    
+
                     TagEditor(tags: $bit.tags) { updated in
                         bit.tags = updated
                         bit.updatedAt = Date()
@@ -264,7 +267,7 @@ private struct BitDetailView: View {
                 }
                 .padding(20)
                 .tfDynamicCard(cornerRadius: 20)
-                
+
                 // Compare Variations Button
                 if !bit.variations.isEmpty {
                     Button {
@@ -423,70 +426,65 @@ private struct TagEditor: View {
     }
 }
 
-// MARK: - Bit Card Row (shared component)
+// MARK: - Finished Bit Card Row
+
 private struct BitCardRow: View {
     let bit: Bit
 
     var body: some View {
         VStack(alignment: .center, spacing: 8) {
-            // MARK: - HIDDEN: Favorite and variation badges removed for consistency
-            // HStack {
-            //     Text(bit.titleLine)
-            //         .appFont(.title3, weight: .semibold)
-            //         .foregroundStyle(TFTheme.text)
-            //         .lineLimit(3)
-            //         .fixedSize(horizontal: false, vertical: true)
-            //     
-            //     Spacer()
-            //     
-            //     HStack(spacing: 8) {
-            //         // Favorite indicator
-            //         if bit.isFavorite {
-            //             Image(systemName: "star.fill")
-            //                 .appFont(.caption)
-            //                 .foregroundStyle(TFTheme.yellow)
-            //         }
-            //         
-            //         // Show variation count badge if any
-            //         if bit.variationCount > 0 {
-            //             Text("\(bit.variationCount)")
-            //                 .appFont(.caption, weight: .semibold)
-            //                 .foregroundStyle(.black)
-            //                 .padding(.horizontal, 8)
-            //                 .padding(.vertical, 4)
-            //                 .background(TFTheme.yellow)
-            //                 .clipShape(Capsule())
-            //         }
-            //     }
-            // }
-
+            // Title
             Text(bit.titleLine)
                 .appFont(.title3, weight: .semibold)
                 .foregroundStyle(TFTheme.text)
                 .lineLimit(3)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
+            
+            // Estimated duration row
+            HStack(spacing: 6) {
+                Image(systemName: "clock")
+                    .appFont(.caption)
+                    .foregroundStyle(TFTheme.yellow)
+                Text(bit.formattedDuration)
+                    .appFont(.subheadline)
+                    .foregroundStyle(TFTheme.text.opacity(0.7))
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
 
+            // Date - Variations - Favorite row
             HStack(spacing: 8) {
                 Text(bit.updatedAt, style: .date)
                     .appFont(.subheadline)
                     .foregroundStyle(TFTheme.text.opacity(0.55))
-                
-                Text("•")
-                    .appFont(.subheadline)
-                    .foregroundStyle(TFTheme.text.opacity(0.4))
-                
-                HStack(spacing: 4) {
-                    Image(systemName: "clock")
-                        .appFont(.caption)
-                        .foregroundStyle(TFTheme.yellow)
-                    
-                    Text(bit.formattedDuration)
+
+                if bit.variationCount > 0 {
+                    Text("•")
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.text.opacity(0.4))
+
+                    Text("\(bit.variationCount) variation\(bit.variationCount == 1 ? "" : "s")")
                         .appFont(.subheadline)
                         .foregroundStyle(TFTheme.text.opacity(0.55))
                 }
+
+                if bit.isFavorite {
+                    Text("•")
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.text.opacity(0.4))
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "star.fill")
+                            .appFont(.caption)
+                            .foregroundStyle(TFTheme.yellow)
+                        Text("Favorite")
+                            .appFont(.subheadline)
+                            .foregroundStyle(TFTheme.text.opacity(0.55))
+                    }
+                }
             }
-            
+
+            // Tags row
             if !bit.tags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
@@ -781,3 +779,4 @@ private struct BitShareCard: View {
         .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
     }
 }
+

@@ -36,7 +36,10 @@ final class SetlistAssignment {
     
     /// Link to variation record (if content was modified from original)
     var variationId: UUID?
-    
+
+    /// Notes snapshot from the bit (variant punchlines, alternate wording, delivery ideas, etc.)
+    var bitNotesSnapshot: String = ""
+
     // MARK: - Relationship
     
     /// The setlist this assignment belongs to.

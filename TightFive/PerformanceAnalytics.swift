@@ -41,6 +41,28 @@ struct PerformanceAnalytics {
                 lhs.rawValue < rhs.rawValue
             }
         }
+        
+        /// Convenience initializer for simple text-based insights
+        init(title: String, description: String = "", severity: Severity = .info) {
+            self.id = UUID()
+            self.type = .highPerformance
+            self.severity = severity
+            self.title = title
+            self.detail = description
+            self.lineRange = nil
+            self.timestamp = Date()
+        }
+        
+        /// Full initializer
+        init(id: UUID = UUID(), type: InsightType, severity: Severity, title: String, detail: String, lineRange: ClosedRange<Int>?, timestamp: Date = Date()) {
+            self.id = id
+            self.type = type
+            self.severity = severity
+            self.title = title
+            self.detail = detail
+            self.lineRange = lineRange
+            self.timestamp = timestamp
+        }
     }
     
     struct PaceAnalysis: Codable {

@@ -52,5 +52,12 @@ extension View {
         // Keep swipe-down to dismiss only.
         self.hideKeyboardOnDragDown()
     }
+
+    /// Global keyboard dismissal - applies to ScrollViews with interactive dismiss
+    func globalKeyboardDismiss() -> some View {
+        self
+            .scrollDismissesKeyboard(.interactively)
+            .hideKeyboardOnDragDown(threshold: 20)
+    }
 }
 

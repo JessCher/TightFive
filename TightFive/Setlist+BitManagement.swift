@@ -32,22 +32,50 @@ extension Setlist {
             bitId: bit.id,
             bitTitleSnapshot: bit.titleLine
         )
+        // Store notes snapshot for reference
+        assignment.bitNotesSnapshot = bit.notes
         assignment.setlist = self
         assignments.append(assignment)
         context.insert(assignment)
-        
+
+        // Append bit notes to setlist notes tab if present
+        if !bit.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            appendBitNotesToSetlistNotes(bit: bit)
+        }
+
         // Create script block referencing the assignment
         let block = ScriptBlock.newBit(assignmentId: assignment.id)
         var blocks = scriptBlocks
-        
+
         if let index = index, index < blocks.count {
             blocks.insert(block, at: index)
         } else {
             blocks.append(block)
         }
-        
+
         scriptBlocks = blocks
         updatedAt = Date()
+    }
+
+    /// Appends bit notes to the setlist's notes tab with a header
+    private func appendBitNotesToSetlistNotes(bit: Bit) {
+        // Get existing notes as plain text
+        let existingNotes = NSAttributedString.fromRTF(notesRTF)?.string ?? ""
+
+        // Build the new notes section
+        var newNotesText = existingNotes
+
+        // Add separator if there's existing content
+        if !existingNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            newNotesText += "\n\n"
+        }
+
+        // Add header with bit title and notes
+        newNotesText += "--- \(bit.titleLine) ---\n"
+        newNotesText += bit.notes
+
+        // Convert back to RTF
+        notesRTF = newNotesText.toRTF()
     }
     
     // MARK: - Update Content
