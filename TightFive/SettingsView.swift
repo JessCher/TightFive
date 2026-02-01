@@ -13,6 +13,32 @@ struct SettingsView: View {
             } footer: {
                 Text("Customize the appearance and style of your app and shareable content.")
             }
+            
+            Section {
+                NavigationLink {
+                    CueCardSettingsView()
+                } label: {
+                    Text("Stage Mode Settings")
+                        .foregroundStyle(.white)
+                }
+            } header: {
+                Text("Stage Mode")
+            } footer: {
+                Text("Configure your Stage Mode cue card experience.")
+            }
+            
+            Section {
+                NavigationLink {
+                    RunModeSettingsView()
+                } label: {
+                    Text("Run Mode Settings")
+                        .foregroundStyle(.white)
+                }
+            } header: {
+                Text("Run Mode")
+            } footer: {
+                Text("Configure Run Mode for your practice sessions.")
+            }
         }
         .scrollContentBackground(.hidden)
         .tfBackground()

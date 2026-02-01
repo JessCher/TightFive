@@ -176,6 +176,79 @@ struct RunModeSettingsView: View {
                         .tfDynamicCard(cornerRadius: 16)
                     }
                     
+                    // Cue Card Settings Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Cue Card Settings")
+                            .appFont(.title3, weight: .semibold)
+                            .foregroundStyle(TFTheme.yellow)
+                            .padding(.horizontal, 4)
+                            .padding(.top, 8)
+                        
+                        // Auto Advance Card
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Auto-advance on exit phrase")
+                                    .appFont(.headline)
+                                    .foregroundStyle(.white)
+                                
+                                Text("Automatically show next card when exit phrase is detected")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.white.opacity(0.6))
+                            }
+                            
+                            Spacer()
+                            
+                            Toggle("", isOn: $settings.cueCardAutoAdvance)
+                                .labelsHidden()
+                                .tint(TFTheme.yellow)
+                        }
+                        .padding(16)
+                        .tfDynamicCard(cornerRadius: 16)
+                        
+                        // Show Phrase Feedback Card
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Show phrase recognition feedback")
+                                    .appFont(.headline)
+                                    .foregroundStyle(.white)
+                                
+                                Text("Display anchor/exit phrase confidence indicators")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.white.opacity(0.6))
+                            }
+                            
+                            Spacer()
+                            
+                            Toggle("", isOn: $settings.cueCardShowPhraseFeedback)
+                                .labelsHidden()
+                                .tint(TFTheme.yellow)
+                        }
+                        .padding(16)
+                        .tfDynamicCard(cornerRadius: 16)
+                        
+                        // Exit Phrase Sensitivity Card
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                Text("Exit phrase sensitivity")
+                                    .appFont(.headline)
+                                    .foregroundStyle(.white)
+                                Spacer()
+                                Text("\(Int(settings.cueCardExitPhraseThreshold * 100))%")
+                                    .font(.headline.monospacedDigit())
+                                    .foregroundStyle(TFTheme.yellow)
+                            }
+                            
+                            Text("Lower = more sensitive (may trigger early), Higher = more precise (may miss)")
+                                .appFont(.caption)
+                                .foregroundStyle(.white.opacity(0.6))
+                            
+                            Slider(value: $settings.cueCardExitPhraseThreshold, in: 0.4...0.9, step: 0.05)
+                                .tint(TFTheme.yellow)
+                        }
+                        .padding(16)
+                        .tfDynamicCard(cornerRadius: 16)
+                    }
+                    
                     // Timer Section
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Timer")

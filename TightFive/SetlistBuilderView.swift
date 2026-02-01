@@ -37,6 +37,7 @@ struct SetlistBuilderView: View {
     // Stage Mode
     @State private var showAnchorEditor = false
     @State private var showStageMode = false
+    @State private var showCueCardSettings = false
     @State private var showRunMode = false
 
     @ObservedObject private var keyboard = TFKeyboardState.shared
@@ -74,6 +75,9 @@ struct SetlistBuilderView: View {
         }
         .sheet(isPresented: $showAnchorEditor) {
             StageAnchorEditorView(setlist: setlist)
+        }
+        .sheet(isPresented: $showCueCardSettings) {
+            CueCardSettingsView()
         }
         .fullScreenCover(isPresented: $showStageMode) {
             StageModeView(setlist: setlist)
@@ -325,6 +329,12 @@ struct SetlistBuilderView: View {
                         showAnchorEditor = true
                     } label: {
                         Label("Configure Anchors", systemImage: "waveform")
+                    }
+                    
+                    Button {
+                        showCueCardSettings = true
+                    } label: {
+                        Label("Stage Mode Settings", systemImage: "gearshape")
                     }
                     
                     Divider()

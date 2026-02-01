@@ -105,7 +105,7 @@
 				StageAnchorEditorView.swift = (ios, );
 				StageAnchorMatcher.swift = (ios, );
 				StageAnchorRecognizer.swift = (ios, );
-				StageModeView.swift = (ios, );
+				StageModeView_legacy.swift = (ios, );
 				StageTeleprompterEngine.swift = (ios, );
 				TFBackground.swift = (ios, );
 				TFIcons.swift = (ios, );
