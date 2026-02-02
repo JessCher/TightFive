@@ -15,6 +15,11 @@ struct StageModeViewScript: View {
     @State private var showSaveConfirmation = false
     @State private var isInitialized = false
     
+    // Timer
+    @State private var elapsedTime: TimeInterval = 0
+    @State private var isTimerRunning = false
+    @State private var timer: Timer?
+    
     // Access settings - using @State to enable bindings to the @Observable singleton
     @State private var settings: StageModeScriptSettings = .shared
     
@@ -48,12 +53,18 @@ struct StageModeViewScript: View {
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
         .onAppear { startSessionIfNeeded() }
-        .onDisappear { engine.stop() }
+        .onDisappear { 
+            stopTimer()
+            engine.stop() 
+        }
     }
     
     private func startSessionIfNeeded() {
         guard !isInitialized else { return }
         isInitialized = true
+        
+        // Start timer automatically
+        startTimer()
         
         // Configure engine for recording (no cards needed for script mode)
         let cards = CueCard.extractCards(from: setlist)
@@ -110,6 +121,11 @@ struct StageModeViewScript: View {
                 
                 Spacer()
                 
+                // Timer display
+                timerDisplay
+                
+                Spacer()
+                
                 // Recording indicator
                 HStack(spacing: 8) {
                     Circle()
@@ -125,21 +141,6 @@ struct StageModeViewScript: View {
                 .padding(.vertical, 8)
                 .background(Color.white.opacity(0.1))
                 .clipShape(Capsule())
-                
-                Spacer()
-                
-                // Settings button
-                Button {
-                    // Could open settings if needed
-                } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .frame(width: 44, height: 44)
-                        .background(Color.white.opacity(0.1))
-                        .clipShape(Circle())
-                }
-                .opacity(0) // Hidden for now
             }
             .padding(.horizontal, 20)
             .padding(.top, geometry.safeAreaInsets.top + 12)
@@ -337,6 +338,57 @@ struct StageModeViewScript: View {
             .background(Color(white: 0.12))
             .clipShape(RoundedRectangle(cornerRadius: 24))
             .padding(.horizontal, 32)
+        }
+    }
+    
+    // MARK: - Timer
+    
+    private var timerDisplay: some View {
+        Button { toggleTimer() } label: {
+            HStack(spacing: 10) {
+                Image(systemName: isTimerRunning ? "pause.fill" : "play.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(isTimerRunning ? TFTheme.yellow : .white.opacity(0.5))
+                
+                Text(formatTime(elapsedTime))
+                    .font(.system(size: 20, weight: .medium, design: .monospaced))
+                    .foregroundStyle(isTimerRunning ? TFTheme.yellow : .white)
+                    .monospacedDigit()
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 8)
+            .background(Color.white.opacity(0.08))
+            .clipShape(Capsule())
+        }
+    }
+    
+    private func formatTime(_ interval: TimeInterval) -> String {
+        let minutes = Int(interval) / 60
+        let seconds = Int(interval) % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+    
+    private func startTimer() {
+        isTimerRunning = true
+        timer = Timer(timeInterval: 1.0, repeats: true) { _ in
+            elapsedTime += 1
+        }
+        if let timer {
+            RunLoop.main.add(timer, forMode: .common)
+        }
+    }
+    
+    private func stopTimer() {
+        isTimerRunning = false
+        timer?.invalidate()
+        timer = nil
+    }
+    
+    private func toggleTimer() {
+        if isTimerRunning {
+            stopTimer()
+        } else {
+            startTimer()
         }
     }
 }

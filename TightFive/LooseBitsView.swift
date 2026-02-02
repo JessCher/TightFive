@@ -15,21 +15,124 @@ struct LooseBitsView: View {
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
     @State private var flippedBitIds: Set<UUID> = []
+    @State private var sortCriteria: BitSortCriteria = .dateCreated
+    @State private var sortAscending: Bool = false // false = descending (newest/longest first)
+    
+    private enum BitSortCriteria: String, CaseIterable, Identifiable {
+        case dateModified = "Date Modified"
+        case dateCreated = "Date Created"
+        case length = "Length"
+        
+        var id: String { rawValue }
+        
+        var systemImage: String {
+            switch self {
+            case .dateModified:
+                return "calendar.badge.clock"
+            case .dateCreated:
+                return "calendar.badge.plus"
+            case .length:
+                return "text.alignleft"
+            }
+        }
+    }
 
-    /// Apply search filter to loose bits
+    /// Apply search filter and sorting to loose bits
     private var filtered: [Bit] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return looseBits }
-        return looseBits.filter { bit in
+        let searchFiltered = q.isEmpty ? looseBits : looseBits.filter { bit in
             bit.text.localizedCaseInsensitiveContains(q)
             || bit.title.localizedCaseInsensitiveContains(q)
             || bit.tags.contains(where: { $0.localizedCaseInsensitiveContains(q) })
         }
+        
+        // Apply sorting
+        return searchFiltered.sorted { bit1, bit2 in
+            let comparison: Bool
+            switch sortCriteria {
+            case .dateModified:
+                comparison = bit1.updatedAt < bit2.updatedAt
+            case .dateCreated:
+                comparison = bit1.createdAt < bit2.createdAt
+            case .length:
+                comparison = wordCount(for: bit1) < wordCount(for: bit2)
+            }
+            return sortAscending ? comparison : !comparison
+        }
+    }
+    
+    private func wordCount(for bit: Bit) -> Int {
+        bit.text.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
     }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
+                // Sort button
+                HStack {
+                    Spacer()
+                    Menu {
+                        // Sort criteria section
+                        Section("Sort By") {
+                            ForEach(BitSortCriteria.allCases) { criteria in
+                                Button {
+                                    sortCriteria = criteria
+                                } label: {
+                                    HStack {
+                                        Image(systemName: criteria.systemImage)
+                                        Text(criteria.rawValue)
+                                        Spacer()
+                                        if sortCriteria == criteria {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Direction section
+                        Section("Order") {
+                            Button {
+                                sortAscending = false
+                            } label: {
+                                HStack {
+                                    Image(systemName: "arrow.down")
+                                    Text(sortDirectionLabel(descending: true))
+                                    Spacer()
+                                    if !sortAscending {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                            
+                            Button {
+                                sortAscending = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "arrow.up")
+                                    Text(sortDirectionLabel(descending: false))
+                                    Spacer()
+                                    if sortAscending {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: sortAscending ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(TFTheme.yellow)
+                            .frame(width: 44, height: 32)
+                            .background(Color.white.opacity(0.10))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color("TFCardStroke").opacity(0.9), lineWidth: 1)
+                            )
+                    }
+                }
+                .padding(.horizontal, 2)
+                
                 if filtered.isEmpty {
                     emptyState
                         .padding(.top, 40)
@@ -163,6 +266,15 @@ struct LooseBitsView: View {
     private func softDeleteBit(_ bit: Bit) {
         bit.softDelete(context: modelContext)
         try? modelContext.save()
+    }
+    
+    private func sortDirectionLabel(descending: Bool) -> String {
+        switch sortCriteria {
+        case .dateModified, .dateCreated:
+            return descending ? "Newest First" : "Oldest First"
+        case .length:
+            return descending ? "Longest First" : "Shortest First"
+        }
     }
 }
 

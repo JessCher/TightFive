@@ -23,14 +23,35 @@ struct FinishedBitsView: View {
     @State private var flippedBitIds: Set<UUID> = []
 
     @State private var filterScope: FilterScope = .all
+    @State private var sortCriteria: BitSortCriteria = .dateCreated
+    @State private var sortAscending: Bool = false // false = descending (newest/longest first)
     
     private enum FilterScope: String, CaseIterable, Identifiable {
         case all = "All"
         case favorites = "Favorites"
         var id: String { rawValue }
     }
+    
+    private enum BitSortCriteria: String, CaseIterable, Identifiable {
+        case dateModified = "Date Modified"
+        case dateCreated = "Date Created"
+        case length = "Length"
+        
+        var id: String { rawValue }
+        
+        var systemImage: String {
+            switch self {
+            case .dateModified:
+                return "calendar.badge.clock"
+            case .dateCreated:
+                return "calendar.badge.plus"
+            case .length:
+                return "text.alignleft"
+            }
+        }
+    }
 
-    /// Apply search filter to finished bits
+    /// Apply search filter and sorting to finished bits
     private var filtered: [Bit] {
         let base: [Bit]
         switch filterScope {
@@ -40,22 +61,102 @@ struct FinishedBitsView: View {
             base = finishedBits.filter { $0.isFavorite }
         }
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return base }
-        return base.filter { bit in
+        let searchFiltered = q.isEmpty ? base : base.filter { bit in
             bit.text.localizedCaseInsensitiveContains(q)
             || bit.title.localizedCaseInsensitiveContains(q)
             || bit.tags.contains(where: { $0.localizedCaseInsensitiveContains(q) })
         }
+        
+        // Apply sorting
+        return searchFiltered.sorted { bit1, bit2 in
+            let comparison: Bool
+            switch sortCriteria {
+            case .dateModified:
+                comparison = bit1.updatedAt < bit2.updatedAt
+            case .dateCreated:
+                comparison = bit1.createdAt < bit2.createdAt
+            case .length:
+                comparison = wordCount(for: bit1) < wordCount(for: bit2)
+            }
+            return sortAscending ? comparison : !comparison
+        }
+    }
+    
+    private func wordCount(for bit: Bit) -> Int {
+        bit.text.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
     }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
-                Picker("Scope", selection: $filterScope) {
-                    Text("All").tag(FilterScope.all)
-                    Text("Favorites").tag(FilterScope.favorites)
+                HStack(spacing: 8) {
+                    Picker("Scope", selection: $filterScope) {
+                        Text("All").tag(FilterScope.all)
+                        Text("Favorites").tag(FilterScope.favorites)
+                    }
+                    .pickerStyle(.segmented)
+                    
+                    // Sort button
+                    Menu {
+                        // Sort criteria section
+                        Section("Sort By") {
+                            ForEach(BitSortCriteria.allCases) { criteria in
+                                Button {
+                                    sortCriteria = criteria
+                                } label: {
+                                    HStack {
+                                        Image(systemName: criteria.systemImage)
+                                        Text(criteria.rawValue)
+                                        Spacer()
+                                        if sortCriteria == criteria {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Direction section
+                        Section("Order") {
+                            Button {
+                                sortAscending = false
+                            } label: {
+                                HStack {
+                                    Image(systemName: "arrow.down")
+                                    Text(sortDirectionLabel(descending: true))
+                                    Spacer()
+                                    if !sortAscending {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                            
+                            Button {
+                                sortAscending = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "arrow.up")
+                                    Text(sortDirectionLabel(descending: false))
+                                    Spacer()
+                                    if sortAscending {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: sortAscending ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(TFTheme.yellow)
+                            .frame(width: 44, height: 32)
+                            .background(Color.white.opacity(0.10))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color("TFCardStroke").opacity(0.9), lineWidth: 1)
+                            )
+                    }
                 }
-                .pickerStyle(.segmented)
                 .padding(.horizontal, 2)
                 
                 if filtered.isEmpty {
@@ -208,6 +309,15 @@ struct FinishedBitsView: View {
         setlist.insertBit(bit, at: nil, context: modelContext)
         setlist.updatedAt = Date()
         try? modelContext.save()
+    }
+    
+    private func sortDirectionLabel(descending: Bool) -> String {
+        switch sortCriteria {
+        case .dateModified, .dateCreated:
+            return descending ? "Newest First" : "Oldest First"
+        case .length:
+            return descending ? "Longest First" : "Shortest First"
+        }
     }
     
     private func shareBit(_ bit: Bit) {

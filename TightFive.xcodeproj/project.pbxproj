@@ -659,6 +659,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TightFive/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Tight Five needs access to the microphone to hear your dictation.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Access to photo library so users can upload profile pictures and save Bit cards to photo roll";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Tight Five needs to analyze your speech to transcribe your jokes.";
@@ -711,6 +712,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TightFive/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Tight Five needs access to the microphone to hear your dictation.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Access to photo library so users can upload profile pictures and save Bit cards to photo roll";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Tight Five needs to analyze your speech to transcribe your jokes.";

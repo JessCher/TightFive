@@ -15,6 +15,11 @@ struct StageModeViewTeleprompter: View {
     @State private var showSaveConfirmation = false
     @State private var isInitialized = false
     
+    // Timer
+    @State private var elapsedTime: TimeInterval = 0
+    @State private var isTimerRunning = false
+    @State private var timer: Timer?
+    
     // Teleprompter state
     @State private var isTeleprompterPlaying: Bool = true
     @State private var teleprompterResetCounter: Int = 0
@@ -53,7 +58,10 @@ struct StageModeViewTeleprompter: View {
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
         .onAppear { startSessionIfNeeded() }
-        .onDisappear { engine.stop() }
+        .onDisappear { 
+            stopTimer()
+            engine.stop() 
+        }
         .sheet(isPresented: $isTeleprompterSettingsPresented) {
             teleprompterSettingsSheet
         }
@@ -65,6 +73,9 @@ struct StageModeViewTeleprompter: View {
         
         // Initialize auto-start from settings
         isTeleprompterPlaying = settings.autoStartScrolling
+        
+        // Start timer automatically
+        startTimer()
         
         // Configure engine for recording
         let cards = CueCard.extractCards(from: setlist)
@@ -121,6 +132,11 @@ struct StageModeViewTeleprompter: View {
                 
                 Spacer()
                 
+                // Timer display
+                timerDisplay
+                
+                Spacer()
+                
                 // Recording indicator
                 HStack(spacing: 8) {
                     Circle()
@@ -141,7 +157,7 @@ struct StageModeViewTeleprompter: View {
                 
                 // Play/Pause button
                 Button {
-                    isTeleprompterPlaying.toggle()
+                    toggleTeleprompter()
                 } label: {
                     Image(systemName: isTeleprompterPlaying ? "pause.fill" : "play.fill")
                         .font(.system(size: 18, weight: .semibold))
@@ -460,6 +476,65 @@ struct StageModeViewTeleprompter: View {
             .background(Color(white: 0.12))
             .clipShape(RoundedRectangle(cornerRadius: 24))
             .padding(.horizontal, 32)
+        }
+    }
+    
+    // MARK: - Timer
+    
+    private var timerDisplay: some View {
+        HStack(spacing: 10) {
+            Image(systemName: isTimerRunning ? "clock.fill" : "clock")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(isTimerRunning ? TFTheme.yellow : .white.opacity(0.5))
+            
+            Text(formatTime(elapsedTime))
+                .font(.system(size: 20, weight: .medium, design: .monospaced))
+                .foregroundStyle(isTimerRunning ? TFTheme.yellow : .white)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.08))
+        .clipShape(Capsule())
+    }
+    
+    private func formatTime(_ interval: TimeInterval) -> String {
+        let minutes = Int(interval) / 60
+        let seconds = Int(interval) % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+    
+    private func startTimer() {
+        isTimerRunning = true
+        timer = Timer(timeInterval: 1.0, repeats: true) { _ in
+            elapsedTime += 1
+        }
+        if let timer {
+            RunLoop.main.add(timer, forMode: .common)
+        }
+    }
+    
+    private func stopTimer() {
+        isTimerRunning = false
+        timer?.invalidate()
+        timer = nil
+    }
+    
+    private func toggleTimer() {
+        if isTimerRunning {
+            stopTimer()
+        } else {
+            startTimer()
+        }
+    }
+    
+    private func toggleTeleprompter() {
+        isTeleprompterPlaying.toggle()
+        // Sync timer with teleprompter
+        if isTeleprompterPlaying && !isTimerRunning {
+            startTimer()
+        } else if !isTeleprompterPlaying && isTimerRunning {
+            stopTimer()
         }
     }
 }

@@ -4,4 +4,10 @@
    <FileRef
       location = "self:">
    </FileRef>
+   <FileRef
+      location = "group:STAGE_MODE_TIMER_ADDITION.md">
+   </FileRef>
+   <FileRef
+      location = "group:BIT_LIST_FILTERING_ADDITION.md">
+   </FileRef>
 </Workspace>
