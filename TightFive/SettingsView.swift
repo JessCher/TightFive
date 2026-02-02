@@ -59,6 +59,13 @@ struct ThemeAndCustomizationView: View {
         Form {
             Section {
                 NavigationLink {
+                    BackgroundSettingsView()
+                } label: {
+                    Text("Background")
+                        .foregroundStyle(.white)
+                }
+
+                NavigationLink {
                     QuickBitAndTileCardsSettingsView()
                 } label: {
                     Text("Quick Bit and Tile Cards")
@@ -89,6 +96,312 @@ struct ThemeAndCustomizationView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 TFWordmarkTitle(title: "Theme and Customization", size: 18)
+            }
+        }
+    }
+}
+
+// MARK: - Background Settings
+
+struct BackgroundSettingsView: View {
+    @State private var cloudCount: Double = Double(AppSettings.shared.backgroundCloudCount)
+    @State private var cloudOpacity: Double = AppSettings.shared.backgroundCloudOpacity
+    @State private var cloudColor1: Color = Color(hex: AppSettings.shared.backgroundCloudColor1Hex) ?? .tfYellow
+    @State private var cloudColor2: Color = Color(hex: AppSettings.shared.backgroundCloudColor2Hex) ?? .blue
+    @State private var cloudColor3: Color = Color(hex: AppSettings.shared.backgroundCloudColor3Hex) ?? .white
+    @State private var cloudOffsetX: Double = AppSettings.shared.backgroundCloudOffsetX
+    @State private var cloudOffsetY: Double = AppSettings.shared.backgroundCloudOffsetY
+    @State private var dustCount: Double = Double(AppSettings.shared.backgroundDustCount)
+    @State private var dustOpacity: Double = AppSettings.shared.backgroundDustOpacity
+    
+    var body: some View {
+        Form {
+            // Cloud Settings Section
+            Section {
+                // Cloud Count
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Cloud Density")
+                            .appFont(.body)
+                        Spacer()
+                        Text("\(Int(cloudCount))")
+                            .font(.body.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Slider(value: $cloudCount, in: 0...200, step: 5)
+                        .tint(TFTheme.yellow)
+                        .onChange(of: cloudCount) { _, newValue in
+                            AppSettings.shared.backgroundCloudCount = Int(newValue)
+                        }
+                }
+                .padding(.vertical, 4)
+                
+                // Cloud Opacity
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Cloud Opacity")
+                            .appFont(.body)
+                        Spacer()
+                        Text("\(Int(cloudOpacity * 100))%")
+                            .font(.body.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Slider(value: $cloudOpacity, in: 0...1.0, step: 0.01)
+                        .tint(TFTheme.yellow)
+                        .onChange(of: cloudOpacity) { _, newValue in
+                            AppSettings.shared.backgroundCloudOpacity = newValue
+                        }
+                }
+                .padding(.vertical, 4)
+                
+                // Cloud Position X
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Horizontal Position")
+                            .appFont(.body)
+                        Spacer()
+                        Text(cloudOffsetX == 0 ? "Center" : cloudOffsetX < 0 ? "Left \(Int(abs(cloudOffsetX) * 100))" : "Right \(Int(cloudOffsetX * 100))")
+                            .font(.body.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    HStack(spacing: 12) {
+                        Text("Left")
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        Slider(value: $cloudOffsetX, in: -1.0...1.0, step: 0.05)
+                            .tint(TFTheme.yellow)
+                            .onChange(of: cloudOffsetX) { _, newValue in
+                                AppSettings.shared.backgroundCloudOffsetX = newValue
+                            }
+                        
+                        Text("Right")
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+                
+                // Cloud Position Y
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Vertical Position")
+                            .appFont(.body)
+                        Spacer()
+                        Text(cloudOffsetY == 0 ? "Center" : cloudOffsetY < 0 ? "Up \(Int(abs(cloudOffsetY) * 100))" : "Down \(Int(cloudOffsetY * 100))")
+                            .font(.body.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    HStack(spacing: 12) {
+                        Text("Up")
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+                        
+                        Slider(value: $cloudOffsetY, in: -1.0...1.0, step: 0.05)
+                            .tint(TFTheme.yellow)
+                            .onChange(of: cloudOffsetY) { _, newValue in
+                                AppSettings.shared.backgroundCloudOffsetY = newValue
+                            }
+                        
+                        Text("Down")
+                            .appFont(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 4)
+                
+                // Cloud Colors
+                DisclosureGroup("Cloud Colors") {
+                    VStack(spacing: 16) {
+                        // Color 1
+                        VStack(alignment: .leading, spacing: 8) {
+                            ColorPicker("Primary Cloud Color", selection: $cloudColor1, supportsOpacity: false)
+                                .onChange(of: cloudColor1) { _, newValue in
+                                    if let hex = newValue.toHex() {
+                                        AppSettings.shared.backgroundCloudColor1Hex = hex
+                                    }
+                                }
+                            
+                            HStack {
+                                Text("Hex:")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+                                TextField("", text: Binding(
+                                    get: { AppSettings.shared.backgroundCloudColor1Hex },
+                                    set: { newValue in
+                                        AppSettings.shared.backgroundCloudColor1Hex = newValue
+                                        if let color = Color(hex: newValue) {
+                                            cloudColor1 = color
+                                        }
+                                    }
+                                ))
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .font(.system(.caption, design: .monospaced))
+                                .textFieldStyle(.roundedBorder)
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        // Color 2
+                        VStack(alignment: .leading, spacing: 8) {
+                            ColorPicker("Secondary Cloud Color", selection: $cloudColor2, supportsOpacity: false)
+                                .onChange(of: cloudColor2) { _, newValue in
+                                    if let hex = newValue.toHex() {
+                                        AppSettings.shared.backgroundCloudColor2Hex = hex
+                                    }
+                                }
+                            
+                            HStack {
+                                Text("Hex:")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+                                TextField("", text: Binding(
+                                    get: { AppSettings.shared.backgroundCloudColor2Hex },
+                                    set: { newValue in
+                                        AppSettings.shared.backgroundCloudColor2Hex = newValue
+                                        if let color = Color(hex: newValue) {
+                                            cloudColor2 = color
+                                        }
+                                    }
+                                ))
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .font(.system(.caption, design: .monospaced))
+                                .textFieldStyle(.roundedBorder)
+                            }
+                        }
+                        
+                        Divider()
+                        
+                        // Color 3
+                        VStack(alignment: .leading, spacing: 8) {
+                            ColorPicker("Accent Cloud Color", selection: $cloudColor3, supportsOpacity: false)
+                                .onChange(of: cloudColor3) { _, newValue in
+                                    if let hex = newValue.toHex() {
+                                        AppSettings.shared.backgroundCloudColor3Hex = hex
+                                    }
+                                }
+                            
+                            HStack {
+                                Text("Hex:")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+                                TextField("", text: Binding(
+                                    get: { AppSettings.shared.backgroundCloudColor3Hex },
+                                    set: { newValue in
+                                        AppSettings.shared.backgroundCloudColor3Hex = newValue
+                                        if let color = Color(hex: newValue) {
+                                            cloudColor3 = color
+                                        }
+                                    }
+                                ))
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .font(.system(.caption, design: .monospaced))
+                                .textFieldStyle(.roundedBorder)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+            } header: {
+                Text("Clouds")
+            } footer: {
+                Text("Adjust the density, opacity, position, and colors of the atmospheric clouds.")
+            }
+            
+            // Dust Settings Section
+            Section {
+                // Dust Count
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Dust Density")
+                            .appFont(.body)
+                        Spacer()
+                        Text("\(Int(dustCount))")
+                            .font(.body.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Slider(value: $dustCount, in: 0...2000, step: 50)
+                        .tint(TFTheme.yellow)
+                        .onChange(of: dustCount) { _, newValue in
+                            AppSettings.shared.backgroundDustCount = Int(newValue)
+                        }
+                }
+                .padding(.vertical, 4)
+                
+                // Dust Opacity
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Dust Opacity")
+                            .appFont(.body)
+                        Spacer()
+                        Text("\(Int(dustOpacity * 100))%")
+                            .font(.body.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    Slider(value: $dustOpacity, in: 0...1.0, step: 0.01)
+                        .tint(TFTheme.yellow)
+                        .onChange(of: dustOpacity) { _, newValue in
+                            AppSettings.shared.backgroundDustOpacity = newValue
+                        }
+                }
+                .padding(.vertical, 4)
+            } header: {
+                Text("Chalk Speckles")
+            } footer: {
+                Text("Adjust the density and opacity of the fine chalk dust particles.")
+            }
+            
+            // Reset Section
+            Section {
+                Button(role: .destructive) {
+                    // Reset to defaults
+                    AppSettings.shared.backgroundCloudCount = 80
+                    AppSettings.shared.backgroundCloudOpacity = 0.18
+                    AppSettings.shared.backgroundCloudColor1Hex = "#F4C430"
+                    AppSettings.shared.backgroundCloudColor2Hex = "#0000FF"
+                    AppSettings.shared.backgroundCloudColor3Hex = "#FFFFFF"
+                    AppSettings.shared.backgroundCloudOffsetX = 0
+                    AppSettings.shared.backgroundCloudOffsetY = 0
+                    AppSettings.shared.backgroundDustCount = 800
+                    AppSettings.shared.backgroundDustOpacity = 0.24
+                    
+                    // Update state
+                    cloudCount = 80
+                    cloudOpacity = 0.18
+                    cloudColor1 = Color(hex: "#F4C430") ?? .tfYellow
+                    cloudColor2 = Color(hex: "#0000FF") ?? .blue
+                    cloudColor3 = Color(hex: "#FFFFFF") ?? .white
+                    cloudOffsetX = 0
+                    cloudOffsetY = 0
+                    dustCount = 800
+                    dustOpacity = 0.24
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.counterclockwise")
+                        Text("Reset to Defaults")
+                    }
+                }
+            } footer: {
+                Text("Reset all background settings to their original values.")
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .tfBackground()
+        .navigationTitle("Background")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                TFWordmarkTitle(title: "Background", size: 18)
             }
         }
     }

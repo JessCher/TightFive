@@ -8,10 +8,13 @@ struct DynamicChalkboardBackground: View {
 
     // Motion disabled; static background only
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
+    
+    // App settings for background customization - observe changes
+    @Environment(AppSettings.self) private var settings
+    
     // MARK: - Tunables (PERFORMANCE OPTIMIZED)
-    private let dustCount = 800        // Reduced from 1200
-    private let clumpCount = 80        // Reduced from 80
+    private var dustCount: Int { settings.backgroundDustCount }
+    private var clumpCount: Int { settings.backgroundCloudCount }
     private let breatheSpeed = 0.25
     private let breatheAmplitude: CGFloat = 0.06
     
@@ -34,6 +37,7 @@ struct DynamicChalkboardBackground: View {
 
     @ViewBuilder
     private func content(at date: Date) -> some View {
+        let _ = settings.updateTrigger // Force observation of settings changes
         let t = date.timeIntervalSinceReferenceDate
         let breathe = (isAnimated && !reduceMotion) ? (breatheAmplitude * CGFloat(sin(2 * .pi * breatheSpeed * t))) : 0
 
@@ -43,13 +47,24 @@ struct DynamicChalkboardBackground: View {
         // Glow opacity (kept identical to animated version)
         let topGlowOpacity = 0.30 + Double(max(0, breathe) * CGFloat(0.06))
 
-        // Parallax offsets
+        // Parallax offsets - adjusted by cloud offset settings
+        let baseCloudOffsetX = CGFloat(settings.backgroundCloudOffsetX) * 100
+        let baseCloudOffsetY = CGFloat(settings.backgroundCloudOffsetY) * 100
+        
         let fastLayerOffset = CGSize(width: tilt.x * 25, height: tilt.y * 25)
-        let slowLayerOffset = CGSize(width: tilt.x * 40, height: tilt.y * 40)
+        let slowLayerOffset = CGSize(
+            width: tilt.x * 40 + baseCloudOffsetX, 
+            height: tilt.y * 40 + baseCloudOffsetY
+        )
         let vignetteOffset = CGSize(width: tilt.x * -15, height: tilt.y * -15)
+        
+        // Get cloud colors from settings
+        let cloudColor1 = Color(hex: settings.backgroundCloudColor1Hex) ?? .tfYellow
+        let cloudColor2 = Color(hex: settings.backgroundCloudColor2Hex) ?? .blue
+        let cloudColor3 = Color(hex: settings.backgroundCloudColor3Hex) ?? .white
 
         ZStack {
-            // 1. Base Tone
+            // 1. Base Tone (not customizable - stays default)
             Color("TFBackground")
 
             // 2. Chalk Speckles (Fast Layer)
@@ -69,11 +84,11 @@ struct DynamicChalkboardBackground: View {
                     ctx.fill(Path(ellipseIn: rect), with: .color(.white.opacity(alpha)))
                 }
             }
-            .opacity(0.24 + breathe * 0.12)
+            .opacity(settings.backgroundDustOpacity + breathe * 0.12)
             .blendMode(.overlay)
             .drawingGroup()
 
-            // 3. Soft Clumps (Slow Layer)
+            // 3. Soft Clumps (Slow Layer) - now called "clouds" in settings
             Canvas { ctx, size in
                 var rng = SeededRandom(seed: 42)
                 let margin: CGFloat = 150
@@ -95,9 +110,9 @@ struct DynamicChalkboardBackground: View {
                     let rect = CGRect(x: cx - base/2, y: cy - base/2, width: base, height: base)
 
                     let gradient = Gradient(stops: [
-                        .init(color: .tfYellow.opacity(0.18), location: 0.50),
-                        .init(color: .blue.opacity(0.03), location: 1.0),
-                        .init(color: .white.opacity(0.03), location: 1.5),
+                        .init(color: cloudColor1.opacity(0.18), location: 0.50),
+                        .init(color: cloudColor2.opacity(0.03), location: 1.0),
+                        .init(color: cloudColor3.opacity(0.03), location: 1.5),
                     ])
 
                     ctx.fill(
@@ -111,7 +126,7 @@ struct DynamicChalkboardBackground: View {
                     )
                 }
             }
-            .opacity(0.18)
+            .opacity(settings.backgroundCloudOpacity)
             .blendMode(.softLight)
             .drawingGroup()
 

@@ -295,6 +295,126 @@ class AppSettings {
         }
     }
     
+    // MARK: - Background Customization
+    
+    /// Base background color (hex)
+    var backgroundBaseColorHex: String {
+        get {
+            UserDefaults.standard.string(forKey: "backgroundBaseColorHex") ?? "#3A3A3A" // TFBackground default
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "backgroundBaseColorHex")
+            notifyChange()
+        }
+    }
+    
+    /// Cloud count (renamed from clumps)
+    var backgroundCloudCount: Int {
+        get {
+            let value = UserDefaults.standard.integer(forKey: "backgroundCloudCount")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "backgroundCloudCountHasBeenSet") ? 80 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "backgroundCloudCount")
+            UserDefaults.standard.set(true, forKey: "backgroundCloudCountHasBeenSet")
+            notifyChange()
+        }
+    }
+    
+    /// Cloud opacity
+    var backgroundCloudOpacity: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "backgroundCloudOpacity")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "backgroundCloudOpacityHasBeenSet") ? 0.18 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "backgroundCloudOpacity")
+            UserDefaults.standard.set(true, forKey: "backgroundCloudOpacityHasBeenSet")
+            notifyChange()
+        }
+    }
+    
+    /// Cloud color 1 (yellow) - hex
+    var backgroundCloudColor1Hex: String {
+        get {
+            UserDefaults.standard.string(forKey: "backgroundCloudColor1Hex") ?? "#F4C430" // TFYellow
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "backgroundCloudColor1Hex")
+            notifyChange()
+        }
+    }
+    
+    /// Cloud color 2 (blue) - hex
+    var backgroundCloudColor2Hex: String {
+        get {
+            UserDefaults.standard.string(forKey: "backgroundCloudColor2Hex") ?? "#0000FF" // Blue
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "backgroundCloudColor2Hex")
+            notifyChange()
+        }
+    }
+    
+    /// Cloud color 3 (white) - hex
+    var backgroundCloudColor3Hex: String {
+        get {
+            UserDefaults.standard.string(forKey: "backgroundCloudColor3Hex") ?? "#FFFFFF" // White
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "backgroundCloudColor3Hex")
+            notifyChange()
+        }
+    }
+    
+    /// Cloud horizontal offset (-1.0 to 1.0, representing left to right)
+    var backgroundCloudOffsetX: Double {
+        get {
+            UserDefaults.standard.double(forKey: "backgroundCloudOffsetX")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "backgroundCloudOffsetX")
+            notifyChange()
+        }
+    }
+    
+    /// Cloud vertical offset (-1.0 to 1.0, representing top to bottom)
+    var backgroundCloudOffsetY: Double {
+        get {
+            UserDefaults.standard.double(forKey: "backgroundCloudOffsetY")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "backgroundCloudOffsetY")
+            notifyChange()
+        }
+    }
+    
+    /// Dust particle count
+    var backgroundDustCount: Int {
+        get {
+            let value = UserDefaults.standard.integer(forKey: "backgroundDustCount")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "backgroundDustCountHasBeenSet") ? 800 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "backgroundDustCount")
+            UserDefaults.standard.set(true, forKey: "backgroundDustCountHasBeenSet")
+            notifyChange()
+        }
+    }
+    
+    /// Dust opacity
+    var backgroundDustOpacity: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "backgroundDustOpacity")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "backgroundDustOpacityHasBeenSet") ? 0.24 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "backgroundDustOpacity")
+            UserDefaults.standard.set(true, forKey: "backgroundDustOpacityHasBeenSet")
+            notifyChange()
+        }
+    }
+    
     /// Returns true if any of the card elements are using a textured theme
     var hasAnyTexturedTheme: Bool {
         return bitCardFrameColor.hasTexture || 
