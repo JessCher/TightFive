@@ -204,6 +204,9 @@ private struct LooseBitsContent: View {
                             }
                         ) {
                             LooseFlippableBitCard(bit: bit, isFlipped: isFlipped)
+                                .id(bit.id)
+                                .padding(.vertical, isFlipped.wrappedValue ? 8 : 0)
+                                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped.wrappedValue)
                                 .contentShape(Rectangle())
                                 .contextMenu {
                                     Button {
@@ -475,6 +478,9 @@ private struct FinishedBitsContent: View {
                             }
                         ) {
                             FinishedFlippableBitCard(bit: bit, isFlipped: isFlipped)
+                                .id(bit.id)
+                                .padding(.vertical, isFlipped.wrappedValue ? 8 : 0)
+                                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped.wrappedValue)
                                 .contentShape(Rectangle())
                                 .contextMenu {
                                     Button {

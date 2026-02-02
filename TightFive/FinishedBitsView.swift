@@ -180,8 +180,8 @@ struct FinishedBitsView: View {
                                     // Scroll to the flipped card after a brief delay
                                     if newValue {
                                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                            withAnimation(.easeInOut(duration: 0.3)) {
-                                                proxy.scrollTo(bit.id, anchor: UnitPoint(x: 0.5, y: 0.15))
+                                            withAnimation(.easeInOut(duration: 0.4)) {
+                                                proxy.scrollTo(bit.id, anchor: .top)
                                             }
                                         }
                                     }
@@ -209,17 +209,17 @@ struct FinishedBitsView: View {
                                     bit: bit,
                                     isFlipped: isFlipped,
                                     onTextFieldFocus: { textEditorID in
-                                        // Auto-scroll to text editor when keyboard appears
+                                        // Auto-scroll to center text editor when keyboard appears
                                         activeTextFieldID = textEditorID
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                                            withAnimation(.easeInOut(duration: 0.3)) {
-                                                proxy.scrollTo(bit.id, anchor: UnitPoint(x: 0.5, y: 0.15))
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                            withAnimation(.easeInOut(duration: 0.4)) {
+                                                proxy.scrollTo(bit.id, anchor: .center)
                                             }
                                         }
                                     }
                                 )
                                 .id(bit.id)
-                                .padding(.vertical, isFlipped.wrappedValue ? 20 : 0)
+                                .padding(.vertical, isFlipped.wrappedValue ? 8 : 0)
                                 .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped.wrappedValue)
                                 .contentShape(Rectangle())
                                 .contextMenu {

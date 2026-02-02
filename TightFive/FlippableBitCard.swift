@@ -226,7 +226,10 @@ struct LooseFlippableBitCard: View {
                         }
                         .onChange(of: isNotesFocused) { oldValue, newValue in
                             if newValue {
-                                onTextFieldFocus?(textEditorID)
+                                // Delay to allow keyboard animation to start
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    onTextFieldFocus?(textEditorID)
+                                }
                             }
                         }
                 }
@@ -389,7 +392,10 @@ struct FinishedFlippableBitCard: View {
                         }
                         .onChange(of: isNotesFocused) { oldValue, newValue in
                             if newValue {
-                                onTextFieldFocus?(textEditorID)
+                                // Delay to allow keyboard animation to start
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    onTextFieldFocus?(textEditorID)
+                                }
                             }
                         }
                 }
