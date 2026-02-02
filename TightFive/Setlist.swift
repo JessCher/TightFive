@@ -36,6 +36,20 @@ final class Setlist {
     @Attribute(originalName: "bodyRTF")
     var notesRTF: Data
     
+    // MARK: - Script Mode
+    
+    /// Script editing mode: modular blocks or traditional text editor
+    var scriptMode: String = ScriptMode.modular.rawValue
+    
+    /// Traditional script content (used when scriptMode is .traditional)
+    var traditionalScriptRTF: Data = Data()
+    
+    /// Whether user has configured custom cue cards for traditional mode
+    var hasCustomCueCards: Bool = false
+    
+    /// JSON-encoded custom cue cards for traditional mode
+    var customCueCardsData: Data = Data()
+    
     // MARK: - Status
     
     /// True = still being developed, False = ready for stage
@@ -93,18 +107,61 @@ extension Setlist {
     }
 }
 
+// MARK: - Script Mode
+
+extension Setlist {
+    
+    /// Current script mode
+    var currentScriptMode: ScriptMode {
+        get { ScriptMode(rawValue: scriptMode) ?? .modular }
+        set { scriptMode = newValue.rawValue }
+    }
+    
+    /// Whether cue cards should be available based on script mode and configuration
+    var cueCardsAvailable: Bool {
+        switch currentScriptMode {
+        case .modular:
+            return true // Modular always has cue cards from script blocks
+        case .traditional:
+            return hasCustomCueCards // Traditional requires custom cue card setup
+        }
+    }
+    
+    /// Custom cue cards (encoded/decoded from JSON)
+    var customCueCards: [CustomCueCard] {
+        get {
+            guard !customCueCardsData.isEmpty else { return [] }
+            return (try? JSONDecoder().decode([CustomCueCard].self, from: customCueCardsData)) ?? []
+        }
+        set {
+            customCueCardsData = (try? JSONEncoder().encode(newValue)) ?? Data()
+        }
+    }
+}
+
 // MARK: - Script Content
 
 extension Setlist {
     
     /// Full plain text of the performance script (for search, display)
     var scriptPlainText: String {
-        scriptBlocks.fullPlainText(using: assignments)
+        switch currentScriptMode {
+        case .modular:
+            return scriptBlocks.fullPlainText(using: assignments)
+        case .traditional:
+            return NSAttributedString.fromRTF(traditionalScriptRTF)?.string ?? ""
+        }
     }
     
     /// Check if script has any content
     var hasScriptContent: Bool {
-        !scriptBlocks.isEmpty && !scriptPlainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        switch currentScriptMode {
+        case .modular:
+            return !scriptBlocks.isEmpty && !scriptBlocks.fullPlainText(using: assignments).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .traditional:
+            let text = NSAttributedString.fromRTF(traditionalScriptRTF)?.string ?? ""
+            return !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
     }
     
     /// Get all bit assignment IDs in script order
@@ -190,6 +247,7 @@ extension Setlist {
         updatedAt = Date()
     }
 }
+
 // MARK: - Soft Delete Operations
 
 extension Setlist {
@@ -219,4 +277,50 @@ extension Setlist {
         context.delete(self)
     }
 }
+
+// MARK: - Script Mode Type
+
+/// Script editing mode for setlists
+enum ScriptMode: String, Codable, CaseIterable, Identifiable {
+    case modular = "modular"
+    case traditional = "traditional"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .modular: return "Modular"
+        case .traditional: return "Traditional"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .modular:
+            return "Build your script with insertable bits and freeform text blocks"
+        case .traditional:
+            return "Write your script in a single rich text editor, just like notes"
+        }
+    }
+}
+
+// MARK: - Custom Cue Card Model
+
+/// A custom cue card for traditional mode setlists
+public struct CustomCueCard: Identifiable, Codable, Equatable {
+    public let id: UUID
+    public var content: String
+    public var anchorPhrase: String?
+    public var exitPhrase: String?
+    public var order: Int
+    
+    public init(id: UUID = UUID(), content: String, anchorPhrase: String? = nil, exitPhrase: String? = nil, order: Int = 0) {
+        self.id = id
+        self.content = content
+        self.anchorPhrase = anchorPhrase
+        self.exitPhrase = exitPhrase
+        self.order = order
+    }
+}
+
 

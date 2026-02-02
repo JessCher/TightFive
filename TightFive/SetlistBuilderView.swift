@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftUI
 import Foundation
 import SwiftData
 import UIKit
@@ -39,6 +38,8 @@ struct SetlistBuilderView: View {
     @State private var showStageMode = false
     @State private var showCueCardSettings = false
     @State private var showRunMode = false
+    @State private var showScriptModeSettings = false
+    @State private var showCustomCueCardEditor = false
 
     @ObservedObject private var keyboard = TFKeyboardState.shared
     
@@ -77,7 +78,13 @@ struct SetlistBuilderView: View {
             StageAnchorEditorView(setlist: setlist)
         }
         .sheet(isPresented: $showCueCardSettings) {
-            CueCardSettingsView()
+            CueCardSettingsView(setlist: setlist)
+        }
+        .sheet(isPresented: $showScriptModeSettings) {
+            ScriptModeSettingsView(setlist: setlist)
+        }
+        .sheet(isPresented: $showCustomCueCardEditor) {
+            CustomCueCardEditorView(setlist: setlist)
         }
         .fullScreenCover(isPresented: $showStageMode) {
             StageModeView(setlist: setlist)
@@ -130,6 +137,49 @@ struct SetlistBuilderView: View {
     // MARK: - Script Editor
     
     private var scriptEditor: some View {
+        VStack(spacing: 0) {
+            // Script Mode Banner
+            scriptModeBanner
+            
+            switch setlist.currentScriptMode {
+            case .modular:
+                modularScriptEditor
+            case .traditional:
+                traditionalScriptEditor
+            }
+        }
+    }
+    
+    private var scriptModeBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: setlist.currentScriptMode == .modular ? "square.grid.2x2" : "doc.text")
+                .font(.caption)
+                .foregroundStyle(TFTheme.yellow.opacity(0.8))
+            
+            Text("\(setlist.currentScriptMode.displayName) Mode")
+                .appFont(.caption, weight: .semibold)
+                .foregroundStyle(TFTheme.yellow.opacity(0.8))
+            
+            Spacer()
+            
+            Button {
+                showScriptModeSettings = true
+            } label: {
+                HStack(spacing: 4) {
+                    Text("Change Mode")
+                        .appFont(.caption2, weight: .medium)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .foregroundStyle(.white.opacity(0.6))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color.black.opacity(0.3))
+    }
+    
+    private var modularScriptEditor: some View {
         ZStack(alignment: .bottomTrailing) {
             if setlist.scriptBlocks.isEmpty {
                 scriptEmptyState
@@ -140,6 +190,27 @@ struct SetlistBuilderView: View {
             addContentFAB
         }
     }
+    
+    private var traditionalScriptEditor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "doc.text")
+                    .foregroundStyle(TFTheme.yellow)
+                Text("Write your full script here with rich text formatting")
+                    .appFont(.caption)
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            
+            RichTextEditor(rtfData: $setlist.traditionalScriptRTF, undoManager: undoManager)
+                .onChange(of: setlist.traditionalScriptRTF) { _, _ in
+                    setlist.updatedAt = Date()
+                }
+        }
+    }
+    
+    // MARK: - Modular Script Components
     
     private var scriptEmptyState: some View {
         VStack(spacing: 16) {
@@ -325,10 +396,19 @@ struct SetlistBuilderView: View {
                         Label("Stage Mode", systemImage: "play.fill")
                     }
                     
-                    Button {
-                        showAnchorEditor = true
-                    } label: {
-                        Label("Configure Anchors", systemImage: "waveform")
+                    // Show different configuration options based on script mode
+                    if setlist.currentScriptMode == .modular {
+                        Button {
+                            showAnchorEditor = true
+                        } label: {
+                            Label("Configure Anchors", systemImage: "waveform")
+                        }
+                    } else if setlist.currentScriptMode == .traditional {
+                        Button {
+                            showCustomCueCardEditor = true
+                        } label: {
+                            Label("Configure Cue Cards", systemImage: "rectangle.stack")
+                        }
                     }
                     
                     Button {
@@ -339,6 +419,15 @@ struct SetlistBuilderView: View {
                     
                     Divider()
                 }
+                
+                // Script Mode Settings
+                Button {
+                    showScriptModeSettings = true
+                } label: {
+                    Label("Script Mode", systemImage: "doc.text.magnifyingglass")
+                }
+                
+                Divider()
                 
                 Button {
                     setlist.isDraft = true
@@ -998,3 +1087,750 @@ struct ShareSheet: UIViewControllerRepresentable {
 extension URL: @retroactive Identifiable {
     public var id: String { absoluteString }
 }
+
+// MARK: - Script Mode Settings View
+
+struct ScriptModeSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Bindable var setlist: Setlist
+    
+    @State private var selectedMode: ScriptMode
+    @State private var showModeChangeWarning = false
+    
+    init(setlist: Setlist) {
+        self.setlist = setlist
+        _selectedMode = State(initialValue: setlist.currentScriptMode)
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Mode Selection
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Script Mode")
+                            .appFont(.title3, weight: .semibold)
+                            .foregroundStyle(TFTheme.yellow)
+                            .padding(.horizontal, 4)
+                        
+                        ForEach(ScriptMode.allCases) { mode in
+                            Button {
+                                if mode != setlist.currentScriptMode {
+                                    selectedMode = mode
+                                    showModeChangeWarning = true
+                                }
+                            } label: {
+                                HStack(spacing: 16) {
+                                    Image(systemName: mode == .modular ? "square.grid.2x2" : "doc.text")
+                                        .font(.system(size: 24))
+                                        .foregroundStyle(TFTheme.yellow)
+                                        .frame(width: 40)
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(mode.displayName)
+                                            .appFont(.headline)
+                                            .foregroundStyle(.white)
+                                        
+                                        Text(mode.description)
+                                            .appFont(.caption)
+                                            .foregroundStyle(.white.opacity(0.6))
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    if mode == setlist.currentScriptMode {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.system(size: 24))
+                                            .foregroundStyle(TFTheme.yellow)
+                                    }
+                                }
+                                .padding(16)
+                                .background(mode == setlist.currentScriptMode ? Color("TFCard") : Color("TFCard").opacity(0.6))
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .strokeBorder(
+                                            mode == setlist.currentScriptMode ? TFTheme.yellow.opacity(0.5) : Color("TFCardStroke").opacity(0.4),
+                                            lineWidth: mode == setlist.currentScriptMode ? 2 : 1
+                                        )
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    
+                    // Current Mode Info
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Current Mode Features")
+                            .appFont(.title3, weight: .semibold)
+                            .foregroundStyle(TFTheme.yellow)
+                            .padding(.horizontal, 4)
+                            .padding(.top, 8)
+                        
+                        VStack(alignment: .leading, spacing: 12) {
+                            switch setlist.currentScriptMode {
+                            case .modular:
+                                featureRow(icon: "plus.square.on.square", text: "Insert bits from your library")
+                                featureRow(icon: "pencil", text: "Write freeform text between bits")
+                                featureRow(icon: "arrow.up.arrow.down", text: "Drag and drop to reorder")
+                                featureRow(icon: "rectangle.stack", text: "Auto-generated cue cards for Stage Mode")
+                                featureRow(icon: "waveform", text: "Anchor and exit phrase detection")
+                            case .traditional:
+                                featureRow(icon: "doc.richtext", text: "Full rich text editor with formatting")
+                                featureRow(icon: "textformat", text: "Bold, italic, fonts, colors, and more")
+                                featureRow(icon: "scroll", text: "Script and Teleprompter modes available")
+                                featureRow(icon: "rectangle.stack", text: "Create custom cue cards (optional)")
+                            }
+                        }
+                        .padding(16)
+                        .tfDynamicCard(cornerRadius: 16)
+                    }
+                    
+                    // Info Footer
+                    VStack(spacing: 8) {
+                        Text("You can switch modes at any time. Your content will be preserved.")
+                            .appFont(.footnote)
+                            .foregroundStyle(.white.opacity(0.6))
+                            .multilineTextAlignment(.center)
+                        
+                        if setlist.currentScriptMode == .traditional && !setlist.hasCustomCueCards {
+                            Text("⚠️ Cue Card mode is disabled until you configure custom cue cards")
+                                .appFont(.footnote, weight: .medium)
+                                .foregroundStyle(.orange)
+                                .multilineTextAlignment(.center)
+                                .padding(.top, 4)
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 14)
+                .padding(.bottom, 28)
+            }
+            .tfBackground()
+            .navigationTitle("Script Mode")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    TFWordmarkTitle(title: "Script Mode", size: 20)
+                }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                        .foregroundStyle(TFTheme.yellow)
+                }
+            }
+            .alert("Change Script Mode?", isPresented: $showModeChangeWarning) {
+                Button("Cancel", role: .cancel) {
+                    selectedMode = setlist.currentScriptMode
+                }
+                Button("Change Mode") {
+                    changeScriptMode(to: selectedMode)
+                }
+            } message: {
+                Text(modeChangeMessage)
+            }
+        }
+    }
+    
+    private func featureRow(icon: String, text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(TFTheme.yellow.opacity(0.8))
+                .frame(width: 24)
+            
+            Text(text)
+                .appFont(.subheadline)
+                .foregroundStyle(.white.opacity(0.9))
+            
+            Spacer()
+        }
+    }
+    
+    private var modeChangeMessage: String {
+        if selectedMode == .traditional {
+            return "Switching to Traditional mode will keep your modular content but you'll edit it as a single document. Cue Cards will be disabled until you configure custom cards."
+        } else {
+            return "Switching to Modular mode will keep your traditional script but you'll need to restructure it into blocks."
+        }
+    }
+    
+    private func changeScriptMode(to newMode: ScriptMode) {
+        // If switching from modular to traditional, copy content
+        if setlist.currentScriptMode == .modular && newMode == .traditional {
+            // Convert script blocks to plain RTF
+            let plainText = setlist.scriptPlainText
+            setlist.traditionalScriptRTF = TFRTFTheme.body(plainText)
+        }
+        
+        // If switching from traditional to modular, create a single freeform block
+        if setlist.currentScriptMode == .traditional && newMode == .modular {
+            if setlist.scriptBlocks.isEmpty {
+                // Create a freeform block with the traditional content
+                setlist.addFreeformBlock(rtfData: setlist.traditionalScriptRTF, at: nil)
+            }
+        }
+        
+        setlist.currentScriptMode = newMode
+        setlist.updatedAt = Date()
+        
+        // Handle Stage Mode defaults
+        updateStageModeDefaults(for: newMode)
+        
+        try? modelContext.save()
+    }
+    
+    private func updateStageModeDefaults(for mode: ScriptMode) {
+        let cueCardSettings = CueCardSettingsStore.shared
+        
+        if mode == .traditional {
+            // Disable cue cards unless custom cards are configured
+            if !setlist.hasCustomCueCards && cueCardSettings.stageModeType == .cueCards {
+                // Check if user previously set teleprompter as default
+                let previousTeleprompterPreference = UserDefaults.standard.bool(forKey: "user_prefers_teleprompter")
+                
+                if previousTeleprompterPreference {
+                    cueCardSettings.stageModeType = .teleprompter
+                } else {
+                    cueCardSettings.stageModeType = .script
+                }
+            }
+        } else {
+            // Modular mode: cue cards available again
+            // Restore user's preference if they had one
+            let previousTeleprompterPreference = UserDefaults.standard.bool(forKey: "user_prefers_teleprompter")
+            if !previousTeleprompterPreference && cueCardSettings.stageModeType != .cueCards {
+                // Optionally restore to cue cards if they didn't prefer teleprompter
+            }
+        }
+    }
+}
+
+// MARK: - Custom Cue Card Editor View
+
+struct CustomCueCardEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Bindable var setlist: Setlist
+    
+    @State private var customCueCards: [CustomCueCard] = []
+    @State private var showAddCard = false
+    @State private var editingCard: CustomCueCard?
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Info Banner
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "info.circle.fill")
+                                .foregroundStyle(TFTheme.yellow)
+                            Text("Create Custom Cue Cards")
+                                .appFont(.headline)
+                                .foregroundStyle(.white)
+                        }
+                        
+                        Text("In Traditional mode, you can manually create cue cards for Stage Mode. Each card represents a section of your script with optional anchor and exit phrases for voice-driven advancement.")
+                            .appFont(.subheadline)
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                    .padding(16)
+                    .tfDynamicCard(cornerRadius: 16)
+                    
+                    // Cue Cards List
+                    if customCueCards.isEmpty {
+                        emptyState
+                    } else {
+                        cardsListView
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 14)
+                .padding(.bottom, 28)
+            }
+            .tfBackground()
+            .navigationTitle("Custom Cue Cards")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    TFWordmarkTitle(title: "Custom Cue Cards", size: 20)
+                }
+                
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(TFTheme.yellow)
+                }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        saveCustomCueCards()
+                    } label: {
+                        Text("Save")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(TFTheme.yellow)
+                    }
+                }
+            }
+            .sheet(isPresented: $showAddCard) {
+                CustomCueCardDetailView(
+                    card: nil,
+                    order: customCueCards.count
+                ) { newCard in
+                    customCueCards.append(newCard)
+                    reorderCards()
+                }
+            }
+            .sheet(item: $editingCard) { card in
+                CustomCueCardDetailView(
+                    card: card,
+                    order: card.order
+                ) { updatedCard in
+                    if let index = customCueCards.firstIndex(where: { $0.id == updatedCard.id }) {
+                        customCueCards[index] = updatedCard
+                    }
+                }
+            }
+            .onAppear {
+                loadCustomCueCards()
+            }
+        }
+    }
+    
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "rectangle.stack")
+                .font(.system(size: 48))
+                .foregroundStyle(.white.opacity(0.3))
+            
+            Text("No custom cue cards yet")
+                .appFont(.title3, weight: .semibold)
+                .foregroundStyle(.white)
+            
+            Text("Create cue cards to enable Cue Card mode in Stage Mode")
+                .appFont(.subheadline)
+                .foregroundStyle(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+            
+            Button {
+                showAddCard = true
+            } label: {
+                Text("Create First Card")
+                    .appFont(.headline)
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(TFTheme.yellow)
+                    .clipShape(Capsule())
+            }
+            .padding(.top, 8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+    }
+    
+    private var cardsListView: some View {
+        VStack(spacing: 12) {
+            // Add Card Button
+            Button {
+                showAddCard = true
+            } label: {
+                HStack {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                    Text("Add Cue Card")
+                        .appFont(.headline)
+                    Spacer()
+                }
+                .foregroundStyle(TFTheme.yellow)
+                .padding(16)
+                .background(Color("TFCard").opacity(0.6))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .strokeBorder(TFTheme.yellow.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            
+            // Cards
+            ForEach(customCueCards) { card in
+                CustomCueCardRow(card: card)
+                    .onTapGesture {
+                        editingCard = card
+                    }
+                    .contextMenu {
+                        Button {
+                            editingCard = card
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        
+                        Button(role: .destructive) {
+                            deleteCard(card)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                        
+                        Divider()
+                        
+                        if let index = customCueCards.firstIndex(where: { $0.id == card.id }) {
+                            if index > 0 {
+                                Button {
+                                    moveCard(from: index, to: index - 1)
+                                } label: {
+                                    Label("Move Up", systemImage: "arrow.up")
+                                }
+                            }
+                            
+                            if index < customCueCards.count - 1 {
+                                Button {
+                                    moveCard(from: index, to: index + 1)
+                                } label: {
+                                    Label("Move Down", systemImage: "arrow.down")
+                                }
+                            }
+                        }
+                    }
+            }
+            .onMove { source, destination in
+                customCueCards.move(fromOffsets: source, toOffset: destination)
+                reorderCards()
+            }
+            .onDelete { indices in
+                customCueCards.remove(atOffsets: indices)
+                reorderCards()
+            }
+        }
+    }
+    
+    private func loadCustomCueCards() {
+        customCueCards = setlist.customCueCards
+    }
+    
+    private func saveCustomCueCards() {
+        // Save cards to setlist
+        setlist.customCueCards = customCueCards
+        setlist.hasCustomCueCards = !customCueCards.isEmpty
+        setlist.updatedAt = Date()
+        
+        // Re-enable cue cards in Stage Mode if cards exist
+        if setlist.hasCustomCueCards {
+            let cueCardSettings = CueCardSettingsStore.shared
+            if cueCardSettings.stageModeType == .script {
+                // Offer to switch back to cue cards
+                cueCardSettings.stageModeType = .cueCards
+            }
+        }
+        
+        try? modelContext.save()
+        dismiss()
+    }
+    
+    private func deleteCard(_ card: CustomCueCard) {
+        customCueCards.removeAll { $0.id == card.id }
+        reorderCards()
+    }
+    
+    private func moveCard(from: Int, to: Int) {
+        let card = customCueCards.remove(at: from)
+        customCueCards.insert(card, at: to)
+        reorderCards()
+    }
+    
+    private func reorderCards() {
+        for (index, _) in customCueCards.enumerated() {
+            customCueCards[index].order = index
+        }
+    }
+}
+
+// MARK: - Custom Cue Card Detail View
+
+struct CustomCueCardDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    let card: CustomCueCard?
+    let order: Int
+    let onSave: (CustomCueCard) -> Void
+    
+    @State private var content: String = ""
+    @State private var anchorPhrase: String = ""
+    @State private var exitPhrase: String = ""
+    @State private var showValidationError = false
+    @State private var validationMessage = ""
+    
+    @FocusState private var focusedField: Field?
+    
+    enum Field {
+        case content, anchor, exit
+    }
+    
+    init(card: CustomCueCard?, order: Int, onSave: @escaping (CustomCueCard) -> Void) {
+        self.card = card
+        self.order = order
+        self.onSave = onSave
+        
+        _content = State(initialValue: card?.content ?? "")
+        _anchorPhrase = State(initialValue: card?.anchorPhrase ?? "")
+        _exitPhrase = State(initialValue: card?.exitPhrase ?? "")
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Card Content
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Card Content")
+                                .appFont(.headline)
+                                .foregroundStyle(.white)
+                            
+                            Spacer()
+                            
+                            Text("Required")
+                                .appFont(.caption2, weight: .medium)
+                                .foregroundStyle(.orange.opacity(0.8))
+                        }
+                        
+                        Text("The text that will be displayed on this cue card during performance")
+                            .appFont(.caption)
+                            .foregroundStyle(.white.opacity(0.6))
+                        
+                        TextEditor(text: $content)
+                            .appFont(.body)
+                            .foregroundStyle(.white)
+                            .scrollContentBackground(.hidden)
+                            .frame(minHeight: 150)
+                            .padding(12)
+                            .background(Color.black.opacity(0.3))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(focusedField == .content ? TFTheme.yellow.opacity(0.5) : Color("TFCardStroke").opacity(0.4), lineWidth: 1)
+                            )
+                            .focused($focusedField, equals: .content)
+                    }
+                    .padding(16)
+                    .tfDynamicCard(cornerRadius: 16)
+                    
+                    // Anchor Phrase
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.right.circle.fill")
+                                    .foregroundStyle(.green)
+                                Text("Anchor Phrase")
+                                    .appFont(.headline)
+                                    .foregroundStyle(.white)
+                            }
+                            
+                            Spacer()
+                            
+                            Text("Optional")
+                                .appFont(.caption2, weight: .medium)
+                                .foregroundStyle(.white.opacity(0.5))
+                        }
+                        
+                        Text("A phrase at the beginning of this card that the system can recognize to confirm you're at the right place")
+                            .appFont(.caption)
+                            .foregroundStyle(.white.opacity(0.6))
+                        
+                        TextField("e.g., \"So I was at the store...\"", text: $anchorPhrase)
+                            .appFont(.body)
+                            .foregroundStyle(.white)
+                            .padding(12)
+                            .background(Color.black.opacity(0.3))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(focusedField == .anchor ? TFTheme.yellow.opacity(0.5) : Color("TFCardStroke").opacity(0.4), lineWidth: 1)
+                            )
+                            .focused($focusedField, equals: .anchor)
+                    }
+                    .padding(16)
+                    .tfDynamicCard(cornerRadius: 16)
+                    
+                    // Exit Phrase
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.forward.circle.fill")
+                                    .foregroundStyle(.orange)
+                                Text("Exit Phrase")
+                                    .appFont(.headline)
+                                    .foregroundStyle(.white)
+                            }
+                            
+                            Spacer()
+                            
+                            Text("Optional")
+                                .appFont(.caption2, weight: .medium)
+                                .foregroundStyle(.white.opacity(0.5))
+                        }
+                        
+                        Text("The final phrase of this card that triggers auto-advance to the next card")
+                            .appFont(.caption)
+                            .foregroundStyle(.white.opacity(0.6))
+                        
+                        TextField("e.g., \"...and that's the story!\"", text: $exitPhrase)
+                            .appFont(.body)
+                            .foregroundStyle(.white)
+                            .padding(12)
+                            .background(Color.black.opacity(0.3))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(focusedField == .exit ? TFTheme.yellow.opacity(0.5) : Color("TFCardStroke").opacity(0.4), lineWidth: 1)
+                            )
+                            .focused($focusedField, equals: .exit)
+                    }
+                    .padding(16)
+                    .tfDynamicCard(cornerRadius: 16)
+                    
+                    // Tips
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "lightbulb.fill")
+                                .foregroundStyle(TFTheme.yellow.opacity(0.8))
+                            Text("Tips")
+                                .appFont(.headline)
+                                .foregroundStyle(.white)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            tipRow(icon: "mic.fill", text: "Keep phrases 4-8 words for best voice recognition")
+                            tipRow(icon: "text.quote", text: "Use distinctive phrases, not common words")
+                            tipRow(icon: "waveform", text: "Test phrases in Stage Mode to verify recognition")
+                        }
+                    }
+                    .padding(16)
+                    .background(Color("TFCard").opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 14)
+                .padding(.bottom, 28)
+            }
+            .tfBackground()
+            .navigationTitle(card == nil ? "New Cue Card" : "Edit Cue Card")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundStyle(TFTheme.yellow)
+                }
+                
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        saveCard()
+                    }
+                    .fontWeight(.semibold)
+                    .foregroundStyle(TFTheme.yellow)
+                    .disabled(content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .alert("Validation Error", isPresented: $showValidationError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(validationMessage)
+            }
+        }
+    }
+    
+    private func tipRow(icon: String, text: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundStyle(TFTheme.yellow.opacity(0.6))
+                .frame(width: 20)
+            
+            Text(text)
+                .appFont(.caption)
+                .foregroundStyle(.white.opacity(0.7))
+            
+            Spacer()
+        }
+    }
+    
+    private func saveCard() {
+        let trimmedContent = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Validate
+        guard !trimmedContent.isEmpty else {
+            validationMessage = "Card content is required"
+            showValidationError = true
+            return
+        }
+        
+        // Create or update card
+        let savedCard = CustomCueCard(
+            id: card?.id ?? UUID(),
+            content: trimmedContent,
+            anchorPhrase: anchorPhrase.isEmpty ? nil : anchorPhrase,
+            exitPhrase: exitPhrase.isEmpty ? nil : exitPhrase,
+            order: card?.order ?? order
+        )
+        
+        onSave(savedCard)
+        dismiss()
+    }
+}
+
+struct CustomCueCardRow: View {
+    let card: CustomCueCard
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Card \(card.order + 1)")
+                    .appFont(.caption, weight: .semibold)
+                    .foregroundStyle(TFTheme.yellow.opacity(0.8))
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.4))
+            }
+            
+            Text(card.content)
+                .appFont(.body)
+                .foregroundStyle(.white)
+                .lineLimit(3)
+            
+            if let anchor = card.anchorPhrase, !anchor.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.right.circle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.green)
+                    Text("Anchor: \(anchor)")
+                        .appFont(.caption2)
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+            }
+            
+            if let exit = card.exitPhrase, !exit.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.forward.circle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                    Text("Exit: \(exit)")
+                        .appFont(.caption2)
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+            }
+        }
+        .padding(16)
+        .tfDynamicCard(cornerRadius: 16)
+    }
+}
+
+

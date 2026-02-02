@@ -7,6 +7,9 @@ struct CueCardSettingsView: View {
     @State private var scriptSettings = StageModeScriptSettings.shared
     @State private var teleprompterSettings = StageModeTeleprompterSettings.shared
     
+    // Optional: pass setlist to check availability
+    var setlist: Setlist?
+    
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -43,6 +46,19 @@ struct CueCardSettingsView: View {
                             }
                             .pickerStyle(.menu)
                             .tint(TFTheme.yellow)
+                            .disabled(!StageModeType.cueCards.isAvailable(for: setlist) && cueCardSettings.stageModeType == .cueCards)
+                            
+                            // Show warning if cue cards disabled
+                            if let setlist = setlist, !setlist.cueCardsAvailable && cueCardSettings.stageModeType == .cueCards {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundStyle(.orange)
+                                    Text("Cue Cards unavailable in Traditional mode without custom cards")
+                                        .appFont(.caption)
+                                        .foregroundStyle(.orange)
+                                }
+                                .padding(.top, 4)
+                            }
                         }
                         .padding(16)
                         .tfDynamicCard(cornerRadius: 16)
@@ -51,9 +67,13 @@ struct CueCardSettingsView: View {
                     // Mode-specific settings
                     switch cueCardSettings.stageModeType {
                     case .cueCards:
-                        cueCardSpecificSettings
-                        cueCardDisplaySettings
-                        animationSettings
+                        if setlist?.cueCardsAvailable ?? true {
+                            cueCardSpecificSettings
+                            cueCardDisplaySettings
+                            animationSettings
+                        } else {
+                            cueCardsUnavailableView
+                        }
                     case .script:
                         scriptDisplaySettings
                     case .teleprompter:
@@ -535,6 +555,28 @@ struct CueCardSettingsView: View {
                 .tfDynamicCard(cornerRadius: 16)
             }
         }
+    }
+    
+    // MARK: - Cue Cards Unavailable View
+    
+    private var cueCardsUnavailableView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "rectangle.stack.badge.minus")
+                .font(.system(size: 48))
+                .foregroundStyle(.white.opacity(0.3))
+            
+            Text("Cue Cards Unavailable")
+                .appFont(.title3, weight: .semibold)
+                .foregroundStyle(.white)
+            
+            Text("This setlist is in Traditional mode. Configure custom cue cards in the setlist settings to enable Cue Card mode.")
+                .appFont(.subheadline)
+                .foregroundStyle(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 60)
     }
 }
 

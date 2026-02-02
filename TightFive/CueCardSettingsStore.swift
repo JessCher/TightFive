@@ -165,6 +165,20 @@ enum StageModeType: String, CaseIterable, Identifiable {
         case .teleprompter: return "Auto-scrolling teleprompter view"
         }
     }
+    
+    /// Check if this mode is available for a given setlist
+    func isAvailable(for setlist: Setlist?) -> Bool {
+        guard let setlist = setlist else { return true }
+        
+        switch self {
+        case .cueCards:
+            // Cue cards available if modular mode OR traditional mode with custom cards
+            return setlist.currentScriptMode == .modular || setlist.hasCustomCueCards
+        case .script, .teleprompter:
+            // Script and teleprompter always available
+            return true
+        }
+    }
 }
 
 enum CueCardTextColor: String, CaseIterable, Identifiable {

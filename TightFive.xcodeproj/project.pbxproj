@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		881AAA0D2F30349C00CC22E3 /* SHOW_NOTES_ENHANCEMENT.md in Resources */ = {isa = PBXBuildFile; fileRef = 881AAA0C2F30349C00CC22E3 /* SHOW_NOTES_ENHANCEMENT.md */; };
-		881AAA0F2F3034D100CC22E3 /* SHOW_NOTES_USER_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 881AAA0E2F3034D100CC22E3 /* SHOW_NOTES_USER_GUIDE.md */; };
 		887A94802F2DCA0700EF4A2A /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 887A947F2F2DCA0700EF4A2A /* WidgetKit.framework */; };
 		887A94822F2DCA0700EF4A2A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 887A94812F2DCA0700EF4A2A /* SwiftUI.framework */; };
 		887A948D2F2DCA0900EF4A2A /* QuickBitWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 887A947D2F2DCA0700EF4A2A /* QuickBitWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -53,8 +51,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		881AAA0C2F30349C00CC22E3 /* SHOW_NOTES_ENHANCEMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SHOW_NOTES_ENHANCEMENT.md; sourceTree = "<group>"; };
-		881AAA0E2F3034D100CC22E3 /* SHOW_NOTES_USER_GUIDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SHOW_NOTES_USER_GUIDE.md; sourceTree = "<group>"; };
 		887A947D2F2DCA0700EF4A2A /* QuickBitWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuickBitWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		887A947F2F2DCA0700EF4A2A /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		887A94812F2DCA0700EF4A2A /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -69,6 +65,8 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
+				"MD docs/SHOW_NOTES_ENHANCEMENT.md",
+				"MD docs/SHOW_NOTES_USER_GUIDE.md",
 			);
 			platformFiltersByRelativePath = {
 				AcousticAnalyzer.swift = (ios, );
@@ -136,6 +134,8 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				AppGroupConstants.swift,
+				"MD docs/SHOW_NOTES_ENHANCEMENT.md",
+				"MD docs/SHOW_NOTES_USER_GUIDE.md",
 				QuickBitIntent.swift,
 			);
 			target = 887A947C2F2DCA0700EF4A2A /* QuickBitWidgetExtension */;
@@ -225,8 +225,6 @@
 				887A94832F2DCA0700EF4A2A /* QuickBitWidget */,
 				887A947E2F2DCA0700EF4A2A /* Frameworks */,
 				888E3FD92F20526900678706 /* Products */,
-				881AAA0C2F30349C00CC22E3 /* SHOW_NOTES_ENHANCEMENT.md */,
-				881AAA0E2F3034D100CC22E3 /* SHOW_NOTES_USER_GUIDE.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -390,8 +388,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				881AAA0D2F30349C00CC22E3 /* SHOW_NOTES_ENHANCEMENT.md in Resources */,
-				881AAA0F2F3034D100CC22E3 /* SHOW_NOTES_USER_GUIDE.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

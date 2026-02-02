@@ -153,6 +153,12 @@ struct StageModeViewCueCard: View {
         }
     }
     
+    private func discardSession() {
+        // Stop recording and delete the audio file without saving performance
+        engine.stop()
+        dismiss()
+    }
+    
     // MARK: - UI Components
     
     private func topBar(geometry: GeometryProxy) -> some View {
@@ -394,33 +400,58 @@ struct StageModeViewCueCard: View {
                 .onTapGesture { showExitConfirmation = false }
             
             VStack(spacing: 18) {
-                Text("End Performance?")
+                Text("Save Performance?")
                     .appFont(.title2, weight: .bold)
                     .foregroundStyle(.white)
                 
-                Text("Your recording will be saved.")
+                Text("Do you want to save this performance recording?")
                     .appFont(.subheadline)
                     .foregroundStyle(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
                 
-                HStack(spacing: 12) {
-                    Button("Cancel") { showExitConfirmation = false }
+                VStack(spacing: 12) {
+                    // Save Performance
+                    Button {
+                        showExitConfirmation = false
+                        endSession()
+                    } label: {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("Save Performance")
+                        }
                         .appFont(.headline)
-                        .foregroundStyle(.white.opacity(0.9))
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(TFTheme.yellow)
+                        .clipShape(Capsule())
+                    }
+                    
+                    // Discard
+                    Button {
+                        showExitConfirmation = false
+                        discardSession()
+                    } label: {
+                        HStack {
+                            Image(systemName: "trash")
+                            Text("Discard")
+                        }
+                        .appFont(.headline)
+                        .foregroundStyle(.red.opacity(0.9))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(Color.white.opacity(0.12))
                         .clipShape(Capsule())
-                    
-                    Button("End") {
-                        showExitConfirmation = false
-                        endSession()
                     }
-                    .appFont(.headline)
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(TFTheme.yellow)
-                    .clipShape(Capsule())
+                    
+                    // Cancel
+                    Button("Cancel") { 
+                        showExitConfirmation = false 
+                    }
+                    .appFont(.subheadline)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .padding(.top, 4)
                 }
             }
             .padding(22)

@@ -102,6 +102,12 @@ struct StageModeViewScript: View {
         }
     }
     
+    private func discardSession() {
+        // Stop recording and delete the audio file without saving performance
+        engine.stop()
+        dismiss()
+    }
+    
     // MARK: - Top Bar
     
     private func topBar(geometry: GeometryProxy) -> some View {
@@ -247,45 +253,62 @@ struct StageModeViewScript: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 24) {
-                Image(systemName: "exclamationmark.triangle.fill")
+                Image(systemName: "questionmark.circle.fill")
                     .font(.system(size: 56))
                     .foregroundStyle(TFTheme.yellow)
                 
-                Text("End Performance?")
+                Text("Save Performance?")
                     .appFont(.title2, weight: .bold)
                     .foregroundStyle(.white)
                 
-                Text("Your performance will be saved with audio recording and show notes.")
+                Text("Do you want to save this performance recording?")
                     .appFont(.body)
                     .foregroundStyle(.white.opacity(0.8))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
                 
-                HStack(spacing: 16) {
-                    Button {
-                        showExitConfirmation = false
-                    } label: {
-                        Text("Keep Going")
-                            .appFont(.headline)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(Color.white.opacity(0.15))
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    
+                VStack(spacing: 12) {
+                    // Save Performance
                     Button {
                         showExitConfirmation = false
                         endSession()
                     } label: {
-                        Text("End & Save")
-                            .appFont(.headline)
-                            .foregroundStyle(.black)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(TFTheme.yellow)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                            Text("Save Performance")
+                        }
+                        .appFont(.headline)
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(TFTheme.yellow)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
+                    
+                    // Discard
+                    Button {
+                        showExitConfirmation = false
+                        discardSession()
+                    } label: {
+                        HStack {
+                            Image(systemName: "trash")
+                            Text("Discard")
+                        }
+                        .appFont(.headline)
+                        .foregroundStyle(.red.opacity(0.9))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.white.opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    
+                    // Cancel
+                    Button("Cancel") { 
+                        showExitConfirmation = false 
+                    }
+                    .appFont(.subheadline)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .padding(.top, 4)
                 }
                 .padding(.horizontal, 32)
                 .padding(.top, 8)
@@ -293,6 +316,10 @@ struct StageModeViewScript: View {
             .padding(32)
             .background(Color(white: 0.12))
             .clipShape(RoundedRectangle(cornerRadius: 24))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            )
             .padding(.horizontal, 32)
         }
     }
