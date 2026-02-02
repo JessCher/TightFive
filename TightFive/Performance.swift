@@ -18,7 +18,23 @@ final class Performance {
     var duration: TimeInterval
     var fileSize: Int64
     var notes: String  // Keep as String - no schema change
-    var rating: Int
+    var rating: Int  // "How it felt" - manual overall rating
+    
+    // MARK: - Individual Bit Ratings & Notes
+    
+    /// Dictionary of bit ratings by script block ID (1-5 stars)
+    @Attribute(.externalStorage) var bitRatings: [String: Int] = [:]
+    
+    /// Dictionary of bit notes by script block ID
+    @Attribute(.externalStorage) var bitNotes: [String: String] = [:]
+    
+    /// Auto-calculated "How it went" rating based on bit ratings
+    var calculatedRating: Int {
+        let ratings = bitRatings.values.filter { $0 > 0 }
+        guard !ratings.isEmpty else { return 0 }
+        let sum = ratings.reduce(0, +)
+        return Int(round(Double(sum) / Double(ratings.count)))
+    }
     
     // MARK: - Soft Delete
     

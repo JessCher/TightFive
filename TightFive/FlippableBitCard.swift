@@ -1,6 +1,28 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Keyboard Dismissal Extensions
+
+extension View {
+    /// Dismiss keyboard when user taps outside text fields
+    func dismissKeyboardOnTap() -> some View {
+        self.onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+    }
+    
+    /// Dismiss keyboard when user drags/scrolls
+    func dismissKeyboardOnDrag() -> some View {
+        self.simultaneousGesture(
+            DragGesture().onChanged { _ in
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+        )
+    }
+}
+
+// MARK: - Flippable Bit Card
+
 /// A flippable bit card that shows the bit content on the front and notes on the back.
 /// Features a flip button in the bottom right corner that triggers a 3D flip animation.
 struct FlippableBitCard<FrontContent: View, BackContent: View>: View {
@@ -19,31 +41,28 @@ struct FlippableBitCard<FrontContent: View, BackContent: View>: View {
     }
 
     var body: some View {
-        // Use the front content as the sizing reference
-        // Back content is overlaid on top and clipped to match front's bounds
-        frontContent
-            .opacity(isFlipped ? 0 : 1)
-            .rotation3DEffect(
-                .degrees(isFlipped ? 180 : 0),
-                axis: (x: 0, y: 1, z: 0),
-                perspective: 0.5
-            )
-            .overlay {
-                // Use GeometryReader to get exact size, then constrain back content
-                GeometryReader { geo in
-                    backContent
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .clipped()
-                }
+        ZStack {
+            frontContent
+                .opacity(isFlipped ? 0 : 1)
+                .rotation3DEffect(
+                    .degrees(isFlipped ? 180 : 0),
+                    axis: (x: 0, y: 1, z: 0),
+                    perspective: 0.5
+                )
+                .frame(maxHeight: isFlipped ? 0 : nil)
+                .clipped()
+            
+            backContent
                 .opacity(isFlipped ? 1 : 0)
                 .rotation3DEffect(
                     .degrees(isFlipped ? 0 : -180),
                     axis: (x: 0, y: 1, z: 0),
                     perspective: 0.5
                 )
-                .allowsHitTesting(isFlipped)
-            }
-            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped)
+                .frame(maxHeight: isFlipped ? nil : 0)
+                .clipped()
+        }
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped)
     }
 }
 
@@ -83,9 +102,15 @@ struct BitFlipButton: View {
 struct LooseFlippableBitCard: View {
     let bit: Bit
     @Binding var isFlipped: Bool
+    var onTextFieldFocus: ((UUID) -> Void)?
     @Environment(\.modelContext) private var modelContext
     @State private var notesText: String = ""
     @FocusState private var isNotesFocused: Bool
+    
+    // Create a unique ID for the text editor to enable precise scrolling
+    private var textEditorID: UUID {
+        UUID(uuidString: bit.id.uuidString.replacingOccurrences(of: "-", with: "").prefix(8) + "-1111-1111-1111-" + bit.id.uuidString.suffix(12))!
+    }
 
     var body: some View {
         FlippableBitCard(isFlipped: $isFlipped) {
@@ -199,13 +224,18 @@ struct LooseFlippableBitCard: View {
                             bit.updatedAt = Date()
                             try? modelContext.save()
                         }
+                        .onChange(of: isNotesFocused) { oldValue, newValue in
+                            if newValue {
+                                onTextFieldFocus?(textEditorID)
+                            }
+                        }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .id(textEditorID)
+                .frame(height: 120) // Fixed height - text scrolls inside
                 .padding(6)
                 .background(Color.black.opacity(0.2))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .tfDynamicCard(cornerRadius: 18)
@@ -225,9 +255,15 @@ struct LooseFlippableBitCard: View {
 struct FinishedFlippableBitCard: View {
     let bit: Bit
     @Binding var isFlipped: Bool
+    var onTextFieldFocus: ((UUID) -> Void)?
     @Environment(\.modelContext) private var modelContext
     @State private var notesText: String = ""
     @FocusState private var isNotesFocused: Bool
+    
+    // Create a unique ID for the text editor to enable precise scrolling
+    private var textEditorID: UUID {
+        UUID(uuidString: bit.id.uuidString.replacingOccurrences(of: "-", with: "").prefix(8) + "-2222-2222-2222-" + bit.id.uuidString.suffix(12))!
+    }
 
     var body: some View {
         FlippableBitCard(isFlipped: $isFlipped) {
@@ -351,13 +387,18 @@ struct FinishedFlippableBitCard: View {
                             bit.updatedAt = Date()
                             try? modelContext.save()
                         }
+                        .onChange(of: isNotesFocused) { oldValue, newValue in
+                            if newValue {
+                                onTextFieldFocus?(textEditorID)
+                            }
+                        }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .id(textEditorID)
+                .frame(height: 120) // Fixed height - text scrolls inside
                 .padding(6)
                 .background(Color.black.opacity(0.2))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .tfDynamicCard(cornerRadius: 18)

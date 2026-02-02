@@ -15,6 +15,7 @@ struct LooseBitsView: View {
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
     @State private var flippedBitIds: Set<UUID> = []
+    @State private var activeTextFieldID: UUID?
     @State private var sortCriteria: BitSortCriteria = .dateCreated
     @State private var sortAscending: Bool = false // false = descending (newest/longest first)
     
@@ -66,104 +67,131 @@ struct LooseBitsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                // Sort button
-                HStack {
-                    Spacer()
-                    Menu {
-                        // Sort criteria section
-                        Section("Sort By") {
-                            ForEach(BitSortCriteria.allCases) { criteria in
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 12) {
+                    // Sort button
+                    HStack {
+                        Spacer()
+                        Menu {
+                            // Sort criteria section
+                            Section("Sort By") {
+                                ForEach(BitSortCriteria.allCases) { criteria in
+                                    Button {
+                                        sortCriteria = criteria
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: criteria.systemImage)
+                                            Text(criteria.rawValue)
+                                            Spacer()
+                                            if sortCriteria == criteria {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Direction section
+                            Section("Order") {
                                 Button {
-                                    sortCriteria = criteria
+                                    sortAscending = false
                                 } label: {
                                     HStack {
-                                        Image(systemName: criteria.systemImage)
-                                        Text(criteria.rawValue)
+                                        Image(systemName: "arrow.down")
+                                        Text(sortDirectionLabel(descending: true))
                                         Spacer()
-                                        if sortCriteria == criteria {
+                                        if !sortAscending {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
+                                }
+                                
+                                Button {
+                                    sortAscending = true
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "arrow.up")
+                                        Text(sortDirectionLabel(descending: false))
+                                        Spacer()
+                                        if sortAscending {
                                             Image(systemName: "checkmark")
                                         }
                                     }
                                 }
                             }
+                        } label: {
+                            Image(systemName: sortAscending ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(TFTheme.yellow)
+                                .frame(width: 44, height: 32)
+                                .background(Color.white.opacity(0.10))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color("TFCardStroke").opacity(0.9), lineWidth: 1)
+                                )
                         }
-                        
-                        // Direction section
-                        Section("Order") {
-                            Button {
-                                sortAscending = false
-                            } label: {
-                                HStack {
-                                    Image(systemName: "arrow.down")
-                                    Text(sortDirectionLabel(descending: true))
-                                    Spacer()
-                                    if !sortAscending {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                            
-                            Button {
-                                sortAscending = true
-                            } label: {
-                                HStack {
-                                    Image(systemName: "arrow.up")
-                                    Text(sortDirectionLabel(descending: false))
-                                    Spacer()
-                                    if sortAscending {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        Image(systemName: sortAscending ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(TFTheme.yellow)
-                            .frame(width: 44, height: 32)
-                            .background(Color.white.opacity(0.10))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color("TFCardStroke").opacity(0.9), lineWidth: 1)
-                            )
                     }
-                }
-                .padding(.horizontal, 2)
-                
-                if filtered.isEmpty {
-                    emptyState
-                        .padding(.top, 40)
-                } else {
-                    ForEach(filtered) { bit in
-                        let isFlipped = Binding(
-                            get: { flippedBitIds.contains(bit.id) },
-                            set: { newValue in
-                                if newValue {
-                                    flippedBitIds.insert(bit.id)
-                                } else {
-                                    flippedBitIds.remove(bit.id)
+                    .padding(.horizontal, 2)
+                    
+                    if filtered.isEmpty {
+                        emptyState
+                            .padding(.top, 40)
+                    } else {
+                        ForEach(filtered) { bit in
+                            let isFlipped = Binding(
+                                get: { flippedBitIds.contains(bit.id) },
+                                set: { newValue in
+                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                        if newValue {
+                                            flippedBitIds.insert(bit.id)
+                                        } else {
+                                            flippedBitIds.remove(bit.id)
+                                        }
+                                    }
+                                    
+                                    // Scroll to the flipped card after a brief delay
+                                    if newValue {
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                proxy.scrollTo(bit.id, anchor: UnitPoint(x: 0.5, y: 0.15))
+                                            }
+                                        }
+                                    }
                                 }
-                            }
-                        )
+                            )
 
-                        BitSwipeView(
-                            bit: bit,
-                            onFinish: {
-                                withAnimation(.snappy) { markAsFinished(bit) }
-                            },
-                            onDelete: {
-                                withAnimation(.snappy) { softDeleteBit(bit) }
-                            },
-                            onTap: {
-                                if !isFlipped.wrappedValue {
-                                    selectedBit = bit
+                            BitSwipeView(
+                                bit: bit,
+                                onFinish: {
+                                    withAnimation(.snappy) { markAsFinished(bit) }
+                                },
+                                onDelete: {
+                                    withAnimation(.snappy) { softDeleteBit(bit) }
+                                },
+                                onTap: {
+                                    if !isFlipped.wrappedValue {
+                                        selectedBit = bit
+                                    }
                                 }
-                            }
-                        ) {
-                            LooseFlippableBitCard(bit: bit, isFlipped: isFlipped)
+                            ) {
+                                LooseFlippableBitCard(
+                                    bit: bit,
+                                    isFlipped: isFlipped,
+                                    onTextFieldFocus: { textEditorID in
+                                        // Auto-scroll to text editor when keyboard appears
+                                        activeTextFieldID = textEditorID
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                                            withAnimation(.easeInOut(duration: 0.3)) {
+                                                proxy.scrollTo(bit.id, anchor: UnitPoint(x: 0.5, y: 0.15))
+                                            }
+                                        }
+                                    }
+                                )
+                                .id(bit.id)
+                                .padding(.vertical, isFlipped.wrappedValue ? 20 : 0)
+                                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped.wrappedValue)
                                 .contentShape(Rectangle())
                                 .contextMenu {
                                     Button {
@@ -185,14 +213,17 @@ struct LooseBitsView: View {
                                         Label("Mark as Finished", systemImage: "checkmark.seal.fill")
                                     }
                                 }
+                            }
                         }
                     }
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 28)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 28)
+            .dismissKeyboardOnDrag()
         }
+        .dismissKeyboardOnTap()
         .tfBackground()
         .navigationTitle("Loose Ideas")
         .navigationBarTitleDisplayMode(.inline)

@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftUI
 import SwiftData
 import AVFoundation
 import UIKit
@@ -206,12 +205,34 @@ private struct PerformanceRowView: View {
                             .appFont(.caption)
                             .foregroundStyle(TFTheme.text.opacity(0.5))
                         
-                        if performance.rating > 0 {
-                            HStack(spacing: 2) {
-                                ForEach(1...5, id: \.self) { index in
-                                    Image(systemName: index <= performance.rating ? "star.fill" : "star")
-                                        .appFont(.caption2)
-                                        .foregroundStyle(index <= performance.rating ? TFTheme.yellow : .white.opacity(0.3))
+                        if performance.calculatedRating > 0 || performance.rating > 0 {
+                            VStack(spacing: 2) {
+                                // Show calculated rating if available
+                                if performance.calculatedRating > 0 {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "chart.bar.fill")
+                                            .appFont(.caption2)
+                                            .foregroundStyle(TFTheme.yellow.opacity(0.6))
+                                        ForEach(1...5, id: \.self) { index in
+                                            Image(systemName: index <= performance.calculatedRating ? "star.fill" : "star")
+                                                .appFont(.caption2)
+                                                .foregroundStyle(index <= performance.calculatedRating ? TFTheme.yellow : .white.opacity(0.3))
+                                        }
+                                    }
+                                }
+                                
+                                // Show manual rating if available
+                                if performance.rating > 0 {
+                                    HStack(spacing: 2) {
+                                        Image(systemName: "heart.fill")
+                                            .appFont(.caption2)
+                                            .foregroundStyle(TFTheme.yellow.opacity(0.6))
+                                        ForEach(1...5, id: \.self) { index in
+                                            Image(systemName: index <= performance.rating ? "star.fill" : "star")
+                                                .appFont(.caption2)
+                                                .foregroundStyle(index <= performance.rating ? TFTheme.yellow : .white.opacity(0.3))
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -278,6 +299,8 @@ struct PerformanceDetailView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 20)
             }
+            .dismissKeyboardOnDrag()
+            .dismissKeyboardOnTap()
             .navigationTitle("Performance")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -337,22 +360,23 @@ struct PerformanceDetailView: View {
     
     private var setlistSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Setlist")
-                .appFont(.headline)
-                .foregroundStyle(TFTheme.text)
+            HStack {
+                Text("Setlist")
+                    .appFont(.headline)
+                    .foregroundStyle(TFTheme.text)
+                Spacer()
+                Text("Tap cards to rate and add notes")
+                    .appFont(.caption2)
+                    .foregroundStyle(TFTheme.text.opacity(0.5))
+            }
             
             if let setlist = setlist {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        ForEach(setlist.scriptBlocks) { block in
-                            scriptBlockContent(block, assignments: setlist.assignments)
-                        }
-                    }
-                    .padding(16)
-                }
-                .frame(maxHeight: 300)
-                .background(Color.black.opacity(0.3))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
+                FlippableScriptBlockList(
+                    blocks: setlist.scriptBlocks,
+                    assignments: setlist.assignments,
+                    performance: performance
+                )
+                .frame(maxHeight: 450)
             } else {
                 Text("Setlist not found")
                     .appFont(.subheadline)
@@ -365,38 +389,6 @@ struct PerformanceDetailView: View {
         }
         .padding(16)
         .tfDynamicCard(cornerRadius: 14)
-    }
-    
-    @ViewBuilder
-    private func scriptBlockContent(_ block: ScriptBlock, assignments: [SetlistAssignment]) -> some View {
-        let content = blockContentText(block, assignments: assignments)
-        if !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(content)
-                    .font(.system(size: 15, weight: .regular))
-                    .foregroundStyle(TFTheme.text.opacity(0.85))
-                    .lineSpacing(6)
-                    .fixedSize(horizontal: false, vertical: true)
-                
-                // Divider between blocks
-                Rectangle()
-                    .fill(.white.opacity(0.1))
-                    .frame(height: 1)
-                    .padding(.top, 4)
-            }
-        }
-    }
-    
-    private func blockContentText(_ block: ScriptBlock, assignments: [SetlistAssignment]) -> String {
-        switch block {
-        case .freeform(_, let rtfData):
-            return NSAttributedString.fromRTF(rtfData)?.string ?? ""
-        case .bit(_, let assignmentId):
-            guard let assignment = assignments.first(where: { $0.id == assignmentId }) else {
-                return ""
-            }
-            return assignment.plainText
-        }
     }
     
     private var performanceDetailsSection: some View {
@@ -596,23 +588,79 @@ struct PerformanceDetailView: View {
     }
     
     private var ratingSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Rating")
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Performance Rating")
                 .appFont(.headline)
                 .foregroundStyle(TFTheme.text)
             
-            HStack(spacing: 8) {
-                ForEach(1...5, id: \.self) { index in
-                    Button {
-                        performance.rating = (performance.rating == index) ? 0 : index
-                    } label: {
-                        Image(systemName: index <= performance.rating ? "star.fill" : "star")
-                            .font(.system(size: 32))
-                            .foregroundStyle(index <= performance.rating ? TFTheme.yellow : .white.opacity(0.3))
+            // "How it went" - Auto-calculated from bit ratings
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "chart.bar.fill")
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.yellow)
+                    Text("How it went")
+                        .appFont(.subheadline, weight: .semibold)
+                        .foregroundStyle(TFTheme.text)
+                    Spacer()
+                    if performance.calculatedRating > 0 {
+                        Text("(Auto-calculated)")
+                            .appFont(.caption2)
+                            .foregroundStyle(TFTheme.text.opacity(0.5))
                     }
                 }
+                
+                HStack(spacing: 8) {
+                    ForEach(1...5, id: \.self) { index in
+                        Image(systemName: index <= performance.calculatedRating ? "star.fill" : "star")
+                            .font(.system(size: 24))
+                            .foregroundStyle(index <= performance.calculatedRating ? TFTheme.yellow : .white.opacity(0.3))
+                    }
+                    
+                    if performance.calculatedRating == 0 {
+                        Spacer()
+                        Text("Rate bits above")
+                            .appFont(.caption)
+                            .foregroundStyle(TFTheme.text.opacity(0.5))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity)
+            .padding(12)
+            .background(Color.black.opacity(0.2))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            
+            // "How it felt" - Manual overall rating
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "heart.fill")
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.yellow)
+                    Text("How it felt")
+                        .appFont(.subheadline, weight: .semibold)
+                        .foregroundStyle(TFTheme.text)
+                    Spacer()
+                    Text("(Your overall feeling)")
+                        .appFont(.caption2)
+                        .foregroundStyle(TFTheme.text.opacity(0.5))
+                }
+                
+                HStack(spacing: 8) {
+                    ForEach(1...5, id: \.self) { index in
+                        Button {
+                            performance.rating = (performance.rating == index) ? 0 : index
+                        } label: {
+                            Image(systemName: index <= performance.rating ? "star.fill" : "star")
+                                .font(.system(size: 24))
+                                .foregroundStyle(index <= performance.rating ? TFTheme.yellow : .white.opacity(0.3))
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(12)
+            .background(Color.black.opacity(0.2))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
         }
         .padding(16)
         .tfDynamicCard(cornerRadius: 14)
@@ -620,9 +668,15 @@ struct PerformanceDetailView: View {
     
     private var notesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Notes")
-                .appFont(.headline)
-                .foregroundStyle(TFTheme.text)
+            HStack {
+                Text("Overall Show Notes")
+                    .appFont(.headline)
+                    .foregroundStyle(TFTheme.text)
+                Spacer()
+                Text("General thoughts about the performance")
+                    .appFont(.caption2)
+                    .foregroundStyle(TFTheme.text.opacity(0.5))
+            }
             
             TextEditor(text: $performance.notes)
                 .scrollContentBackground(.hidden)
