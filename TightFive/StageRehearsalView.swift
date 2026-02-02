@@ -1,6 +1,8 @@
 import SwiftUI
+import SwiftUI
 import SwiftData
 import Foundation
+import UIKit
 
 /// Stage Rehearsal Mode - Test voice recognition and auto-advance without recording
 ///
@@ -74,8 +76,14 @@ struct StageRehearsalView: View {
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
-        .onAppear { startRehearsalIfNeeded() }
+        .onAppear { 
+            // Keep screen awake during Stage Rehearsal
+            UIApplication.shared.isIdleTimerDisabled = true
+            startRehearsalIfNeeded() 
+        }
         .onDisappear { 
+            // Re-enable screen dimming when exiting Stage Rehearsal
+            UIApplication.shared.isIdleTimerDisabled = false
             _ = engine.stop()
         }
         .gesture(

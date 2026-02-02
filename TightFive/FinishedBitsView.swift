@@ -654,15 +654,22 @@ private struct BitShareCard: View {
     let bit: Bit
     let userName: String
     let frameColor: Color
+    let frameColorEnum: BitCardFrameColor
     let bottomBarColor: Color
+    let bottomBarColorEnum: BitCardFrameColor
+    let windowColor: Color
     let windowTheme: BitWindowTheme
     
     init(bit: Bit, userName: String) {
         self.bit = bit
         self.userName = userName
         
+        // Store enum for later logic
+        self.frameColorEnum = AppSettings.shared.bitCardFrameColor
+        self.bottomBarColorEnum = AppSettings.shared.bitCardBottomBarColor
+        self.windowTheme = AppSettings.shared.bitWindowTheme
+        
         // Resolve frame color (handle custom)
-        let frameColorEnum = AppSettings.shared.bitCardFrameColor
         if frameColorEnum == .custom {
             self.frameColor = Color(hex: AppSettings.shared.customFrameColorHex) ?? Color("TFCard")
         } else {
@@ -670,14 +677,54 @@ private struct BitShareCard: View {
         }
         
         // Resolve bottom bar color (handle custom)
-        let bottomBarColorEnum = AppSettings.shared.bitCardBottomBarColor
         if bottomBarColorEnum == .custom {
             self.bottomBarColor = Color(hex: AppSettings.shared.customBottomBarColorHex) ?? Color("TFCard")
         } else {
             self.bottomBarColor = bottomBarColorEnum.color(customHex: nil)
         }
         
-        self.windowTheme = AppSettings.shared.bitWindowTheme
+        // Resolve window color (handle custom)
+        if windowTheme == .custom {
+            self.windowColor = Color(hex: AppSettings.shared.customWindowColorHex) ?? Color("TFCard")
+        } else {
+            self.windowColor = windowTheme.color(customHex: nil)
+        }
+    }
+    
+    // Helper to determine if bottom bar should use dark text
+    private var shouldUseDarkTextOnBottomBar: Bool {
+        if bottomBarColorEnum == .yellowGrit {
+            return true
+        }
+        if bottomBarColorEnum == .custom {
+            // Check luminance of custom color
+            if let components = UIColor(bottomBarColor).cgColor.components, components.count >= 3 {
+                let r = components[0]
+                let g = components[1]
+                let b = components[2]
+                let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                return luminance > 0.5
+            }
+        }
+        return false
+    }
+    
+    // Helper to determine if window should use dark text
+    private var shouldUseDarkTextOnWindow: Bool {
+        if windowTheme == .yellowGrit {
+            return true
+        }
+        if windowTheme == .custom {
+            // Check luminance of custom color
+            if let components = UIColor(windowColor).cgColor.components, components.count >= 3 {
+                let r = components[0]
+                let g = components[1]
+                let b = components[2]
+                let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                return luminance > 0.5
+            }
+        }
+        return false
     }
     
     var body: some View {
@@ -687,7 +734,7 @@ private struct BitShareCard: View {
                 // Bit text only (no title or tags)
                 Text(bit.text)
                     .appFont(size: 18)
-                    .foregroundStyle(windowTheme == .chalkboard ? .white.opacity(0.95) : .black.opacity(0.85))
+                    .foregroundStyle(shouldUseDarkTextOnWindow ? .black.opacity(0.85) : .white.opacity(0.95))
                     .fixedSize(horizontal: false, vertical: true)
                     .lineSpacing(4)
             }
@@ -695,47 +742,73 @@ private struct BitShareCard: View {
             .padding(32)
             .background(
                 ZStack {
-                    if windowTheme == .chalkboard {
+                    if windowTheme == .custom {
+                        // Custom color with optional custom grit
+                        windowColor
+                        
+                        if AppSettings.shared.bitCardWindowGritEnabled && AppSettings.shared.bitCardWindowGritLevel > 0 {
+                            StaticGritLayer(
+                                density: Int(800 * AppSettings.shared.bitCardWindowGritLevel),
+                                opacity: 0.85,
+                                seed: 7777,
+                                particleColor: Color(hex: AppSettings.shared.bitCardWindowGritLayer1ColorHex) ?? .brown
+                            )
+                            
+                            StaticGritLayer(
+                                density: Int(100 * AppSettings.shared.bitCardWindowGritLevel),
+                                opacity: 0.88,
+                                seed: 8888,
+                                particleColor: Color(hex: AppSettings.shared.bitCardWindowGritLayer2ColorHex) ?? .black
+                            )
+                            
+                            StaticGritLayer(
+                                density: Int(400 * AppSettings.shared.bitCardWindowGritLevel),
+                                opacity: 0.88,
+                                seed: 8889,
+                                particleColor: Color(hex: AppSettings.shared.bitCardWindowGritLayer3ColorHex) ?? Color(red: 0.8, green: 0.4, blue: 0.0)
+                            )
+                        }
+                    } else if windowTheme == .chalkboard {
                         // Original chalkboard theme
                         Color("TFCard")
                         
-                        if AppSettings.shared.bitCardGritLevel > 0 {
+                        if AppSettings.shared.bitCardWindowGritLevel > 0 {
                             StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(300),
+                                density: Int(300 * AppSettings.shared.bitCardWindowGritLevel),
                                 opacity: 0.55,
                                 seed: 1234,
                                 particleColor: Color("TFYellow")
                             )
                             
                             StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(300),
+                                density: Int(300 * AppSettings.shared.bitCardWindowGritLevel),
                                 opacity: 0.35,
                                 seed: 5678
                             )
                         }
                     } else {
-                        // Yellow grit theme (matches Quick Bit button)
+                        // Yellow grit theme
                         Color("TFYellow")
                         
-                        if AppSettings.shared.bitCardGritLevel > 0 {
+                        if AppSettings.shared.bitCardWindowGritLevel > 0 {
                             StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(800),
+                                density: Int(800 * AppSettings.shared.bitCardWindowGritLevel),
                                 opacity: 0.85,
                                 seed: 7777,
                                 particleColor: .brown
                             )
                             
                             StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(100),
+                                density: Int(100 * AppSettings.shared.bitCardWindowGritLevel),
                                 opacity: 0.88,
                                 seed: 8888,
                                 particleColor: .black
                             )
                             
                             StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(400),
+                                density: Int(400 * AppSettings.shared.bitCardWindowGritLevel),
                                 opacity: 0.88,
-                                seed: 8888,
+                                seed: 8889,
                                 particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
                             )
                         }
@@ -787,28 +860,54 @@ private struct BitShareCard: View {
                 if !userName.isEmpty {
                     Text("by \(userName)")
                         .appFont(size: 14)
-                        .foregroundStyle(AppSettings.shared.bitCardBottomBarColor.hasTexture && AppSettings.shared.bitCardBottomBarColor == .yellowGrit ? .black.opacity(0.7) : .white.opacity(0.7))
+                        .foregroundStyle(shouldUseDarkTextOnBottomBar ? .black.opacity(0.7) : .white.opacity(0.7))
                 }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
             .background(
                 ZStack {
-                    if AppSettings.shared.bitCardBottomBarColor.hasTexture, let theme = AppSettings.shared.bitCardBottomBarColor.textureTheme {
+                    if bottomBarColorEnum == .custom {
+                        // Custom color with optional custom grit
+                        bottomBarColor
+                        
+                        if AppSettings.shared.bitCardBottomBarGritEnabled && AppSettings.shared.bitCardBottomBarGritLevel > 0 {
+                            StaticGritLayer(
+                                density: Int(800 * AppSettings.shared.bitCardBottomBarGritLevel),
+                                opacity: 0.85,
+                                seed: 5555,
+                                particleColor: Color(hex: AppSettings.shared.bitCardBottomBarGritLayer1ColorHex) ?? .brown
+                            )
+                            
+                            StaticGritLayer(
+                                density: Int(100 * AppSettings.shared.bitCardBottomBarGritLevel),
+                                opacity: 0.88,
+                                seed: 6666,
+                                particleColor: Color(hex: AppSettings.shared.bitCardBottomBarGritLayer2ColorHex) ?? .black
+                            )
+                            
+                            StaticGritLayer(
+                                density: Int(400 * AppSettings.shared.bitCardBottomBarGritLevel),
+                                opacity: 0.88,
+                                seed: 7777,
+                                particleColor: Color(hex: AppSettings.shared.bitCardBottomBarGritLayer3ColorHex) ?? Color(red: 0.8, green: 0.4, blue: 0.0)
+                            )
+                        }
+                    } else if bottomBarColorEnum.hasTexture, let theme = bottomBarColorEnum.textureTheme {
                         // Render textured background
                         if theme == .chalkboard {
                             Color("TFCard")
                             
-                            if AppSettings.shared.bitCardGritLevel > 0 {
+                            if AppSettings.shared.bitCardBottomBarGritLevel > 0 {
                                 StaticGritLayer(
-                                    density: AppSettings.shared.adjustedBitCardGritDensity(300),
+                                    density: Int(300 * AppSettings.shared.bitCardBottomBarGritLevel),
                                     opacity: 0.55,
                                     seed: 1234,
                                     particleColor: Color("TFYellow")
                                 )
                                 
                                 StaticGritLayer(
-                                    density: AppSettings.shared.adjustedBitCardGritDensity(300),
+                                    density: Int(300 * AppSettings.shared.bitCardBottomBarGritLevel),
                                     opacity: 0.35,
                                     seed: 5678
                                 )
@@ -816,29 +915,32 @@ private struct BitShareCard: View {
                         } else {
                             Color("TFYellow")
                             
-                            if AppSettings.shared.bitCardGritLevel > 0 {
+                            if AppSettings.shared.bitCardBottomBarGritLevel > 0 {
                                 StaticGritLayer(
-                                    density: AppSettings.shared.adjustedBitCardGritDensity(800),
+                                    density: Int(800 * AppSettings.shared.bitCardBottomBarGritLevel),
                                     opacity: 0.85,
-                                    seed: 7777,
+                                    seed: 7778,
                                     particleColor: .brown
                                 )
                                 
                                 StaticGritLayer(
-                                    density: AppSettings.shared.adjustedBitCardGritDensity(100),
+                                    density: Int(100 * AppSettings.shared.bitCardBottomBarGritLevel),
                                     opacity: 0.88,
-                                    seed: 8888,
+                                    seed: 8889,
                                     particleColor: .black
                                 )
                                 
                                 StaticGritLayer(
-                                    density: AppSettings.shared.adjustedBitCardGritDensity(400),
+                                    density: Int(400 * AppSettings.shared.bitCardBottomBarGritLevel),
                                     opacity: 0.88,
-                                    seed: 8888,
+                                    seed: 8890,
                                     particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
                                 )
                             }
                         }
+                    } else {
+                        // Solid color
+                        bottomBarColor
                     }
                     
                     UnevenRoundedRectangle(
@@ -848,7 +950,7 @@ private struct BitShareCard: View {
                         topTrailingRadius: 0,
                         style: .continuous
                     )
-                    .fill(AppSettings.shared.bitCardBottomBarColor.hasTexture ? .clear : bottomBarColor)
+                    .fill(.clear)
                 }
                 .clipShape(
                     UnevenRoundedRectangle(
@@ -865,21 +967,47 @@ private struct BitShareCard: View {
         .padding(12) // This creates the frame effect around everything
         .background(
             ZStack {
-                if AppSettings.shared.bitCardFrameColor.hasTexture, let theme = AppSettings.shared.bitCardFrameColor.textureTheme {
+                if frameColorEnum == .custom {
+                    // Custom color with optional custom grit
+                    frameColor
+                    
+                    if AppSettings.shared.bitCardFrameGritEnabled && AppSettings.shared.bitCardFrameGritLevel > 0 {
+                        StaticGritLayer(
+                            density: Int(800 * AppSettings.shared.bitCardFrameGritLevel),
+                            opacity: 0.85,
+                            seed: 9999,
+                            particleColor: Color(hex: AppSettings.shared.bitCardFrameGritLayer1ColorHex) ?? .brown
+                        )
+                        
+                        StaticGritLayer(
+                            density: Int(100 * AppSettings.shared.bitCardFrameGritLevel),
+                            opacity: 0.88,
+                            seed: 1111,
+                            particleColor: Color(hex: AppSettings.shared.bitCardFrameGritLayer2ColorHex) ?? .black
+                        )
+                        
+                        StaticGritLayer(
+                            density: Int(400 * AppSettings.shared.bitCardFrameGritLevel),
+                            opacity: 0.88,
+                            seed: 2222,
+                            particleColor: Color(hex: AppSettings.shared.bitCardFrameGritLayer3ColorHex) ?? Color(red: 0.8, green: 0.4, blue: 0.0)
+                        )
+                    }
+                } else if frameColorEnum.hasTexture, let theme = frameColorEnum.textureTheme {
                     // Render textured frame background
                     if theme == .chalkboard {
                         Color("TFCard")
                         
-                        if AppSettings.shared.bitCardGritLevel > 0 {
+                        if AppSettings.shared.bitCardFrameGritLevel > 0 {
                             StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(300),
+                                density: Int(300 * AppSettings.shared.bitCardFrameGritLevel),
                                 opacity: 0.55,
                                 seed: 9999,
                                 particleColor: Color("TFYellow")
                             )
                             
                             StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(300),
+                                density: Int(300 * AppSettings.shared.bitCardFrameGritLevel),
                                 opacity: 0.35,
                                 seed: 1111
                             )
@@ -887,23 +1015,23 @@ private struct BitShareCard: View {
                     } else if theme == .yellowGrit {
                         Color("TFYellow")
                         
-                        if AppSettings.shared.bitCardGritLevel > 0 {
+                        if AppSettings.shared.bitCardFrameGritLevel > 0 {
                             StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(800),
+                                density: Int(800 * AppSettings.shared.bitCardFrameGritLevel),
                                 opacity: 0.85,
-                                seed: 2222,
+                                seed: 2223,
                                 particleColor: .brown
                             )
                             
                             StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(100),
+                                density: Int(100 * AppSettings.shared.bitCardFrameGritLevel),
                                 opacity: 0.88,
                                 seed: 3333,
                                 particleColor: .black
                             )
                             
                             StaticGritLayer(
-                                density: AppSettings.shared.adjustedBitCardGritDensity(400),
+                                density: Int(400 * AppSettings.shared.bitCardFrameGritLevel),
                                 opacity: 0.88,
                                 seed: 4444,
                                 particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)

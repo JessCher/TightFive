@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftUI
 import SwiftData
 import UIKit
 
@@ -77,8 +78,16 @@ struct StageModeViewCueCard: View {
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
-        .onAppear { startSessionIfNeeded() }
-        .onDisappear { engine.stop() }
+        .onAppear { 
+            // Keep screen awake during Stage Mode
+            UIApplication.shared.isIdleTimerDisabled = true
+            startSessionIfNeeded() 
+        }
+        .onDisappear { 
+            // Re-enable screen dimming when exiting Stage Mode
+            UIApplication.shared.isIdleTimerDisabled = false
+            engine.stop() 
+        }
         .gesture(
             DragGesture()
                 .onChanged { gesture in

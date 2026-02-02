@@ -79,6 +79,7 @@ class AppSettings {
     }
     
     /// Grit level for shareable bit cards (0.0 = no grit, 1.0 = maximum grit)
+    /// DEPRECATED: Use individual grit levels instead
     var bitCardGritLevel: Double {
         get {
             let value = UserDefaults.standard.double(forKey: "bitCardGritLevel")
@@ -88,6 +89,227 @@ class AppSettings {
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardGritLevel")
             UserDefaults.standard.set(true, forKey: "bitCardGritLevelHasBeenSet")
+        }
+    }
+    
+    // MARK: - Individual Grit Levels for Each Section
+    
+    /// Grit level for bit window (text area) - Layer 1
+    var bitCardWindowGritLayer1: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "bitCardWindowGritLayer1")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardWindowGritLayer1HasBeenSet") ? 1.0 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer1")
+            UserDefaults.standard.set(true, forKey: "bitCardWindowGritLayer1HasBeenSet")
+        }
+    }
+    
+    /// Grit level for bit window (text area) - Layer 2
+    var bitCardWindowGritLayer2: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "bitCardWindowGritLayer2")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardWindowGritLayer2HasBeenSet") ? 1.0 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer2")
+            UserDefaults.standard.set(true, forKey: "bitCardWindowGritLayer2HasBeenSet")
+        }
+    }
+    
+    /// Grit level for bit window (text area) - Layer 3
+    var bitCardWindowGritLayer3: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "bitCardWindowGritLayer3")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardWindowGritLayer3HasBeenSet") ? 1.0 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer3")
+            UserDefaults.standard.set(true, forKey: "bitCardWindowGritLayer3HasBeenSet")
+        }
+    }
+    
+    /// Grit level for frame - Layer 1
+    var bitCardFrameGritLayer1Density: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "bitCardFrameGritLayer1Density")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardFrameGritLayer1DensityHasBeenSet") ? 1.0 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer1Density")
+            UserDefaults.standard.set(true, forKey: "bitCardFrameGritLayer1DensityHasBeenSet")
+        }
+    }
+    
+    /// Grit level for frame - Layer 2
+    var bitCardFrameGritLayer2Density: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "bitCardFrameGritLayer2Density")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardFrameGritLayer2DensityHasBeenSet") ? 1.0 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer2Density")
+            UserDefaults.standard.set(true, forKey: "bitCardFrameGritLayer2DensityHasBeenSet")
+        }
+    }
+    
+    /// Grit level for frame - Layer 3
+    var bitCardFrameGritLayer3Density: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "bitCardFrameGritLayer3Density")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardFrameGritLayer3DensityHasBeenSet") ? 1.0 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer3Density")
+            UserDefaults.standard.set(true, forKey: "bitCardFrameGritLayer3DensityHasBeenSet")
+        }
+    }
+    
+    /// Grit level for bottom bar - Layer 1
+    var bitCardBottomBarGritLayer1Density: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "bitCardBottomBarGritLayer1Density")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardBottomBarGritLayer1DensityHasBeenSet") ? 1.0 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer1Density")
+            UserDefaults.standard.set(true, forKey: "bitCardBottomBarGritLayer1DensityHasBeenSet")
+        }
+    }
+    
+    /// Grit level for bottom bar - Layer 2
+    var bitCardBottomBarGritLayer2Density: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "bitCardBottomBarGritLayer2Density")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardBottomBarGritLayer2DensityHasBeenSet") ? 1.0 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer2Density")
+            UserDefaults.standard.set(true, forKey: "bitCardBottomBarGritLayer2DensityHasBeenSet")
+        }
+    }
+    
+    /// Grit level for bottom bar - Layer 3
+    var bitCardBottomBarGritLayer3Density: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "bitCardBottomBarGritLayer3Density")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardBottomBarGritLayer3DensityHasBeenSet") ? 1.0 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer3Density")
+            UserDefaults.standard.set(true, forKey: "bitCardBottomBarGritLayer3DensityHasBeenSet")
+        }
+    }
+    
+    // MARK: - Bit Card Custom Grit Colors
+    
+    /// Enable custom grit for frame when using custom color
+    var bitCardFrameGritEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: "bitCardFrameGritEnabled") }
+        set { UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritEnabled") }
+    }
+    
+    var bitCardFrameGritLayer1ColorHex: String {
+        get { UserDefaults.standard.string(forKey: "bitCardFrameGritLayer1ColorHex") ?? "#8B4513" }
+        set { UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer1ColorHex") }
+    }
+    
+    var bitCardFrameGritLayer2ColorHex: String {
+        get { UserDefaults.standard.string(forKey: "bitCardFrameGritLayer2ColorHex") ?? "#000000" }
+        set { UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer2ColorHex") }
+    }
+    
+    var bitCardFrameGritLayer3ColorHex: String {
+        get { UserDefaults.standard.string(forKey: "bitCardFrameGritLayer3ColorHex") ?? "#CC6600" }
+        set { UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer3ColorHex") }
+    }
+    
+    /// Enable custom grit for bottom bar when using custom color
+    var bitCardBottomBarGritEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: "bitCardBottomBarGritEnabled") }
+        set { UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritEnabled") }
+    }
+    
+    var bitCardBottomBarGritLayer1ColorHex: String {
+        get { UserDefaults.standard.string(forKey: "bitCardBottomBarGritLayer1ColorHex") ?? "#8B4513" }
+        set { UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer1ColorHex") }
+    }
+    
+    var bitCardBottomBarGritLayer2ColorHex: String {
+        get { UserDefaults.standard.string(forKey: "bitCardBottomBarGritLayer2ColorHex") ?? "#000000" }
+        set { UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer2ColorHex") }
+    }
+    
+    var bitCardBottomBarGritLayer3ColorHex: String {
+        get { UserDefaults.standard.string(forKey: "bitCardBottomBarGritLayer3ColorHex") ?? "#CC6600" }
+        set { UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer3ColorHex") }
+    }
+    
+    // MARK: - Bit Card Window (Text Area) Custom Settings
+    
+    /// Custom hex color for window (when using custom color)
+    var customWindowColorHex: String {
+        get { UserDefaults.standard.string(forKey: "customWindowColorHex") ?? "#3A3A3A" }
+        set { UserDefaults.standard.set(newValue, forKey: "customWindowColorHex") }
+    }
+    
+    /// Enable custom grit for window when using custom color
+    var bitCardWindowGritEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: "bitCardWindowGritEnabled") }
+        set { UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritEnabled") }
+    }
+    
+    var bitCardWindowGritLayer1ColorHex: String {
+        get { UserDefaults.standard.string(forKey: "bitCardWindowGritLayer1ColorHex") ?? "#8B4513" }
+        set { UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer1ColorHex") }
+    }
+    
+    var bitCardWindowGritLayer2ColorHex: String {
+        get { UserDefaults.standard.string(forKey: "bitCardWindowGritLayer2ColorHex") ?? "#000000" }
+        set { UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer2ColorHex") }
+    }
+    
+    var bitCardWindowGritLayer3ColorHex: String {
+        get { UserDefaults.standard.string(forKey: "bitCardWindowGritLayer3ColorHex") ?? "#CC6600" }
+        set { UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer3ColorHex") }
+    }
+    
+    // MARK: - Individual Grit Level Sliders for Each Section
+    
+    /// Frame grit level (0.0 = no grit, 1.0 = maximum grit)
+    var bitCardFrameGritLevel: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "bitCardFrameGritLevel")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardFrameGritLevelHasBeenSet") ? 1.0 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLevel")
+            UserDefaults.standard.set(true, forKey: "bitCardFrameGritLevelHasBeenSet")
+        }
+    }
+    
+    /// Bottom bar grit level (0.0 = no grit, 1.0 = maximum grit)
+    var bitCardBottomBarGritLevel: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "bitCardBottomBarGritLevel")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardBottomBarGritLevelHasBeenSet") ? 1.0 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLevel")
+            UserDefaults.standard.set(true, forKey: "bitCardBottomBarGritLevelHasBeenSet")
+        }
+    }
+    
+    /// Window grit level (0.0 = no grit, 1.0 = maximum grit)
+    var bitCardWindowGritLevel: Double {
+        get {
+            let value = UserDefaults.standard.double(forKey: "bitCardWindowGritLevel")
+            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardWindowGritLevelHasBeenSet") ? 1.0 : value
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLevel")
+            UserDefaults.standard.set(true, forKey: "bitCardWindowGritLevelHasBeenSet")
         }
     }
     
@@ -419,8 +641,10 @@ class AppSettings {
     var hasAnyTexturedTheme: Bool {
         return bitCardFrameColor.hasTexture || 
                bitCardBottomBarColor.hasTexture || 
-               bitWindowTheme == .chalkboard || 
-               bitWindowTheme == .yellowGrit
+               bitWindowTheme.hasTexture ||
+               (bitCardFrameColor == .custom && bitCardFrameGritEnabled) ||
+               (bitCardBottomBarColor == .custom && bitCardBottomBarGritEnabled) ||
+               (bitWindowTheme == .custom && bitCardWindowGritEnabled)
     }
     
     /// Calculates the adjusted grit density for shareable bit cards
@@ -512,8 +736,9 @@ enum BitCardFrameColor: String, CaseIterable, Identifiable {
 }
 /// Available themes for the bit window (text area) on shareable cards
 enum BitWindowTheme: String, CaseIterable, Identifiable {
-    case chalkboard = "Dark Grit"
-    case yellowGrit = "Yellow Grit"
+    case chalkboard = "chalkboard"
+    case yellowGrit = "yellowGrit"
+    case custom = "custom"
     
     var id: String { rawValue }
     
@@ -521,6 +746,7 @@ enum BitWindowTheme: String, CaseIterable, Identifiable {
         switch self {
         case .chalkboard: return "Dark Grit"
         case .yellowGrit: return "Yellow Grit"
+        case .custom: return "Custom Color"
         }
     }
     
@@ -528,6 +754,27 @@ enum BitWindowTheme: String, CaseIterable, Identifiable {
         switch self {
         case .chalkboard: return "Dark with subtle texture"
         case .yellowGrit: return "Warm yellow with grit"
+        case .custom: return "Choose your own color"
+        }
+    }
+    
+    func color(customHex: String? = nil) -> Color {
+        switch self {
+        case .chalkboard: return Color("TFCard")
+        case .yellowGrit: return Color("TFYellow")
+        case .custom:
+            if let hex = customHex {
+                return Color(hex: hex) ?? Color("TFCard")
+            }
+            return Color("TFCard")
+        }
+    }
+    
+    /// Returns true if this theme should render with textured layers
+    var hasTexture: Bool {
+        switch self {
+        case .chalkboard, .yellowGrit: return true
+        case .custom: return false
         }
     }
 }

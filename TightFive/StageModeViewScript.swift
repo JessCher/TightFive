@@ -52,8 +52,14 @@ struct StageModeViewScript: View {
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
-        .onAppear { startSessionIfNeeded() }
+        .onAppear { 
+            // Keep screen awake during Stage Mode
+            UIApplication.shared.isIdleTimerDisabled = true
+            startSessionIfNeeded() 
+        }
         .onDisappear { 
+            // Re-enable screen dimming when exiting Stage Mode
+            UIApplication.shared.isIdleTimerDisabled = false
             stopTimer()
             engine.stop() 
         }

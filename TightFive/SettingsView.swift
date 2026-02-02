@@ -979,12 +979,36 @@ struct ShareableBitCardSettingsView: View {
     @State private var selectedFrameColor: BitCardFrameColor = AppSettings.shared.bitCardFrameColor
     @State private var selectedBottomBarColor: BitCardFrameColor = AppSettings.shared.bitCardBottomBarColor
     @State private var selectedWindowTheme: BitWindowTheme = AppSettings.shared.bitWindowTheme
-    @State private var bitCardGritLevel: Double = AppSettings.shared.bitCardGritLevel
 
     @State private var showFrameColorPicker = false
     @State private var showBottomBarColorPicker = false
+    @State private var showWindowColorPicker = false
     @State private var customFrameColor: Color = Color(hex: AppSettings.shared.customFrameColorHex) ?? Color("TFCard")
     @State private var customBottomBarColor: Color = Color(hex: AppSettings.shared.customBottomBarColorHex) ?? Color("TFCard")
+    @State private var customWindowColor: Color = Color(hex: AppSettings.shared.customWindowColorHex) ?? Color("TFCard")
+    
+    // Individual grit levels for each section
+    @State private var frameGritLevel: Double = AppSettings.shared.bitCardFrameGritLevel
+    @State private var bottomBarGritLevel: Double = AppSettings.shared.bitCardBottomBarGritLevel
+    @State private var windowGritLevel: Double = AppSettings.shared.bitCardWindowGritLevel
+    
+    // Frame custom grit
+    @State private var frameGritEnabled: Bool = AppSettings.shared.bitCardFrameGritEnabled
+    @State private var frameGritLayer1Color: Color = Color(hex: AppSettings.shared.bitCardFrameGritLayer1ColorHex) ?? .brown
+    @State private var frameGritLayer2Color: Color = Color(hex: AppSettings.shared.bitCardFrameGritLayer2ColorHex) ?? .black
+    @State private var frameGritLayer3Color: Color = Color(hex: AppSettings.shared.bitCardFrameGritLayer3ColorHex) ?? Color(red: 0.8, green: 0.4, blue: 0.0)
+    
+    // Bottom bar custom grit
+    @State private var bottomBarGritEnabled: Bool = AppSettings.shared.bitCardBottomBarGritEnabled
+    @State private var bottomBarGritLayer1Color: Color = Color(hex: AppSettings.shared.bitCardBottomBarGritLayer1ColorHex) ?? .brown
+    @State private var bottomBarGritLayer2Color: Color = Color(hex: AppSettings.shared.bitCardBottomBarGritLayer2ColorHex) ?? .black
+    @State private var bottomBarGritLayer3Color: Color = Color(hex: AppSettings.shared.bitCardBottomBarGritLayer3ColorHex) ?? Color(red: 0.8, green: 0.4, blue: 0.0)
+    
+    // Window custom grit
+    @State private var windowGritEnabled: Bool = AppSettings.shared.bitCardWindowGritEnabled
+    @State private var windowGritLayer1Color: Color = Color(hex: AppSettings.shared.bitCardWindowGritLayer1ColorHex) ?? .brown
+    @State private var windowGritLayer2Color: Color = Color(hex: AppSettings.shared.bitCardWindowGritLayer2ColorHex) ?? .black
+    @State private var windowGritLayer3Color: Color = Color(hex: AppSettings.shared.bitCardWindowGritLayer3ColorHex) ?? Color(red: 0.8, green: 0.4, blue: 0.0)
 
     var body: some View {
         Form {
@@ -1092,34 +1116,229 @@ struct ShareableBitCardSettingsView: View {
                 .pickerStyle(.navigationLink)
                 .onChange(of: selectedWindowTheme) { _, newValue in
                     AppSettings.shared.bitWindowTheme = newValue
+                    if newValue == .custom {
+                        showWindowColorPicker = true
+                    }
                 }
-
-                // Grit level slider for shareable bit cards (only if using textured theme)
-                if AppSettings.shared.hasAnyTexturedTheme {
-                    VStack(alignment: .leading, spacing: 8) {
+                
+                // Show custom color picker button if custom is selected
+                if selectedWindowTheme == .custom {
+                    Button {
+                        showWindowColorPicker = true
+                    } label: {
                         HStack {
-                            Text("Grit Level")
-                                .appFont(.body)
+                            Text("Choose Custom Color")
+                                .foregroundStyle(.white)
                             Spacer()
-                            Text(bitCardGritLevel == 0 ? "None" : bitCardGritLevel == 1.0 ? "Max" : "\(Int(bitCardGritLevel * 100))%")
-                                .font(.body.monospacedDigit())
-                                .foregroundStyle(.secondary)
+                            Circle()
+                                .fill(customWindowColor)
+                                .frame(width: 24, height: 24)
+                                .overlay(
+                                    Circle()
+                                        .strokeBorder(Color.white.opacity(0.3), lineWidth: 1)
+                                )
                         }
-
-                        HStack(spacing: 12) {
-                            Text("0")
-                                .appFont(.caption)
-                                .foregroundStyle(.secondary)
-
-                            Slider(value: $bitCardGritLevel, in: 0...1.0, step: 0.05)
-                                .tint(TFTheme.yellow)
-                                .onChange(of: bitCardGritLevel) { _, newValue in
-                                    AppSettings.shared.bitCardGritLevel = newValue
+                    }
+                    
+                    // Advanced window customization
+                    DisclosureGroup("Advanced Window Customization") {
+                        VStack(spacing: 16) {
+                            // Grit toggle
+                            Toggle("Enable Grit Texture", isOn: $windowGritEnabled)
+                                .onChange(of: windowGritEnabled) { _, newValue in
+                                    AppSettings.shared.bitCardWindowGritEnabled = newValue
                                 }
+                            
+                            if windowGritEnabled {
+                                VStack(spacing: 16) {
+                                    Text("Grit Layer Colors")
+                                        .appFont(.caption, weight: .semibold)
+                                        .foregroundStyle(.white.opacity(0.6))
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    
+                                    // Layer 1
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        ColorPicker("Layer 1 (Primary)", selection: $windowGritLayer1Color, supportsOpacity: false)
+                                            .onChange(of: windowGritLayer1Color) { _, newValue in
+                                                if let hex = newValue.toHex() {
+                                                    AppSettings.shared.bitCardWindowGritLayer1ColorHex = hex
+                                                }
+                                            }
+                                        
+                                        HStack {
+                                            Text("Hex:")
+                                                .appFont(.caption)
+                                                .foregroundStyle(.secondary)
+                                            TextField("", text: Binding(
+                                                get: { AppSettings.shared.bitCardWindowGritLayer1ColorHex },
+                                                set: { newValue in
+                                                    AppSettings.shared.bitCardWindowGritLayer1ColorHex = newValue
+                                                    if let color = Color(hex: newValue) {
+                                                        windowGritLayer1Color = color
+                                                    }
+                                                }
+                                            ))
+                                            .textInputAutocapitalization(.characters)
+                                            .autocorrectionDisabled()
+                                            .font(.system(.caption, design: .monospaced))
+                                            .textFieldStyle(.roundedBorder)
+                                        }
+                                    }
+                                    
+                                    // Layer 2
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        ColorPicker("Layer 2 (Secondary)", selection: $windowGritLayer2Color, supportsOpacity: false)
+                                            .onChange(of: windowGritLayer2Color) { _, newValue in
+                                                if let hex = newValue.toHex() {
+                                                    AppSettings.shared.bitCardWindowGritLayer2ColorHex = hex
+                                                }
+                                            }
+                                        
+                                        HStack {
+                                            Text("Hex:")
+                                                .appFont(.caption)
+                                                .foregroundStyle(.secondary)
+                                            TextField("", text: Binding(
+                                                get: { AppSettings.shared.bitCardWindowGritLayer2ColorHex },
+                                                set: { newValue in
+                                                    AppSettings.shared.bitCardWindowGritLayer2ColorHex = newValue
+                                                    if let color = Color(hex: newValue) {
+                                                        windowGritLayer2Color = color
+                                                    }
+                                                }
+                                            ))
+                                            .textInputAutocapitalization(.characters)
+                                            .autocorrectionDisabled()
+                                            .font(.system(.caption, design: .monospaced))
+                                            .textFieldStyle(.roundedBorder)
+                                        }
+                                    }
+                                    
+                                    // Layer 3
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        ColorPicker("Layer 3 (Accent)", selection: $windowGritLayer3Color, supportsOpacity: false)
+                                            .onChange(of: windowGritLayer3Color) { _, newValue in
+                                                if let hex = newValue.toHex() {
+                                                    AppSettings.shared.bitCardWindowGritLayer3ColorHex = hex
+                                                }
+                                            }
+                                        
+                                        HStack {
+                                            Text("Hex:")
+                                                .appFont(.caption)
+                                                .foregroundStyle(.secondary)
+                                            TextField("", text: Binding(
+                                                get: { AppSettings.shared.bitCardWindowGritLayer3ColorHex },
+                                                set: { newValue in
+                                                    AppSettings.shared.bitCardWindowGritLayer3ColorHex = newValue
+                                                    if let color = Color(hex: newValue) {
+                                                        windowGritLayer3Color = color
+                                                    }
+                                                }
+                                            ))
+                                            .textInputAutocapitalization(.characters)
+                                            .autocorrectionDisabled()
+                                            .font(.system(.caption, design: .monospaced))
+                                            .textFieldStyle(.roundedBorder)
+                                        }
+                                    }
+                                }
+                                .padding(.leading, 8)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
+                
+                // Three separate grit level sliders (only if using textured theme)
+                if AppSettings.shared.hasAnyTexturedTheme {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Grit Levels")
+                            .appFont(.headline)
+                            .foregroundStyle(TFTheme.text)
+                        
+                        // Frame Grit Level
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Frame Grit")
+                                    .appFont(.body)
+                                Spacer()
+                                Text(frameGritLevel == 0 ? "None" : frameGritLevel == 1.0 ? "Max" : "\(Int(frameGritLevel * 100))%")
+                                    .font(.body.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
 
-                            Text("Max")
-                                .appFont(.caption)
-                                .foregroundStyle(.secondary)
+                            HStack(spacing: 12) {
+                                Text("0")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                Slider(value: $frameGritLevel, in: 0...1.0, step: 0.05)
+                                    .tint(TFTheme.yellow)
+                                    .onChange(of: frameGritLevel) { _, newValue in
+                                        AppSettings.shared.bitCardFrameGritLevel = newValue
+                                    }
+
+                                Text("Max")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        // Bottom Bar Grit Level
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Bottom Bar Grit")
+                                    .appFont(.body)
+                                Spacer()
+                                Text(bottomBarGritLevel == 0 ? "None" : bottomBarGritLevel == 1.0 ? "Max" : "\(Int(bottomBarGritLevel * 100))%")
+                                    .font(.body.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            HStack(spacing: 12) {
+                                Text("0")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                Slider(value: $bottomBarGritLevel, in: 0...1.0, step: 0.05)
+                                    .tint(TFTheme.yellow)
+                                    .onChange(of: bottomBarGritLevel) { _, newValue in
+                                        AppSettings.shared.bitCardBottomBarGritLevel = newValue
+                                    }
+
+                                Text("Max")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        
+                        // Window Grit Level
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Window Grit")
+                                    .appFont(.body)
+                                Spacer()
+                                Text(windowGritLevel == 0 ? "None" : windowGritLevel == 1.0 ? "Max" : "\(Int(windowGritLevel * 100))%")
+                                    .font(.body.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            HStack(spacing: 12) {
+                                Text("0")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                Slider(value: $windowGritLevel, in: 0...1.0, step: 0.05)
+                                    .tint(TFTheme.yellow)
+                                    .onChange(of: windowGritLevel) { _, newValue in
+                                        AppSettings.shared.bitCardWindowGritLevel = newValue
+                                    }
+
+                                Text("Max")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                     .padding(.vertical, 4)
@@ -1146,7 +1365,24 @@ struct ShareableBitCardSettingsView: View {
                         frameColor: selectedFrameColor,
                         bottomBarColor: selectedBottomBarColor,
                         windowTheme: selectedWindowTheme,
-                        gritLevel: bitCardGritLevel
+                        frameGritLevel: frameGritLevel,
+                        bottomBarGritLevel: bottomBarGritLevel,
+                        windowGritLevel: windowGritLevel,
+                        customFrameColor: customFrameColor,
+                        frameGritEnabled: frameGritEnabled,
+                        frameGritLayer1Color: frameGritLayer1Color,
+                        frameGritLayer2Color: frameGritLayer2Color,
+                        frameGritLayer3Color: frameGritLayer3Color,
+                        customBottomBarColor: customBottomBarColor,
+                        bottomBarGritEnabled: bottomBarGritEnabled,
+                        bottomBarGritLayer1Color: bottomBarGritLayer1Color,
+                        bottomBarGritLayer2Color: bottomBarGritLayer2Color,
+                        bottomBarGritLayer3Color: bottomBarGritLayer3Color,
+                        customWindowColor: customWindowColor,
+                        windowGritEnabled: windowGritEnabled,
+                        windowGritLayer1Color: windowGritLayer1Color,
+                        windowGritLayer2Color: windowGritLayer2Color,
+                        windowGritLayer3Color: windowGritLayer3Color
                     )
                 }
             } header: {
@@ -1184,6 +1420,17 @@ struct ShareableBitCardSettingsView: View {
                 }
             )
         }
+        .sheet(isPresented: $showWindowColorPicker) {
+            ColorPickerSheet(
+                title: "Window Color",
+                selectedColor: $customWindowColor,
+                onSave: {
+                    if let hex = customWindowColor.toHex() {
+                        AppSettings.shared.customWindowColorHex = hex
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -1193,20 +1440,44 @@ private struct BitCardPreview: View {
     let frameColor: BitCardFrameColor
     let bottomBarColor: BitCardFrameColor
     let windowTheme: BitWindowTheme
-    let gritLevel: Double
+    let frameGritLevel: Double
+    let bottomBarGritLevel: Double
+    let windowGritLevel: Double
+    let customFrameColor: Color
+    let frameGritEnabled: Bool
+    let frameGritLayer1Color: Color
+    let frameGritLayer2Color: Color
+    let frameGritLayer3Color: Color
+    let customBottomBarColor: Color
+    let bottomBarGritEnabled: Bool
+    let bottomBarGritLayer1Color: Color
+    let bottomBarGritLayer2Color: Color
+    let bottomBarGritLayer3Color: Color
+    let customWindowColor: Color
+    let windowGritEnabled: Bool
+    let windowGritLayer1Color: Color
+    let windowGritLayer2Color: Color
+    let windowGritLayer3Color: Color
 
     private var resolvedFrameColor: Color {
         if frameColor == .custom {
-            return Color(hex: AppSettings.shared.customFrameColorHex) ?? Color("TFCard")
+            return customFrameColor
         }
         return frameColor.color(customHex: nil)
     }
 
     private var resolvedBottomBarColor: Color {
         if bottomBarColor == .custom {
-            return Color(hex: AppSettings.shared.customBottomBarColorHex) ?? Color("TFCard")
+            return customBottomBarColor
         }
         return bottomBarColor.color(customHex: nil)
+    }
+    
+    private var resolvedWindowColor: Color {
+        if windowTheme == .custom {
+            return customWindowColor
+        }
+        return windowTheme == .chalkboard ? Color("TFCard") : Color("TFYellow")
     }
 
     var body: some View {
@@ -1215,7 +1486,7 @@ private struct BitCardPreview: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("This is what your shareable bit card will look like with the selected colors.")
                     .font(.system(size: 14))
-                    .foregroundStyle(windowTheme == .chalkboard ? .white.opacity(0.9) : .black.opacity(0.85))
+                    .foregroundStyle(windowTheme == .chalkboard ? .white.opacity(0.9) : windowTheme == .yellowGrit ? .black.opacity(0.85) : (windowTheme == .custom ? getTextColorForBackground(customWindowColor) : .white.opacity(0.9)))
                     .lineSpacing(3)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1226,44 +1497,70 @@ private struct BitCardPreview: View {
                         // Original chalkboard theme
                         Color("TFCard")
 
-                        if gritLevel > 0 {
+                        if windowGritLevel > 0 {
                             StaticGritLayer(
-                                density: Int(300 * gritLevel),
+                                density: Int(300 * windowGritLevel),
                                 opacity: 0.55,
                                 seed: 1234,
                                 particleColor: Color("TFYellow")
                             )
 
                             StaticGritLayer(
-                                density: Int(300 * gritLevel),
+                                density: Int(300 * windowGritLevel),
                                 opacity: 0.35,
                                 seed: 5678
                             )
                         }
-                    } else {
+                    } else if windowTheme == .yellowGrit {
                         // Yellow grit theme
                         Color("TFYellow")
 
-                        if gritLevel > 0 {
+                        if windowGritLevel > 0 {
                             StaticGritLayer(
-                                density: Int(800 * gritLevel),
+                                density: Int(800 * windowGritLevel),
                                 opacity: 0.85,
                                 seed: 7777,
                                 particleColor: .brown
                             )
 
                             StaticGritLayer(
-                                density: Int(100 * gritLevel),
+                                density: Int(100 * windowGritLevel),
                                 opacity: 0.88,
                                 seed: 8888,
                                 particleColor: .black
                             )
 
                             StaticGritLayer(
-                                density: Int(400 * gritLevel),
+                                density: Int(400 * windowGritLevel),
                                 opacity: 0.88,
-                                seed: 8888,
+                                seed: 8889,
                                 particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
+                            )
+                        }
+                    } else if windowTheme == .custom {
+                        // Custom theme
+                        customWindowColor
+                        
+                        if windowGritEnabled && windowGritLevel > 0 {
+                            StaticGritLayer(
+                                density: Int(800 * windowGritLevel),
+                                opacity: 0.85,
+                                seed: 7780,
+                                particleColor: windowGritLayer1Color
+                            )
+
+                            StaticGritLayer(
+                                density: Int(100 * windowGritLevel),
+                                opacity: 0.88,
+                                seed: 7781,
+                                particleColor: windowGritLayer2Color
+                            )
+
+                            StaticGritLayer(
+                                density: Int(400 * windowGritLevel),
+                                opacity: 0.88,
+                                seed: 7782,
+                                particleColor: windowGritLayer3Color
                             )
                         }
                     }
@@ -1312,11 +1609,11 @@ private struct BitCardPreview: View {
                 Spacer()
                 Image(systemName: "5.square.fill")
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(bottomBarColor.hasTexture && bottomBarColor == .yellowGrit ? .black.opacity(0.85) : TFTheme.yellow)
+                    .foregroundStyle(getBottomBarTextColor())
 
                 Text("written in TightFive")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(bottomBarColor.hasTexture && bottomBarColor == .yellowGrit ? .black.opacity(0.85) : .white)
+                    .foregroundStyle(getBottomBarTextColor())
                     .kerning(0.5)
                 Spacer()
             }
@@ -1329,16 +1626,16 @@ private struct BitCardPreview: View {
                         if theme == .chalkboard {
                             Color("TFCard")
 
-                            if gritLevel > 0 {
+                            if bottomBarGritLevel > 0 {
                                 StaticGritLayer(
-                                    density: Int(300 * gritLevel),
+                                    density: Int(300 * bottomBarGritLevel),
                                     opacity: 0.55,
                                     seed: 1234,
                                     particleColor: Color("TFYellow")
                                 )
 
                                 StaticGritLayer(
-                                    density: Int(300 * gritLevel),
+                                    density: Int(300 * bottomBarGritLevel),
                                     opacity: 0.35,
                                     seed: 5678
                                 )
@@ -1346,28 +1643,53 @@ private struct BitCardPreview: View {
                         } else {
                             Color("TFYellow")
 
-                            if gritLevel > 0 {
+                            if bottomBarGritLevel > 0 {
                                 StaticGritLayer(
-                                    density: Int(800 * gritLevel),
+                                    density: Int(800 * bottomBarGritLevel),
                                     opacity: 0.85,
                                     seed: 7777,
                                     particleColor: .brown
                                 )
 
                                 StaticGritLayer(
-                                    density: Int(100 * gritLevel),
+                                    density: Int(100 * bottomBarGritLevel),
                                     opacity: 0.88,
                                     seed: 8888,
                                     particleColor: .black
                                 )
 
                                 StaticGritLayer(
-                                    density: Int(400 * gritLevel),
+                                    density: Int(400 * bottomBarGritLevel),
                                     opacity: 0.88,
-                                    seed: 8888,
+                                    seed: 8890,
                                     particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
                                 )
                             }
+                        }
+                    } else if bottomBarColor == .custom {
+                        customBottomBarColor
+                        
+                        if bottomBarGritEnabled && bottomBarGritLevel > 0 {
+                            StaticGritLayer(
+                                density: Int(800 * bottomBarGritLevel),
+                                opacity: 0.85,
+                                seed: 7790,
+                                particleColor: bottomBarGritLayer1Color
+                            )
+
+                            StaticGritLayer(
+                                density: Int(100 * bottomBarGritLevel),
+                                opacity: 0.88,
+                                seed: 7791,
+                                particleColor: bottomBarGritLayer2Color
+                            )
+
+                            StaticGritLayer(
+                                density: Int(400 * bottomBarGritLevel),
+                                opacity: 0.88,
+                                seed: 7792,
+                                particleColor: bottomBarGritLayer3Color
+                            )
                         }
                     }
 
@@ -1378,7 +1700,7 @@ private struct BitCardPreview: View {
                         topTrailingRadius: 0,
                         style: .continuous
                     )
-                    .fill(bottomBarColor.hasTexture ? .clear : resolvedBottomBarColor)
+                    .fill(bottomBarColor.hasTexture || bottomBarColor == .custom ? .clear : resolvedBottomBarColor)
                 }
                 .clipShape(
                     UnevenRoundedRectangle(
@@ -1399,16 +1721,16 @@ private struct BitCardPreview: View {
                     if theme == .chalkboard {
                         Color("TFCard")
 
-                        if gritLevel > 0 {
+                        if frameGritLevel > 0 {
                             StaticGritLayer(
-                                density: Int(300 * gritLevel),
+                                density: Int(300 * frameGritLevel),
                                 opacity: 0.55,
                                 seed: 9999,
                                 particleColor: Color("TFYellow")
                             )
 
                             StaticGritLayer(
-                                density: Int(300 * gritLevel),
+                                density: Int(300 * frameGritLevel),
                                 opacity: 0.35,
                                 seed: 1111
                             )
@@ -1416,28 +1738,53 @@ private struct BitCardPreview: View {
                     } else if theme == .yellowGrit {
                         Color("TFYellow")
 
-                        if gritLevel > 0 {
+                        if frameGritLevel > 0 {
                             StaticGritLayer(
-                                density: Int(800 * gritLevel),
+                                density: Int(800 * frameGritLevel),
                                 opacity: 0.85,
                                 seed: 2222,
                                 particleColor: .brown
                             )
 
                             StaticGritLayer(
-                                density: Int(100 * gritLevel),
+                                density: Int(100 * frameGritLevel),
                                 opacity: 0.88,
                                 seed: 3333,
                                 particleColor: .black
                             )
 
                             StaticGritLayer(
-                                density: Int(400 * gritLevel),
+                                density: Int(400 * frameGritLevel),
                                 opacity: 0.88,
                                 seed: 4444,
                                 particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
                             )
                         }
+                    }
+                } else if frameColor == .custom {
+                    customFrameColor
+                    
+                    if frameGritEnabled && frameGritLevel > 0 {
+                        StaticGritLayer(
+                            density: Int(800 * frameGritLevel),
+                            opacity: 0.85,
+                            seed: 9990,
+                            particleColor: frameGritLayer1Color
+                        )
+
+                        StaticGritLayer(
+                            density: Int(100 * frameGritLevel),
+                            opacity: 0.88,
+                            seed: 9991,
+                            particleColor: frameGritLayer2Color
+                        )
+
+                        StaticGritLayer(
+                            density: Int(400 * frameGritLevel),
+                            opacity: 0.88,
+                            seed: 9992,
+                            particleColor: frameGritLayer3Color
+                        )
                     }
                 } else {
                     // Solid color frame
@@ -1447,6 +1794,26 @@ private struct BitCardPreview: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+    
+    private func getTextColorForBackground(_ color: Color) -> Color {
+        if let components = UIColor(color).cgColor.components, components.count >= 3 {
+            let r = components[0]
+            let g = components[1]
+            let b = components[2]
+            let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+            return luminance > 0.5 ? .black.opacity(0.85) : .white.opacity(0.9)
+        }
+        return .white.opacity(0.9)
+    }
+    
+    private func getBottomBarTextColor() -> Color {
+        if bottomBarColor.hasTexture && bottomBarColor == .yellowGrit {
+            return .black.opacity(0.85)
+        } else if bottomBarColor == .custom {
+            return getTextColorForBackground(customBottomBarColor)
+        }
+        return .white
     }
 }
 

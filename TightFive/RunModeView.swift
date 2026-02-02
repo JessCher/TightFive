@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 /// Run Through Mode - A focused practice view for running through the performance script.
 ///
@@ -74,6 +75,9 @@ struct RunModeView: View {
         .statusBarHidden(true)
         .navigationBarHidden(true)
         .onAppear {
+            // Keep screen awake during Run Mode
+            UIApplication.shared.isIdleTimerDisabled = true
+            
             // Initialize from settings on appear - these are the defaults
             teleprompterFontSize = CGFloat(settings.defaultFontSize)
             teleprompterSpeed = CGFloat(settings.defaultSpeed)
@@ -90,6 +94,9 @@ struct RunModeView: View {
             }
         }
         .onDisappear { 
+            // Re-enable screen dimming when exiting Run Mode
+            UIApplication.shared.isIdleTimerDisabled = false
+            
             stopTimer()
             // Don't save session adjustments - let settings page control defaults
         }
