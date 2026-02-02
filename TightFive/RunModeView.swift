@@ -18,10 +18,11 @@ struct RunModeView: View {
     @State private var isTimerRunning = false
     @State private var timer: Timer?
 
-    // Teleprompter
+    // Reading modes
     enum ReadingMode: String, CaseIterable, Identifiable {
         case script = "Script"
         case teleprompter = "Teleprompter"
+        case rehearsal = "Rehearsal"
         var id: String { rawValue }
     }
 
@@ -63,6 +64,8 @@ struct RunModeView: View {
                             scriptContent
                         case .teleprompter:
                             teleprompterContent(contextWindowHeight: teleprompterWindowHeight)
+                        case .rehearsal:
+                            StageRehearsalView(setlist: setlist)
                         }
                     }
                 }
@@ -449,7 +452,7 @@ struct RunModeView: View {
         }
         .presentationDetents([.medium, .large])
     }
-
+    
     // MARK: - Empty State
 
     private var emptyState: some View {

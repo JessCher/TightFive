@@ -45,11 +45,13 @@ class CueCardSettingsStore {
     // MARK: - Recognition Settings
     
     /// Sensitivity for exit phrase detection (0.0 - 1.0)
+    /// Lower = more lenient (easier to trigger), Higher = stricter (harder to trigger)
     var exitPhraseSensitivity: Double = 0.6 {
         didSet { UserDefaults.standard.set(exitPhraseSensitivity, forKey: "cueCard_exitSensitivity") }
     }
     
     /// Sensitivity for anchor phrase detection (0.0 - 1.0)
+    /// Lower = more lenient (easier to confirm), Higher = stricter (harder to confirm)
     var anchorPhraseSensitivity: Double = 0.5 {
         didSet { UserDefaults.standard.set(anchorPhraseSensitivity, forKey: "cueCard_anchorSensitivity") }
     }

@@ -111,22 +111,24 @@ extension CueCard {
 
 extension CueCard {
     /// Check if transcript matches the exit phrase (triggers next card)
-    func matchesExitPhrase(_ transcript: String, threshold: Double = 0.6) -> (matches: Bool, confidence: Double) {
+    func matchesExitPhrase(_ transcript: String) -> (matches: Bool, confidence: Double) {
         guard !normalizedExit.isEmpty else { return (false, 0.0) }
         
         let transcriptWords = CueCard.normalizeWords(transcript)
         let confidence = fuzzyMatch(transcriptWords: transcriptWords, targetWords: normalizedExit)
         
+        let threshold = CueCardSettingsStore.shared.exitPhraseSensitivity
         return (confidence >= threshold, confidence)
     }
     
     /// Check if transcript matches the anchor phrase (confirms we're in this card)
-    func matchesAnchorPhrase(_ transcript: String, threshold: Double = 0.6) -> (matches: Bool, confidence: Double) {
+    func matchesAnchorPhrase(_ transcript: String) -> (matches: Bool, confidence: Double) {
         guard !normalizedAnchor.isEmpty else { return (false, 0.0) }
         
         let transcriptWords = CueCard.normalizeWords(transcript)
         let confidence = fuzzyMatch(transcriptWords: transcriptWords, targetWords: normalizedAnchor)
         
+        let threshold = CueCardSettingsStore.shared.anchorPhraseSensitivity
         return (confidence >= threshold, confidence)
     }
     
