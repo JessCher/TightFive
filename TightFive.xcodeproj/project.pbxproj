@@ -10,13 +10,6 @@
 		887A94802F2DCA0700EF4A2A /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 887A947F2F2DCA0700EF4A2A /* WidgetKit.framework */; };
 		887A94822F2DCA0700EF4A2A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 887A94812F2DCA0700EF4A2A /* SwiftUI.framework */; };
 		887A948D2F2DCA0900EF4A2A /* QuickBitWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 887A947D2F2DCA0700EF4A2A /* QuickBitWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		88F6B5B02F3079ED0061DC3E /* STAGE_REHEARSAL_IMPLEMENTATION.md in Resources */ = {isa = PBXBuildFile; fileRef = 88F6B5AF2F3079ED0061DC3E /* STAGE_REHEARSAL_IMPLEMENTATION.md */; };
-		88F6B5B22F307A290061DC3E /* STAGE_REHEARSAL_USER_GUIDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 88F6B5B12F307A290061DC3E /* STAGE_REHEARSAL_USER_GUIDE.md */; };
-		88F6B5B42F307A7E0061DC3E /* STAGE_MODE_ARCHITECTURE.md in Resources */ = {isa = PBXBuildFile; fileRef = 88F6B5B32F307A7E0061DC3E /* STAGE_MODE_ARCHITECTURE.md */; };
-		88F6B5B62F307AC10061DC3E /* STAGE_REHEARSAL_SUMMARY.md in Resources */ = {isa = PBXBuildFile; fileRef = 88F6B5B52F307AC10061DC3E /* STAGE_REHEARSAL_SUMMARY.md */; };
-		88F6B5B82F307B120061DC3E /* STAGE_REHEARSAL_DEV_REFERENCE.md in Resources */ = {isa = PBXBuildFile; fileRef = 88F6B5B72F307B120061DC3E /* STAGE_REHEARSAL_DEV_REFERENCE.md */; };
-		88F6B5BA2F307B800061DC3E /* STAGE_REHEARSAL_DIAGRAMS.md in Resources */ = {isa = PBXBuildFile; fileRef = 88F6B5B92F307B800061DC3E /* STAGE_REHEARSAL_DIAGRAMS.md */; };
-		88F6B5D22F3085900061DC3E /* ROLLBACK_TO_ORIGINAL.md in Resources */ = {isa = PBXBuildFile; fileRef = 88F6B5D12F3085900061DC3E /* ROLLBACK_TO_ORIGINAL.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -409,13 +402,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				88F6B5BA2F307B800061DC3E /* STAGE_REHEARSAL_DIAGRAMS.md in Resources */,
-				88F6B5B02F3079ED0061DC3E /* STAGE_REHEARSAL_IMPLEMENTATION.md in Resources */,
-				88F6B5B82F307B120061DC3E /* STAGE_REHEARSAL_DEV_REFERENCE.md in Resources */,
-				88F6B5B62F307AC10061DC3E /* STAGE_REHEARSAL_SUMMARY.md in Resources */,
-				88F6B5B22F307A290061DC3E /* STAGE_REHEARSAL_USER_GUIDE.md in Resources */,
-				88F6B5D22F3085900061DC3E /* ROLLBACK_TO_ORIGINAL.md in Resources */,
-				88F6B5B42F307A7E0061DC3E /* STAGE_MODE_ARCHITECTURE.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -694,6 +680,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Tight Five needs access to the microphone to hear your dictation.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Access to photo library so users can upload profile pictures and save Bit cards to photo roll";
+				INFOPLIST_KEY_NSSiriUsageDescription = "TightFive needs siri to create quick bits and generate bit titles";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Tight Five needs to analyze your speech to transcribe your jokes.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -747,6 +734,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Tight Five needs access to the microphone to hear your dictation.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Access to photo library so users can upload profile pictures and save Bit cards to photo roll";
+				INFOPLIST_KEY_NSSiriUsageDescription = "TightFive needs siri to create quick bits and generate bit titles";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Tight Five needs to analyze your speech to transcribe your jokes.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
