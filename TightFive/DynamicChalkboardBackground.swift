@@ -18,8 +18,8 @@ struct DynamicChalkboardBackground: View {
     private let breatheSpeed = 0.25
     private let breatheAmplitude: CGFloat = 0.06
     
-    // Cap at 20 FPS to reduce overheating (was 30)
-    private let frameRate: TimeInterval = 1.0 / 20.0
+    // Cap at 10 FPS for subtle breathing effect - easy on battery (was 20, originally 30)
+    private let frameRate: TimeInterval = 1.0 / 10.0
 
     var body: some View {
         Group {

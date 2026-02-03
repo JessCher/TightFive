@@ -42,8 +42,8 @@ struct TeleprompterTextView: View {
     @State private var isUserDragging: Bool = false
     @State private var dragStartOffset: CGFloat = 0
 
-    // ~30fps is smooth enough and easy on battery.
-    private let tick = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
+    // ~15fps is smooth enough for scrolling text and much easier on battery (was 30fps).
+    private let tick = Timer.publish(every: 1.0 / 15.0, on: .main, in: .common).autoconnect()
 
     var body: some View {
         GeometryReader { geo in
@@ -98,7 +98,7 @@ struct TeleprompterTextView: View {
                 guard !isUserDragging else { return }   // don’t fight the user
                 guard maxOffset > 0 else { return }
 
-                let delta = max(0, speedPointsPerSecond) * (1.0 / 30.0)
+                let delta = max(0, speedPointsPerSecond) * (1.0 / 15.0)
                 offset = min(offset + delta, maxOffset)
             }
             .onPreferenceChange(HeightPreferenceKey.self) { newHeight in

@@ -65,6 +65,10 @@ final class StageTeleprompterEngine: ObservableObject {
     /// Tap writes audio + appends to recognition request. We may swap the request during watchdog restarts.
     private let requestLock = NSLock()
 
+    /// Throttle audio level updates to reduce UI redraws (update every ~100ms instead of every buffer)
+    private var audioLevelUpdateCounter: Int = 0
+    private let audioLevelUpdateInterval: Int = 20  // Update every 20 buffers (~100ms at 256 samples/48kHz)
+
     init(localeIdentifier: String = "en-US") {
         self.speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: localeIdentifier))
     }
@@ -146,11 +150,6 @@ final class StageTeleprompterEngine: ObservableObject {
             duration: duration
         )
         
-        print("📊 Generated \(insights.count) performance insights")
-        for insight in insights.prefix(3) { // Log top 3
-            print("  \(insight.severity): \(insight.title)")
-        }
-
         return (url, duration, fileSize, insights)
     }
 
@@ -203,7 +202,6 @@ final class StageTeleprompterEngine: ObservableObject {
         // Activate with high priority
         try session.setActive(true, options: .notifyOthersOnDeactivation)
         
-        print("🎤 Audio configured: \(session.sampleRate)Hz, \(session.ioBufferDuration * 1000)ms buffer")
     }
 
     // MARK: - Pipeline
@@ -290,27 +288,22 @@ final class StageTeleprompterEngine: ObservableObject {
             self.requestLock.unlock()
             req?.append(buffer)
 
-            // Meter
-            let level = Self.computeLevel(from: buffer)
-            Task { @MainActor in
-                self.audioLevel = level
+            // Meter (throttled to reduce UI redraws - ~10 updates/sec instead of ~200)
+            self.audioLevelUpdateCounter += 1
+            if self.audioLevelUpdateCounter >= self.audioLevelUpdateInterval {
+                self.audioLevelUpdateCounter = 0
+                let level = Self.computeLevel(from: buffer)
+                Task { @MainActor in
+                    self.audioLevel = level
+                }
             }
-            
+
             // MARK: - AI: Acoustic Analysis (Real-time, battery-optimized)
-            // Only analyze every 4th buffer (reduce CPU load)
-            let shouldAnalyze = Int.random(in: 0..<4) == 0
-            if shouldAnalyze {
+            // Only analyze every 20th buffer (~100ms) to reduce CPU load
+            if self.audioLevelUpdateCounter == 0 {
                 Task { @MainActor in
                     let features = self.acousticAnalyzer.analyze(buffer: buffer)
                     self.onAcousticFeatures?(features)
-                    
-                    // Log interesting features (for debugging/tuning)
-                    if features.isEmphasis {
-                        print("🔊 Emphasis detected at line \(self.currentLineIndex)")
-                    }
-                    if features.isQuestion {
-                        print("❓ Question detected at line \(self.currentLineIndex)")
-                    }
                 }
             }
         }

@@ -64,7 +64,11 @@ final class CueCardEngine: ObservableObject {
     
     private var exitPhraseDetectedAt: Date?
     private let exitPhraseDebounce: TimeInterval = 1.5 // Wait 1.5s before allowing another exit detection
-    
+
+    /// Throttle audio level updates to reduce UI redraws (update every ~100ms instead of every buffer)
+    private var audioLevelUpdateCounter: Int = 0
+    private let audioLevelUpdateInterval: Int = 20  // Update every 20 buffers (~100ms at 256 samples/48kHz)
+
     // MARK: - Analytics
     
     private var analyticsDataPoints: [(timestamp: TimeInterval, confidence: Double, cardIndex: Int)] = []
@@ -301,7 +305,6 @@ final class CueCardEngine: ObservableObject {
         try session.setPreferredSampleRate(48000)
         try session.setActive(true, options: .notifyOthersOnDeactivation)
         
-        print("🎤 Audio configured: \(session.sampleRate)Hz, \(session.ioBufferDuration * 1000)ms buffer")
     }
     
     // MARK: - Pipeline
@@ -375,10 +378,15 @@ final class CueCardEngine: ObservableObject {
             }
             
             self.recognitionRequest?.append(buffer)
-            
-            let level = Self.computeLevel(from: buffer)
-            Task { @MainActor in
-                self.audioLevel = level
+
+            // Meter (throttled to reduce UI redraws - ~10 updates/sec instead of ~200)
+            self.audioLevelUpdateCounter += 1
+            if self.audioLevelUpdateCounter >= self.audioLevelUpdateInterval {
+                self.audioLevelUpdateCounter = 0
+                let level = Self.computeLevel(from: buffer)
+                Task { @MainActor in
+                    self.audioLevel = level
+                }
             }
         }
         
@@ -499,7 +507,6 @@ final class CueCardEngine: ObservableObject {
             }
             
             lastDetectionType = .exit
-            print("✅ Exit phrase detected (raw confidence: \(String(format: "%.2f", exitResult.confidence)), display: \(String(format: "%.2f", exitPhraseConfidence)))")
             advanceToNextCard(automatic: true)
             return
         }
@@ -511,7 +518,6 @@ final class CueCardEngine: ObservableObject {
         
         if anchorResult.matches {
             lastDetectionType = .anchor
-            print("✅ Anchor phrase confirmed (raw confidence: \(String(format: "%.2f", anchorResult.confidence)), display: \(String(format: "%.2f", anchorPhraseConfidence)))")
         }
     }
     

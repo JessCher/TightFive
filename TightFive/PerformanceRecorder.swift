@@ -163,7 +163,8 @@ final class PerformanceRecorder: ObservableObject {
         // Capture a weak reference to avoid capturing `self` strongly in a @Sendable context.
         weak let weakSelf = self
 
-        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+        // Reduced from 0.1s to 0.2s (5 updates/sec instead of 10) for better battery life
+        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { _ in
             // Ensure we hop to the main actor explicitly and avoid capturing `self` in the closure.
             if let strongSelf = weakSelf {
                 Task { @MainActor in
