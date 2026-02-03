@@ -87,7 +87,18 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
         self.parent = parent
         super.init()
     }
-    
+
+    deinit {
+        // Clean up timer to prevent retain cycles and orphaned callbacks
+        commitTimer?.invalidate()
+        commitTimer = nil
+        // Remove notification observers
+        for token in undoObservationTokens {
+            NotificationCenter.default.removeObserver(token)
+        }
+        undoObservationTokens.removeAll()
+    }
+
     func attach(to textView: UITextView, undoManager: UndoManager?) {
         self.textView = textView
         self.externalUndoManager = undoManager

@@ -18,19 +18,20 @@ struct FinishedBitsView: View {
     }
 
     @State private var query: String = ""
+    @State private var debouncedQuery: String = ""
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
     @State private var flippedBitIds: Set<UUID> = []
 
     @State private var filterScope: FilterScope = .all
-    
+
     private enum FilterScope: String, CaseIterable, Identifiable {
         case all = "All"
         case favorites = "Favorites"
         var id: String { rawValue }
     }
 
-    /// Apply search filter to finished bits
+    /// Cached filtered bits - only recomputed when debouncedQuery, filterScope, or finishedBits changes
     private var filtered: [Bit] {
         let base: [Bit]
         switch filterScope {
@@ -39,7 +40,7 @@ struct FinishedBitsView: View {
         case .favorites:
             base = finishedBits.filter { $0.isFavorite }
         }
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let q = debouncedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return base }
         return base.filter { bit in
             bit.text.localizedCaseInsensitiveContains(q)
@@ -170,6 +171,12 @@ struct FinishedBitsView: View {
                 .presentationDetents([.medium, .large])
         }
         .hideKeyboardInteractively()
+        .task(id: query) {
+            // Debounce search query to avoid filtering on every keystroke
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            debouncedQuery = query
+        }
     }
 
     private var emptyState: some View {

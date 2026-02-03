@@ -53,12 +53,14 @@ private struct LooseBitsContent: View {
     }, sort: \Bit.updatedAt, order: .reverse) private var looseBits: [Bit]
 
     @State private var query: String = ""
+    @State private var debouncedQuery: String = ""
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
     @State private var flippedBitIds: Set<UUID> = []
 
+    /// Cached filtered bits - uses debounced query to avoid filtering on every keystroke
     private var filtered: [Bit] {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let q = debouncedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return looseBits }
         return looseBits.filter { bit in
             bit.text.localizedCaseInsensitiveContains(q)
@@ -156,6 +158,12 @@ private struct LooseBitsContent: View {
             QuickBitEditor()
                 .presentationDetents([.medium, .large])
         }
+        .task(id: query) {
+            // Debounce search query to avoid filtering on every keystroke
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            debouncedQuery = query
+        }
     }
 
     private var emptyState: some View {
@@ -212,12 +220,14 @@ private struct FinishedBitsContent: View {
     }
 
     @State private var query: String = ""
+    @State private var debouncedQuery: String = ""
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
     @State private var flippedBitIds: Set<UUID> = []
 
+    /// Cached filtered bits - uses debounced query to avoid filtering on every keystroke
     private var filtered: [Bit] {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let q = debouncedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return finishedBits }
         return finishedBits.filter { bit in
             bit.text.localizedCaseInsensitiveContains(q)
@@ -326,6 +336,12 @@ private struct FinishedBitsContent: View {
         .sheet(isPresented: $showQuickBit) {
             QuickBitEditor()
                 .presentationDetents([.medium, .large])
+        }
+        .task(id: query) {
+            // Debounce search query to avoid filtering on every keystroke
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            debouncedQuery = query
         }
     }
 
