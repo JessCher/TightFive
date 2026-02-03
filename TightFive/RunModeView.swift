@@ -23,7 +23,6 @@ struct RunModeView: View {
     enum ReadingMode: String, CaseIterable, Identifiable {
         case script = "Script"
         case teleprompter = "Teleprompter"
-        case rehearsal = "Rehearsal"
         var id: String { rawValue }
     }
 
@@ -65,8 +64,6 @@ struct RunModeView: View {
                             scriptContent
                         case .teleprompter:
                             teleprompterContent(contextWindowHeight: teleprompterWindowHeight)
-                        case .rehearsal:
-                            StageRehearsalView(setlist: setlist)
                         }
                     }
                 }
