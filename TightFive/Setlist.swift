@@ -17,10 +17,10 @@ final class Setlist {
     
     // MARK: - Identity
     
-    var id: UUID
-    var title: String
-    var createdAt: Date
-    var updatedAt: Date
+    var id: UUID = UUID()
+    var title: String = ""
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
     
     // MARK: - Performance Script
     
@@ -34,7 +34,7 @@ final class Setlist {
     /// Free-form notes for delivery ideas, reminders, meta thoughts.
     /// NOT shown in Stage Mode or Run Through mode.
     @Attribute(originalName: "bodyRTF")
-    var notesRTF: Data
+    var notesRTF: Data = Data()
     
     // MARK: - Script Mode
     
@@ -53,7 +53,7 @@ final class Setlist {
     // MARK: - Status
     
     /// True = still being developed, False = ready for stage
-    var isDraft: Bool
+    var isDraft: Bool = true
     
     // MARK: - Soft Delete
     
@@ -67,7 +67,7 @@ final class Setlist {
     
     /// Bit snapshots referenced by ScriptBlock.bit entries.
     @Relationship(deleteRule: .cascade, inverse: \SetlistAssignment.setlist)
-    var assignments: [SetlistAssignment] = []
+    var assignments: [SetlistAssignment]? = []
     
     // MARK: - Initialization
     
@@ -147,7 +147,7 @@ extension Setlist {
     var scriptPlainText: String {
         switch currentScriptMode {
         case .modular:
-            return scriptBlocks.fullPlainText(using: assignments)
+            return scriptBlocks.fullPlainText(using: assignments ?? [])
         case .traditional:
             return NSAttributedString.fromRTF(traditionalScriptRTF)?.string ?? ""
         }
@@ -157,7 +157,7 @@ extension Setlist {
     var hasScriptContent: Bool {
         switch currentScriptMode {
         case .modular:
-            return !scriptBlocks.isEmpty && !scriptBlocks.fullPlainText(using: assignments).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            return !scriptBlocks.isEmpty && !scriptBlocks.fullPlainText(using: assignments ?? []).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .traditional:
             let text = NSAttributedString.fromRTF(traditionalScriptRTF)?.string ?? ""
             return !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -177,7 +177,7 @@ extension Setlist {
     /// Assignments in the order they appear in the script
     var orderedAssignments: [SetlistAssignment] {
         orderedAssignmentIds.compactMap { id in
-            assignments.first { $0.id == id }
+            assignments?.first { $0.id == id }
         }
     }
     
@@ -235,9 +235,9 @@ extension Setlist {
     
     /// Migrate from old assignment-only model to new script blocks model.
     func migrateToScriptBlocksIfNeeded() {
-        guard scriptBlocks.isEmpty, !assignments.isEmpty else { return }
+        guard scriptBlocks.isEmpty, !(assignments?.isEmpty ?? true) else { return }
         
-        let sorted = assignments.sorted { $0.order < $1.order }
+        let sorted = (assignments ?? []).sorted { $0.order < $1.order }
         var blocks: [ScriptBlock] = []
         for assignment in sorted {
             blocks.append(.newBit(assignmentId: assignment.id))

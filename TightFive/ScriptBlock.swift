@@ -70,12 +70,12 @@ extension ScriptBlock {
 
 extension ScriptBlock {
     /// Extract plain text content from this block
-    func plainText(using assignments: [SetlistAssignment]) -> String {
+    func plainText(using assignments: [SetlistAssignment]?) -> String {
         switch self {
         case .freeform(_, let rtfData):
             return NSAttributedString.fromRTF(rtfData)?.string ?? ""
         case .bit(_, let assignmentId):
-            guard let assignment = assignments.first(where: { $0.id == assignmentId }) else { return "" }
+            guard let assignment = assignments?.first(where: { $0.id == assignmentId }) else { return "" }
             return assignment.plainText
         }
     }
@@ -140,7 +140,7 @@ extension ScriptBlock {
 
 extension Array where Element == ScriptBlock {
     /// Get all plain text content concatenated with line breaks
-    func fullPlainText(using assignments: [SetlistAssignment]) -> String {
+    func fullPlainText(using assignments: [SetlistAssignment]?) -> String {
         map { $0.plainText(using: assignments) }
             .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             .joined(separator: "\n\n")

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import CloudKit
 
 @main
 struct TightFiveApp: App {
@@ -34,7 +35,15 @@ struct TightFiveApp: App {
                     configureGlobalAppearance()
                 }
         }
-        .modelContainer(for: [
+        .modelContainer(sharedModelContainer)
+    }
+    
+    // MARK: - Shared Model Container with iCloud Sync
+    
+    /// ModelContainer configured with iCloud sync enabled via CloudKit.
+    /// All data is automatically backed up and synced across user's devices.
+    private var sharedModelContainer: ModelContainer {
+        let schema = Schema([
             Bit.self,
             Setlist.self,
             BitVariation.self,
@@ -42,6 +51,45 @@ struct TightFiveApp: App {
             Performance.self,
             UserProfile.self
         ])
+        
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            allowsSave: true,
+            cloudKitDatabase: .automatic  // ✨ Enables iCloud sync with CloudKit
+        )
+        
+        do {
+            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+        } catch {
+            // Print detailed error information
+            print("❌ ModelContainer creation failed with error: \(error)")
+            print("📋 Error details: \(error.localizedDescription)")
+            
+            // Try to provide more helpful error message
+            if let swiftDataError = error as? any Error {
+                print("🔍 Full error: \(String(describing: swiftDataError))")
+            }
+            
+            // TEMPORARY DEBUG: Try creating without CloudKit to isolate the issue
+            print("⚠️ Attempting to create ModelContainer without CloudKit...")
+            let fallbackConfig = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: false,
+                allowsSave: true,
+                cloudKitDatabase: .none
+            )
+            
+            do {
+                let container = try ModelContainer(for: schema, configurations: [fallbackConfig])
+                print("✅ ModelContainer created successfully WITHOUT CloudKit")
+                print("💡 This suggests the issue is with CloudKit configuration")
+                return container
+            } catch {
+                print("❌ Even fallback creation failed: \(error)")
+                fatalError("Could not create ModelContainer even without CloudKit: \(error)")
+            }
+        }
     }
     
     private func configureGlobalAppearance() {

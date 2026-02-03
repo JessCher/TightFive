@@ -35,7 +35,10 @@ extension Setlist {
         // Store notes snapshot for reference
         assignment.bitNotesSnapshot = bit.notes
         assignment.setlist = self
-        assignments.append(assignment)
+        if assignments == nil {
+            assignments = []
+        }
+        assignments?.append(assignment)
         context.insert(assignment)
 
         // Append bit notes to setlist notes tab if present
@@ -111,8 +114,8 @@ extension Setlist {
         
         // If bit block, also remove the assignment
         if let assignmentId = block.assignmentId {
-            if let assignment = assignments.first(where: { $0.id == assignmentId }) {
-                assignments.removeAll { $0.id == assignmentId }
+            if let assignment = assignments?.first(where: { $0.id == assignmentId }) {
+                assignments?.removeAll { $0.id == assignmentId }
                 context.delete(assignment)
             }
         }
@@ -143,10 +146,10 @@ extension Setlist {
     
     /// Remove all blocks from the script
     func clearAllBlocks(context: ModelContext) {
-        for assignment in assignments {
+        for assignment in assignments ?? [] {
             context.delete(assignment)
         }
-        assignments.removeAll()
+        assignments = []
         scriptBlocks = []
         updatedAt = Date()
     }
@@ -193,7 +196,10 @@ extension Setlist {
         )
         
         variation.bit = bit
-        bit.variations.append(variation)
+        if bit.variations == nil {
+            bit.variations = []
+        }
+        bit.variations?.append(variation)
         context.insert(variation)
         
         assignment.variationId = variation.id
@@ -209,11 +215,11 @@ extension Setlist {
     /// Get assignment for a specific block
     func assignment(for block: ScriptBlock) -> SetlistAssignment? {
         guard let assignmentId = block.assignmentId else { return nil }
-        return assignments.first { $0.id == assignmentId }
+        return assignments?.first { $0.id == assignmentId }
     }
     
     /// Check if setlist contains a specific bit (by ID)
     func containsBit(withId bitId: UUID) -> Bool {
-        assignments.contains { $0.bitId == bitId }
+        assignments?.contains { $0.bitId == bitId } ?? false
     }
 }

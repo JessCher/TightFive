@@ -16,17 +16,17 @@ final class BitVariation {
     
     // MARK: - Identity
     
-    var id: UUID
-    var createdAt: Date
-    var lastModifiedAt: Date
+    var id: UUID = UUID()
+    var createdAt: Date = Date()
+    var lastModifiedAt: Date = Date()
     
     // MARK: - Provenance (Where did this come from?)
     
     /// The setlist where this variation was created
-    var setlistId: UUID
+    var setlistId: UUID = UUID()
     
     /// Snapshot of setlist title at creation time (preserved for display even if setlist renamed)
-    var setlistTitle: String
+    var setlistTitle: String = ""
     
     /// Optional link to the specific assignment that created this variation
     var assignmentId: UUID?
@@ -34,7 +34,7 @@ final class BitVariation {
     // MARK: - Content (What changed?)
     
     /// Rich text snapshot of the performed content
-    var rtfData: Data
+    var rtfData: Data = Data()
     
     // MARK: - Metadata (Why changed?)
     

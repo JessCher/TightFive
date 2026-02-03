@@ -22,10 +22,10 @@ final class Bit {
     
     // MARK: - Identity
     
-    var id: UUID
+    var id: UUID = UUID()
     
     /// Plain text content - the master copy
-    var text: String
+    var text: String = ""
     
     /// Optional user-provided title for easier identification
     var title: String = ""
@@ -36,13 +36,13 @@ final class Bit {
     /// Notes for the bit (variant punchlines, alternate wording, delivery ideas, etc.)
     var notes: String = ""
 
-    var createdAt: Date
-    var updatedAt: Date
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
     
     // MARK: - Status
     
     /// Raw storage for BitStatus enum (SwiftData compatible)
-    var statusRaw: String
+    var statusRaw: String = BitStatus.loose.rawValue
     
     // MARK: - Soft Delete
     
@@ -62,7 +62,7 @@ final class Bit {
     /// All variations of this bit across setlists.
     /// These are hard-deleted when the bit is soft-deleted.
     @Relationship(inverse: \BitVariation.bit)
-    var variations: [BitVariation] = []
+    var variations: [BitVariation]? = []
     
     // MARK: - Initialization
     
@@ -105,7 +105,7 @@ extension Bit {
     
     /// Number of variations across all setlists
     var variationCount: Int {
-        variations.count
+        variations?.count ?? 0
     }
     
     /// Estimated duration in seconds based on word count.
@@ -160,7 +160,7 @@ extension Bit {
         if let allSetlists = try? context.fetch(descriptor) {
             for setlist in allSetlists {
                 // Find all assignments for this bit in the setlist
-                let assignmentsToConvert = setlist.assignments.filter { $0.bitId == bitId }
+                let assignmentsToConvert = (setlist.assignments ?? []).filter { $0.bitId == bitId }
                 
                 // Convert each bit block to freeform block
                 for assignment in assignmentsToConvert {
@@ -177,7 +177,7 @@ extension Bit {
                     }
                     
                     // Remove the assignment from the setlist
-                    setlist.assignments.removeAll { $0.id == assignment.id }
+                    setlist.assignments?.removeAll { $0.id == assignment.id }
                     
                     // Delete the assignment from context
                     context.delete(assignment)
@@ -186,10 +186,10 @@ extension Bit {
         }
         
         // Hard-delete all variations (analytics cleanup)
-        for variation in variations {
+        for variation in variations ?? [] {
             context.delete(variation)
         }
-        variations.removeAll()
+        variations = []
     }
     
     /// Restore a soft-deleted bit.

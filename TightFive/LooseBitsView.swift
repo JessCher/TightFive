@@ -463,7 +463,7 @@ struct LooseBitDetailView: View {
             }
 
             // Show variations section if any exist
-            if !bit.variations.isEmpty {
+            if !(bit.variations?.isEmpty ?? true) {
                 Section {
                     Button {
                         showVariationComparison = true

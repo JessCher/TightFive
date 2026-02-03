@@ -119,7 +119,7 @@ struct StageAnchorEditorView: View {
                     .background(anchor.isEnabled ? TFTheme.yellow : Color.gray)
                     .clipShape(Circle())
                 
-                if let assignment = setlist.assignments.first(where: { $0.id == anchor.assignmentId }) {
+                if let assignment = setlist.assignments?.first(where: { $0.id == anchor.assignmentId }) {
                     Text(assignment.bitTitleSnapshot)
                         .appFont(.subheadline, weight: .medium)
                         .foregroundStyle(.white)
