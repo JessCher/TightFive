@@ -109,8 +109,6 @@
 				SpeechRecognizer.swift = (ios, );
 				StageAnchor.swift = (ios, );
 				StageAnchorEditorView.swift = (ios, );
-				StageAnchorMatcher.swift = (ios, );
-				StageAnchorRecognizer.swift = (ios, );
 				StageTeleprompterEngine.swift = (ios, );
 				TFBackground.swift = (ios, );
 				TFIcons.swift = (ios, );
