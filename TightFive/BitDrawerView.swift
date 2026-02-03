@@ -16,28 +16,30 @@ struct BitDrawerView: View {
     let onSelect: (Bit) -> Void
     
     @Query(sort: \Bit.updatedAt, order: .reverse) private var allBits: [Bit]
-    
+
     @State private var searchQuery: String = ""
+    @State private var debouncedSearchQuery: String = ""
     @State private var showAllBits: Bool = false
-    
+
     @State private var isSelecting: Bool = false
     @State private var selectedBitIDs: Set<UUID> = []
-    
+
     /// Filter: non-deleted, optionally finished-only, search query
+    /// Uses debouncedSearchQuery to avoid filtering on every keystroke
     private var filteredBits: [Bit] {
         var bits = allBits.filter { !$0.isDeleted }
-        
+
         // Filter by status unless showing all
         if !showAllBits {
             bits = bits.filter { $0.status == .finished }
         }
-        
-        // Apply search
-        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Apply search using debounced query
+        let q = debouncedSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         if !q.isEmpty {
             bits = bits.filter { $0.text.localizedCaseInsensitiveContains(q) }
         }
-        
+
         return bits
     }
     
@@ -143,9 +145,15 @@ struct BitDrawerView: View {
                 }
             }
             .tfBackground()
+            .task(id: searchQuery) {
+                // Debounce search query to avoid filtering on every keystroke
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled else { return }
+                debouncedSearchQuery = searchQuery
+            }
         }
     }
-    
+
     private var emptyState: some View {
         VStack(spacing: 14) {
             Spacer()

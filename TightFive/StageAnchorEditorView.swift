@@ -11,7 +11,6 @@ struct StageAnchorEditorView: View {
     @State private var anchors: [StageAnchor]
     @State private var editingAnchorId: UUID?
     @State private var editingText: String = ""
-    @State private var showTestMode = false
     @State private var hasChanges = false
     
     init(setlist: Setlist) {
@@ -63,9 +62,6 @@ struct StageAnchorEditorView: View {
                 }
             }
             .tfBackground()
-            .sheet(isPresented: $showTestMode) {
-                AnchorTestView(anchors: anchors.filter { $0.isEnabled && $0.isValid })
-            }
         }
     }
     
@@ -204,26 +200,6 @@ struct StageAnchorEditorView: View {
     private var bottomBar: some View {
         VStack(spacing: 12) {
             Button {
-                showTestMode = true
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "mic.fill")
-                    Text("Test Recognition")
-                }
-                .appFont(.headline)
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color("TFCard"))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(Color("TFCardStroke").opacity(0.6), lineWidth: 1)
-                )
-            }
-            .disabled(anchors.filter { $0.isEnabled && $0.isValid }.isEmpty)
-            
-            Button {
                 resetToDefaults()
             } label: {
                 Text("Reset to Defaults")
@@ -280,179 +256,6 @@ struct StageAnchorEditorView: View {
         hasChanges = true
         editingAnchorId = nil
         editingText = ""
-    }
-}
-
-// MARK: - Anchor Test View
-
-struct AnchorTestView: View {
-    @Environment(\.dismiss) private var dismiss
-    @StateObject private var recognizer = StageAnchorRecognizer()
-    
-    let anchors: [StageAnchor]
-    
-    @State private var matchedAnchor: StageAnchor?
-    @State private var matchConfidence: Double = 0
-    @State private var isListening = false
-    
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                VStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(isListening ? Color.green.opacity(0.2) : Color.white.opacity(0.1))
-                            .frame(width: 100, height: 100)
-                        
-                        Image(systemName: isListening ? "waveform" : "mic.fill")
-                            .font(.system(size: 40))
-                            .foregroundStyle(isListening ? .green : .white.opacity(0.5))
-                            .symbolEffect(.variableColor, isActive: isListening)
-                    }
-                    
-                    Text(isListening ? "Listening..." : "Tap to Start")
-                        .appFont(.headline)
-                        .foregroundStyle(.white)
-                    
-                    if !recognizer.lastTranscript.isEmpty {
-                        Text("\"\(recognizer.lastTranscript)\"")
-                            .appFont(.subheadline)
-                            .foregroundStyle(.white.opacity(0.6))
-                            .italic()
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                    }
-                }
-                .padding(.top, 20)
-                
-                if let anchor = matchedAnchor {
-                    matchResultView(anchor: anchor)
-                        .transition(.scale.combined(with: .opacity))
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("LISTENING FOR:")
-                        .appFont(.caption, weight: .bold)
-                        .foregroundStyle(.white.opacity(0.5))
-                        .kerning(1.5)
-                    
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 8) {
-                            ForEach(anchors) { anchor in
-                                HStack(spacing: 8) {
-                                    Image(systemName: matchedAnchor?.id == anchor.id ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(matchedAnchor?.id == anchor.id ? .green : .white.opacity(0.3))
-                                    
-                                    Text(anchor.shortPhrase)
-                                        .appFont(.subheadline)
-                                        .foregroundStyle(.white.opacity(0.8))
-                                        .lineLimit(1)
-                                }
-                            }
-                        }
-                    }
-                    .frame(height: 200)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .background(Color("TFCard"))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .padding(.horizontal, 16)
-                
-                Button {
-                    toggleListening()
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: isListening ? "stop.fill" : "mic.fill")
-                        Text(isListening ? "Stop" : "Start Listening")
-                    }
-                    .appFont(.headline)
-                    .foregroundStyle(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(TFTheme.yellow)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 20)
-            }
-            .navigationTitle("Test Recognition")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") {
-                        recognizer.stopListening()
-                        dismiss()
-                    }
-                    .foregroundStyle(TFTheme.yellow)
-                }
-            }
-            .tfBackground()
-        }
-        .onDisappear { recognizer.stopListening() }
-    }
-    
-    private func matchResultView(anchor: StageAnchor) -> some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                Text("Match Found!")
-                    .appFont(.headline)
-                    .foregroundStyle(.white)
-            }
-            
-            Text(anchor.phrase)
-                .appFont(.subheadline)
-                .foregroundStyle(.white.opacity(0.8))
-                .italic()
-                .multilineTextAlignment(.center)
-            
-            Text("\(Int(matchConfidence * 100))% confidence")
-                .appFont(.caption)
-                .foregroundStyle(.white.opacity(0.5))
-        }
-        .padding(16)
-        .background(Color.green.opacity(0.15))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(Color.green.opacity(0.5), lineWidth: 1)
-        )
-        .padding(.horizontal, 16)
-    }
-    
-    private func toggleListening() {
-        if isListening {
-            recognizer.stopListening()
-            isListening = false
-        } else {
-            matchedAnchor = nil
-            matchConfidence = 0
-            
-            Task {
-                recognizer.onAnchorDetected = { anchor, confidence in
-                    withAnimation {
-                        matchedAnchor = anchor
-                        matchConfidence = confidence
-                    }
-                    let generator = UINotificationFeedbackGenerator()
-                    generator.notificationOccurred(.success)
-                    
-                    // CRITICAL: Clear after short delay to allow user to see the match
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        Task { @MainActor in
-                            recognizer.clearLastDetection()
-                        }
-                    }
-                }
-                let success = await recognizer.startListening(for: anchors)
-                isListening = success
-            }
-        }
     }
 }
 

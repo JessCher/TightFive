@@ -12,13 +12,14 @@ struct LooseBitsView: View {
     }, sort: \Bit.updatedAt, order: .reverse) private var looseBits: [Bit]
 
     @State private var query: String = ""
+    @State private var debouncedQuery: String = ""
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
     @State private var flippedBitIds: Set<UUID> = []
 
-    /// Apply search filter to loose bits
+    /// Cached filtered bits - only recomputed when debouncedQuery or looseBits changes
     private var filtered: [Bit] {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let q = debouncedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return looseBits }
         return looseBits.filter { bit in
             bit.text.localizedCaseInsensitiveContains(q)
@@ -125,6 +126,12 @@ struct LooseBitsView: View {
                 .presentationDetents([.medium, .large])
         }
         .hideKeyboardInteractively()
+        .task(id: query) {
+            // Debounce search query to avoid filtering on every keystroke
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            debouncedQuery = query
+        }
     }
 
     private var emptyState: some View {
