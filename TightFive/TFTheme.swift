@@ -30,8 +30,7 @@ extension View {
             // so the background never "crops" on short content.
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
-                // Keep the exact same appearance, but render it as a static snapshot.
-                DynamicChalkboardBackground(isAnimated: false)
+                DynamicChalkboardBackground()
                     .ignoresSafeArea()
             )
             .preferredColorScheme(.dark)

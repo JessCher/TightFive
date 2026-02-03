@@ -27,15 +27,7 @@ final class StageTeleprompterEngine: ObservableObject {
     @Published private(set) var errorMessage: String?
 
     var onAnchor: ((StageAnchor, Double) -> Void)?
-    
-    // MARK: - AI Features (Added)
-    
-    /// Acoustic analyzer for real-time feature detection
-    private var acousticAnalyzer = AcousticAnalyzer()
-    
-    /// Callback for acoustic features (emphasis, questions, etc.)
-    var onAcousticFeatures: ((AcousticAnalyzer.AcousticFeatures) -> Void)?
-    
+
     /// Analytics data collection (for post-performance analysis)
     private var analyticsDataPoints: [(timestamp: TimeInterval, confidence: Double, lineIndex: Int)] = []
     
@@ -176,9 +168,7 @@ final class StageTeleprompterEngine: ObservableObject {
         audioLevel = 0
         currentTime = 0
         partialTranscript = ""
-        
-        // Reset AI components
-        acousticAnalyzer.reset()
+
         analyticsDataPoints.removeAll()
         currentLineIndex = 0
     }
@@ -295,15 +285,6 @@ final class StageTeleprompterEngine: ObservableObject {
                 let level = Self.computeLevel(from: buffer)
                 Task { @MainActor in
                     self.audioLevel = level
-                }
-            }
-
-            // MARK: - AI: Acoustic Analysis (Real-time, battery-optimized)
-            // Only analyze every 20th buffer (~100ms) to reduce CPU load
-            if self.audioLevelUpdateCounter == 0 {
-                Task { @MainActor in
-                    let features = self.acousticAnalyzer.analyze(buffer: buffer)
-                    self.onAcousticFeatures?(features)
                 }
             }
         }
