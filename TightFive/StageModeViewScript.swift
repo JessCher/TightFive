@@ -211,7 +211,7 @@ struct StageModeViewScript: View {
         case .freeform(_, let rtfData):
             return NSAttributedString.fromRTF(rtfData)?.string ?? ""
         case .bit(_, let assignmentId):
-            guard let assignment = setlist.assignments.first(where: { $0.id == assignmentId }) else {
+            guard let assignment = setlist.assignments?.first(where: { $0.id == assignmentId }) else {
                 return ""
             }
             return assignment.plainText

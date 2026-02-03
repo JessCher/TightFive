@@ -6,19 +6,19 @@ import SwiftUI
 @Model
 final class Performance {
     
-    var id: UUID
-    var createdAt: Date
-    var datePerformed: Date
-    var setlistId: UUID
-    var setlistTitle: String
+    var id: UUID = UUID()
+    var createdAt: Date = Date()
+    var datePerformed: Date = Date()
+    var setlistId: UUID = UUID()
+    var setlistTitle: String = ""
     var customTitle: String?
-    var city: String
-    var venue: String
-    var audioFilename: String
-    var duration: TimeInterval
-    var fileSize: Int64
-    var notes: String  // Keep as String - no schema change
-    var rating: Int  // "How it felt" - manual overall rating
+    var city: String = ""
+    var venue: String = ""
+    var audioFilename: String = ""
+    var duration: TimeInterval = 0
+    var fileSize: Int64 = 0
+    var notes: String = ""  // Keep as String - no schema change
+    var rating: Int = 0  // "How it felt" - manual overall rating
     
     // MARK: - Individual Bit Ratings & Notes
     

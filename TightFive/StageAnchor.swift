@@ -121,7 +121,7 @@ extension Setlist {
             switch block {
             case .bit(_, let assignmentId):
                 // Bit block - use bit title and assignment reference
-                if let assignment = assignments.first(where: { $0.id == assignmentId }) {
+                if let assignment = assignments?.first(where: { $0.id == assignmentId }) {
                     let firstLine = extractFirstLine(from: assignment.plainText)
                     let anchor = StageAnchor(
                         blockReference: .bit(assignmentId: assignmentId),

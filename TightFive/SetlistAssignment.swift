@@ -12,19 +12,19 @@ final class SetlistAssignment {
     
     // MARK: - Identity & Ordering
     
-    var id: UUID
+    var id: UUID = UUID()
     
     /// Legacy order field (kept for migration compatibility)
-    var order: Int
+    var order: Int = 0
     
     /// When this assignment was added to the setlist
-    var addedAt: Date
+    var addedAt: Date = Date()
     
     // MARK: - Content (THE SOURCE OF TRUTH)
     
     /// The actual performed content as rich text.
     /// This is the canonical version - setlist always renders from this.
-    var performedRTF: Data
+    var performedRTF: Data = Data()
     
     // MARK: - Provenance (Optional - for analytics)
     
@@ -32,7 +32,7 @@ final class SetlistAssignment {
     var bitId: UUID?
     
     /// Snapshot of bit title at time of adding.
-    var bitTitleSnapshot: String
+    var bitTitleSnapshot: String = ""
     
     /// Link to variation record (if content was modified from original)
     var variationId: UUID?

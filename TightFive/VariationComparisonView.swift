@@ -16,7 +16,7 @@ struct VariationComparisonView: View {
     @State private var showDeleteConfirmation = false
     
     private var sortedVariations: [BitVariation] {
-        bit.variations.sorted { $0.createdAt > $1.createdAt }
+        (bit.variations ?? []).sorted { $0.createdAt > $1.createdAt }
     }
     
     var body: some View {
@@ -431,7 +431,10 @@ struct VariationComparisonView: View {
     private func deleteVariation(_ variation: BitVariation) {
         withAnimation {
             // Remove from bit's variations array
-            bit.variations.removeAll { $0.id == variation.id }
+            if bit.variations == nil {
+                bit.variations = []
+            }
+            bit.variations?.removeAll { $0.id == variation.id }
             
             // Delete from context
             modelContext.delete(variation)

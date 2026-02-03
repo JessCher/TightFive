@@ -5,11 +5,11 @@ import SwiftUI
 /// User profile information
 @Model
 final class UserProfile {
-    var id: UUID
-    var name: String
+    var id: UUID = UUID()
+    var name: String = ""
     var profileImageData: Data?
-    var showsPerformed: Int
-    var updatedAt: Date
+    var showsPerformed: Int = 0
+    var updatedAt: Date = Date()
     
     init(name: String = "", showsPerformed: Int = 0) {
         self.id = UUID()

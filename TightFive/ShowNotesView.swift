@@ -373,7 +373,7 @@ struct PerformanceDetailView: View {
             if let setlist = setlist {
                 FlippableScriptBlockList(
                     blocks: setlist.scriptBlocks,
-                    assignments: setlist.assignments,
+                    assignments: setlist.assignments ?? [],
                     performance: performance
                 )
                 .frame(maxHeight: 450)

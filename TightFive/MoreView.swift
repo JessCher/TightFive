@@ -27,12 +27,6 @@ struct MoreView: View {
                         }
                         
                         NavigationLink {
-                            AnalyticsDashboardView()
-                        } label: {
-                            settingsCard(icon: "brain.head.profile", title: "Analytics", subtitle: "AI-powered insights")
-                        }
-                        
-                        NavigationLink {
                             TrashcanView()
                         } label: {
                             settingsCard(icon: "trash", title: "Trashcan", subtitle: "Recover deleted items")

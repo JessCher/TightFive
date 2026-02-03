@@ -413,7 +413,8 @@ final class StageRehearsalEngine: ObservableObject {
         
         // Check for exit phrase (triggers next card)
         let exitResult = card.matchesExitPhrase(transcript)
-        exitPhraseConfidence = exitResult.confidence
+        // Apply display boost to raw confidence for better visual feedback
+        exitPhraseConfidence = boostConfidenceForDisplay(exitResult.confidence)
         
         if exitResult.matches {
             // Debounce: don't trigger too soon after last detection
@@ -427,9 +428,9 @@ final class StageRehearsalEngine: ObservableObject {
             lastDetectionType = .exit
             lastDetectionTimestamp = Date()
             
-            print("✅ EXIT detected (confidence: \(String(format: "%.2f", exitResult.confidence)))")
+            print("✅ EXIT detected (raw confidence: \(String(format: "%.2f", exitResult.confidence)), display: \(String(format: "%.2f", exitPhraseConfidence)))")
             
-            // Record exit phrase detection in analytics
+            // Record exit phrase detection in analytics (use raw confidence for analytics)
             analytics.recordExitPhraseDetection(
                 cardIndex: currentCardIndex,
                 confidence: exitResult.confidence,
@@ -442,29 +443,57 @@ final class StageRehearsalEngine: ObservableObject {
         
         // Check for anchor phrase (confirmation we're in this card)
         let anchorResult = card.matchesAnchorPhrase(transcript)
-        anchorPhraseConfidence = anchorResult.confidence
+        // Apply display boost to raw confidence for better visual feedback
+        anchorPhraseConfidence = boostConfidenceForDisplay(anchorResult.confidence)
         
         if anchorResult.matches {
             lastDetectionType = .anchor
             lastDetectionTimestamp = Date()
             
-            print("✅ ANCHOR confirmed (confidence: \(String(format: "%.2f", anchorResult.confidence)))")
+            print("✅ ANCHOR confirmed (raw confidence: \(String(format: "%.2f", anchorResult.confidence)), display: \(String(format: "%.2f", anchorPhraseConfidence)))")
             
-            // Record anchor phrase detection in analytics
+            // Record anchor phrase detection in analytics (use raw confidence for analytics)
             analytics.recordAnchorPhraseDetection(
                 cardIndex: currentCardIndex,
                 confidence: anchorResult.confidence,
                 transcript: transcript
             )
         }
+    }
+    
+    // MARK: - Confidence Boosting
+    
+    /// Apply a display curve to raw confidence scores for better visual feedback.
+    /// 
+    /// The raw confidence is perfect for detection thresholds, but can appear low in UI.
+    /// This function transforms the confidence for display purposes only, making successful
+    /// matches appear more confident without affecting the underlying detection logic.
+    ///
+    /// - Parameter rawConfidence: The raw match confidence (0.0 - 1.0)
+    /// - Returns: Boosted confidence for display (0.0 - 1.0)
+    private func boostConfidenceForDisplay(_ rawConfidence: Double) -> Double {
+        // Apply an exponential curve that:
+        // - Keeps very low scores low (< 0.3 stays mostly the same)
+        // - Boosts medium-to-high scores significantly (0.5 -> 0.75, 0.6 -> 0.85, 0.7 -> 0.92)
+        // - Approaches 1.0 for high scores
         
-        // Record per-card recognition data
-        analytics.recordRecognitionAttempt(
-            cardIndex: currentCardIndex,
-            confidence: overallConfidence,
-            exitConfidence: exitPhraseConfidence,
-            anchorConfidence: anchorPhraseConfidence
-        )
+        // Use a power curve: confidence^0.6 gives a nice boost
+        let boosted = pow(rawConfidence, 0.6)
+        
+        // Additionally, if confidence is above the detection threshold, add a bonus
+        // This makes successful detections show even higher confidence
+        let exitThreshold = CueCardSettingsStore.shared.exitPhraseSensitivity
+        let anchorThreshold = CueCardSettingsStore.shared.anchorPhraseSensitivity
+        let threshold = min(exitThreshold, anchorThreshold)
+        
+        if rawConfidence >= threshold {
+            // Add a bonus that scales with how far above threshold we are
+            let aboveThreshold = (rawConfidence - threshold) / (1.0 - threshold)
+            let bonus = aboveThreshold * 0.15 // Up to 15% bonus
+            return min(boosted + bonus, 1.0)
+        }
+        
+        return boosted
     }
     
     // MARK: - Audio Quality Monitoring

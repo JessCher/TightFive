@@ -3,6 +3,44 @@ import SwiftUI
 struct SettingsView: View {
     var body: some View {
         Form {
+            // iCloud Backup & Sync Section
+            Section {
+                NavigationLink {
+                    iCloudBackupSettingsView()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "icloud.and.arrow.up")
+                            .foregroundStyle(TFTheme.yellow)
+                            .frame(width: 24)
+                        
+                        Text("iCloud Backup & Sync")
+                            .foregroundStyle(.white)
+                        
+                        Spacer()
+                        
+                        CompactiCloudSyncIndicator()
+                    }
+                }
+                
+                // EMERGENCY DATA RECOVERY
+                NavigationLink {
+                    DataRecoveryView()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "arrow.counterclockwise.circle.fill")
+                            .foregroundStyle(.orange)
+                            .frame(width: 24)
+                        
+                        Text("🚨 Data Recovery")
+                            .foregroundStyle(.orange)
+                    }
+                }
+            } header: {
+                Text("BACKUP")
+            } footer: {
+                Text("All your bits, setlists, and notes are automatically backed up and synced via iCloud.")
+            }
+            
             Section {
                 NavigationLink {
                     ThemeAndCustomizationView()

@@ -23,7 +23,6 @@ struct RunModeView: View {
     enum ReadingMode: String, CaseIterable, Identifiable {
         case script = "Script"
         case teleprompter = "Teleprompter"
-        case rehearsal = "Rehearsal"
         var id: String { rawValue }
     }
 
@@ -65,8 +64,6 @@ struct RunModeView: View {
                             scriptContent
                         case .teleprompter:
                             teleprompterContent(contextWindowHeight: teleprompterWindowHeight)
-                        case .rehearsal:
-                            StageRehearsalView(setlist: setlist)
                         }
                     }
                 }
@@ -399,7 +396,7 @@ struct RunModeView: View {
         case .freeform(_, let rtfData):
             return NSAttributedString.fromRTF(rtfData)?.string ?? ""
         case .bit(_, let assignmentId):
-            guard let assignment = setlist.assignments.first(where: { $0.id == assignmentId }) else {
+            guard let assignment = setlist.assignments?.first(where: { $0.id == assignmentId }) else {
                 return ""
             }
             return assignment.plainText

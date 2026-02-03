@@ -410,7 +410,7 @@ struct FinishedBitDetailView: View {
                 .tfDynamicCard(cornerRadius: 20)
 
                 // Compare Variations Button
-                if !bit.variations.isEmpty {
+                if !(bit.variations?.isEmpty ?? true) {
                     Button {
                         showVariationComparison = true
                     } label: {
@@ -446,6 +446,9 @@ struct FinishedBitDetailView: View {
                         .shadow(color: .black.opacity(0.4), radius: 8, x: 0, y: 4)
                     }
                 }
+                
+                // Performance Insights Button
+                BitPerformanceInsightsButton(bit: bit)
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -1048,4 +1051,322 @@ private struct BitShareCard: View {
         .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
     }
 }
+
+// MARK: - Performance Insights
+
+/// Button to navigate to performance insights for a bit
+struct BitPerformanceInsightsButton: View {
+    let bit: Bit
+    @State private var showInsights = false
+    @State private var insightCount: Int = 0
+    @Environment(\.modelContext) private var modelContext
+    
+    var body: some View {
+        Button {
+            showInsights = true
+        } label: {
+            HStack {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                    .appFont(.headline)
+                
+                Text("Performance Insights")
+                    .appFont(.headline, weight: .semibold)
+                
+                Spacer()
+                
+                if insightCount > 0 {
+                    Text("\(insightCount)")
+                        .appFont(.subheadline, weight: .semibold)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(TFTheme.yellow.opacity(0.3))
+                        .clipShape(Capsule())
+                }
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 18)
+            .frame(maxWidth: .infinity)
+            .background(Color.white.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(Color("TFCardStroke"), lineWidth: 1.5)
+                    .opacity(0.9)
+            )
+        }
+        .sheet(isPresented: $showInsights) {
+            BitPerformanceInsightsView(bit: bit)
+        }
+        .onAppear {
+            loadInsightCount()
+        }
+    }
+    
+    private func loadInsightCount() {
+        let insights = BitPerformanceInsight.fetchInsights(for: bit, context: modelContext)
+        insightCount = insights.count
+    }
+}
+
+/// View showing all performance insights for a specific bit
+struct BitPerformanceInsightsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    let bit: Bit
+    
+    @State private var insights: [BitPerformanceInsight] = []
+    @State private var averageRating: Double = 0.0
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Average Rating Header
+                    if averageRating > 0 {
+                        VStack(spacing: 12) {
+                            Text("Average Rating")
+                                .appFont(.headline)
+                                .foregroundStyle(TFTheme.text.opacity(0.7))
+                            
+                            HStack(spacing: 4) {
+                                ForEach(1...5, id: \.self) { index in
+                                    Image(systemName: starName(for: index, average: averageRating))
+                                        .font(.system(size: 32))
+                                        .foregroundStyle(TFTheme.yellow)
+                                }
+                            }
+                            
+                            Text(String(format: "%.1f / 5.0", averageRating))
+                                .appFont(.title3, weight: .semibold)
+                                .foregroundStyle(TFTheme.text)
+                            
+                            Text("\(insights.count) performance\(insights.count == 1 ? "" : "s")")
+                                .appFont(.caption)
+                                .foregroundStyle(TFTheme.text.opacity(0.5))
+                        }
+                        .padding(24)
+                        .frame(maxWidth: .infinity)
+                        .tfDynamicCard(cornerRadius: 20)
+                    }
+                    
+                    // Individual Insights
+                    if insights.isEmpty {
+                        emptyState
+                    } else {
+                        VStack(spacing: 16) {
+                            ForEach(insights) { insight in
+                                PerformanceInsightCard(insight: insight)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 20)
+            }
+            .tfBackground()
+            .navigationTitle("Performance Insights")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(TFTheme.yellow)
+                }
+            }
+            .onAppear {
+                loadInsights()
+            }
+        }
+    }
+    
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "chart.line.downtrend.xyaxis")
+                .font(.system(size: 48))
+                .foregroundStyle(TFTheme.text.opacity(0.3))
+            
+            Text("No Performance Data Yet")
+                .appFont(.title3, weight: .semibold)
+                .foregroundStyle(TFTheme.text)
+            
+            Text("Rate this bit in Show Notes after performing it to see insights here.")
+                .appFont(.subheadline)
+                .foregroundStyle(TFTheme.text.opacity(0.6))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .padding(.top, 60)
+    }
+    
+    private func loadInsights() {
+        insights = BitPerformanceInsight.fetchInsights(for: bit, context: modelContext)
+        
+        // Calculate average rating
+        let ratings = insights.compactMap { $0.rating > 0 ? $0.rating : nil }
+        if !ratings.isEmpty {
+            averageRating = Double(ratings.reduce(0, +)) / Double(ratings.count)
+        }
+    }
+    
+    private func starName(for index: Int, average: Double) -> String {
+        if Double(index) <= average {
+            return "star.fill"
+        } else if Double(index) - 0.5 <= average {
+            return "star.leadinghalf.filled"
+        } else {
+            return "star"
+        }
+    }
+}
+
+/// Card displaying a single performance insight
+struct PerformanceInsightCard: View {
+    let insight: BitPerformanceInsight
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header: Date and Venue
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(insight.datePerformed, style: .date)
+                        .appFont(.headline)
+                        .foregroundStyle(TFTheme.text)
+                    
+                    if !insight.venue.isEmpty {
+                        Text(insight.venue)
+                            .appFont(.subheadline)
+                            .foregroundStyle(TFTheme.text.opacity(0.7))
+                    }
+                    
+                    if !insight.city.isEmpty {
+                        Text(insight.city)
+                            .appFont(.caption)
+                            .foregroundStyle(TFTheme.text.opacity(0.5))
+                    }
+                }
+                
+                Spacer()
+                
+                // Rating
+                if insight.rating > 0 {
+                    HStack(spacing: 2) {
+                        ForEach(1...5, id: \.self) { index in
+                            Image(systemName: index <= insight.rating ? "star.fill" : "star")
+                                .font(.system(size: 16))
+                                .foregroundStyle(index <= insight.rating ? TFTheme.yellow : .white.opacity(0.3))
+                        }
+                    }
+                }
+            }
+            
+            // Notes
+            if !insight.notes.isEmpty {
+                Divider()
+                    .background(.white.opacity(0.2))
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Notes")
+                        .appFont(.caption, weight: .semibold)
+                        .foregroundStyle(TFTheme.text.opacity(0.6))
+                        .textCase(.uppercase)
+                        .kerning(0.5)
+                    
+                    Text(insight.notes)
+                        .appFont(.body)
+                        .foregroundStyle(TFTheme.text.opacity(0.85))
+                        .lineSpacing(4)
+                }
+            }
+            
+            // Performance metadata
+            HStack(spacing: 8) {
+                Text("Show: \(insight.performanceTitle)")
+                    .appFont(.caption2)
+                    .foregroundStyle(TFTheme.text.opacity(0.4))
+                    .lineLimit(1)
+            }
+        }
+        .padding(16)
+        .tfDynamicCard(cornerRadius: 14)
+    }
+}
+
+// MARK: - BitPerformanceInsight Model
+
+/// A computed view model representing how a bit performed in a specific show
+struct BitPerformanceInsight: Identifiable {
+    let id = UUID()
+    let performanceId: UUID
+    let performanceTitle: String
+    let datePerformed: Date
+    let city: String
+    let venue: String
+    let rating: Int
+    let notes: String
+    
+    /// Fetch all performance insights for a specific bit
+    static func fetchInsights(for bit: Bit, context: ModelContext) -> [BitPerformanceInsight] {
+        // 1. Fetch all performances
+        let performanceDescriptor = FetchDescriptor<Performance>(
+            predicate: #Predicate { !$0.isDeleted },
+            sortBy: [SortDescriptor(\Performance.datePerformed, order: .reverse)]
+        )
+        
+        guard let performances = try? context.fetch(performanceDescriptor) else {
+            return []
+        }
+        
+        // 2. For each performance, find if this bit was rated
+        var insights: [BitPerformanceInsight] = []
+        
+        for performance in performances {
+            // 3. Fetch the setlist for this performance
+            // Capture the setlist ID as a local variable for the predicate
+            let setlistId = performance.setlistId
+            let setlistDescriptor = FetchDescriptor<Setlist>(
+                predicate: #Predicate<Setlist> { setlist in
+                    setlist.id == setlistId
+                }
+            )
+            
+            guard let setlist = try? context.fetch(setlistDescriptor).first else {
+                continue
+            }
+            
+            // 4. Find script blocks that reference this bit's assignments
+            let bitAssignmentIds = Set((setlist.assignments ?? []).filter { $0.bitId == bit.id }.map { $0.id })
+            
+            for block in setlist.scriptBlocks {
+                guard case .bit(_, let assignmentId) = block,
+                      bitAssignmentIds.contains(assignmentId) else {
+                    continue
+                }
+                
+                // 5. Check if this block has ratings or notes
+                let blockIdString = block.id.uuidString
+                let rating = performance.bitRatings[blockIdString] ?? 0
+                let notes = performance.bitNotes[blockIdString] ?? ""
+                
+                // Only include if there's data
+                if rating > 0 || !notes.isEmpty {
+                    let insight = BitPerformanceInsight(
+                        performanceId: performance.id,
+                        performanceTitle: performance.displayTitle,
+                        datePerformed: performance.datePerformed,
+                        city: performance.city,
+                        venue: performance.venue,
+                        rating: rating,
+                        notes: notes
+                    )
+                    insights.append(insight)
+                    break // Only add one insight per performance (even if bit appears multiple times)
+                }
+            }
+        }
+        
+        return insights
+    }
+}
+
 
