@@ -1,7 +1,5 @@
 import Foundation
 import SwiftUI
-import SwiftData
-import Foundation
 import AVFoundation
 import Combine
 @preconcurrency import Speech
@@ -73,7 +71,11 @@ final class StageRehearsalEngine: ObservableObject {
     
     private var exitPhraseDetectedAt: Date?
     private let exitPhraseDebounce: TimeInterval = 1.5
-    
+
+    /// Throttle audio level updates to reduce UI redraws (update every ~100ms instead of every buffer)
+    private var audioLevelUpdateCounter: Int = 0
+    private let audioLevelUpdateInterval: Int = 20  // Update every 20 buffers (~100ms at 256 samples/48kHz)
+
     // MARK: - Rehearsal Analytics
     
     private(set) var analytics: RehearsalAnalytics = RehearsalAnalytics()
@@ -282,7 +284,6 @@ final class StageRehearsalEngine: ObservableObject {
         try session.setPreferredSampleRate(48000)
         try session.setActive(true, options: .notifyOthersOnDeactivation)
         
-        print("🎤 Rehearsal audio configured: \(session.sampleRate)Hz, \(session.ioBufferDuration * 1000)ms buffer")
     }
     
     // MARK: - Pipeline (No Recording)
@@ -305,12 +306,16 @@ final class StageRehearsalEngine: ObservableObject {
             
             // Send to speech recognizer
             self.recognitionRequest?.append(buffer)
-            
-            // Compute audio level
-            let level = Self.computeLevel(from: buffer)
-            Task { @MainActor in
-                self.audioLevel = level
-                self.updateAudioQualityIndicators(level: level)
+
+            // Compute audio level (throttled to reduce UI redraws - ~10 updates/sec instead of ~200)
+            self.audioLevelUpdateCounter += 1
+            if self.audioLevelUpdateCounter >= self.audioLevelUpdateInterval {
+                self.audioLevelUpdateCounter = 0
+                let level = Self.computeLevel(from: buffer)
+                Task { @MainActor in
+                    self.audioLevel = level
+                    self.updateAudioQualityIndicators(level: level)
+                }
             }
         }
         
@@ -427,9 +432,7 @@ final class StageRehearsalEngine: ObservableObject {
             
             lastDetectionType = .exit
             lastDetectionTimestamp = Date()
-            
-            print("✅ EXIT detected (raw confidence: \(String(format: "%.2f", exitResult.confidence)), display: \(String(format: "%.2f", exitPhraseConfidence)))")
-            
+
             // Record exit phrase detection in analytics (use raw confidence for analytics)
             analytics.recordExitPhraseDetection(
                 cardIndex: currentCardIndex,
@@ -449,9 +452,7 @@ final class StageRehearsalEngine: ObservableObject {
         if anchorResult.matches {
             lastDetectionType = .anchor
             lastDetectionTimestamp = Date()
-            
-            print("✅ ANCHOR confirmed (raw confidence: \(String(format: "%.2f", anchorResult.confidence)), display: \(String(format: "%.2f", anchorPhraseConfidence)))")
-            
+
             // Record anchor phrase detection in analytics (use raw confidence for analytics)
             analytics.recordAnchorPhraseDetection(
                 cardIndex: currentCardIndex,

@@ -1,63 +1,31 @@
 import SwiftUI
-import Combine
 
 struct DynamicChalkboardBackground: View {
-    /// When false, renders a static snapshot of the exact same background.
-    /// (No TimelineView + no motion sampling)
-    var isAnimated: Bool = true
-
-    // Motion disabled; static background only
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    
     // App settings for background customization - observe changes
     @Environment(AppSettings.self) private var settings
-    
-    // MARK: - Tunables (PERFORMANCE OPTIMIZED)
+
+    // MARK: - Tunables
     private var dustCount: Int { settings.backgroundDustCount }
     private var clumpCount: Int { settings.backgroundCloudCount }
-    private let breatheSpeed = 0.25
-    private let breatheAmplitude: CGFloat = 0.06
-    
-    // Cap at 20 FPS to reduce overheating (was 30)
-    private let frameRate: TimeInterval = 1.0 / 20.0
 
     var body: some View {
-        Group {
-            if isAnimated && !reduceMotion {
-                TimelineView(.periodic(from: .now, by: frameRate)) { context in
-                    content(at: context.date)
-                }
-            } else {
-                // Static snapshot that matches the "rest" state of the dynamic background.
-                content(at: .distantPast)
-            }
-        }
-        .ignoresSafeArea()
+        content
+            .ignoresSafeArea()
     }
 
     @ViewBuilder
-    private func content(at date: Date) -> some View {
+    private var content: some View {
         let _ = settings.updateTrigger // Force observation of settings changes
-        let t = date.timeIntervalSinceReferenceDate
-        let breathe = (isAnimated && !reduceMotion) ? (breatheAmplitude * CGFloat(sin(2 * .pi * breatheSpeed * t))) : 0
-
-        // Smoothed tilt removed; static background only
-        let tilt: CGPoint = .zero
-
-        // Glow opacity (kept identical to animated version)
-        let topGlowOpacity = 0.30 + Double(max(0, breathe) * CGFloat(0.06))
 
         // Parallax offsets - adjusted by cloud offset settings
         let baseCloudOffsetX = CGFloat(settings.backgroundCloudOffsetX) * 100
         let baseCloudOffsetY = CGFloat(settings.backgroundCloudOffsetY) * 100
-        
-        let fastLayerOffset = CGSize(width: tilt.x * 25, height: tilt.y * 25)
+
         let slowLayerOffset = CGSize(
-            width: tilt.x * 40 + baseCloudOffsetX, 
-            height: tilt.y * 40 + baseCloudOffsetY
+            width: baseCloudOffsetX,
+            height: baseCloudOffsetY
         )
-        let vignetteOffset = CGSize(width: tilt.x * -15, height: tilt.y * -15)
-        
+
         // Get cloud colors from settings
         let cloudColor1 = Color(hex: settings.backgroundCloudColor1Hex) ?? .tfYellow
         let cloudColor2 = Color(hex: settings.backgroundCloudColor2Hex) ?? .blue
@@ -67,12 +35,10 @@ struct DynamicChalkboardBackground: View {
             // 1. Base Tone (not customizable - stays default)
             Color("TFBackground")
 
-            // 2. Chalk Speckles (Fast Layer)
+            // 2. Chalk Speckles (Dust Layer)
             Canvas { ctx, size in
                 var rng = SeededRandom(seed: 12345)
                 let margin: CGFloat = 100
-
-                ctx.translateBy(x: fastLayerOffset.width, y: fastLayerOffset.height)
 
                 for _ in 0..<dustCount {
                     let x = rng.next(in: -margin...(size.width + margin))
@@ -84,23 +50,16 @@ struct DynamicChalkboardBackground: View {
                     ctx.fill(Path(ellipseIn: rect), with: .color(.white.opacity(alpha)))
                 }
             }
-            .opacity(settings.backgroundDustOpacity + breathe * 0.12)
+            .opacity(settings.backgroundDustOpacity)
             .blendMode(.overlay)
             .drawingGroup()
 
-            // 3. Soft Clumps (Slow Layer) - now called "clouds" in settings
+            // 3. Soft Clumps (Cloud Layer)
             Canvas { ctx, size in
                 var rng = SeededRandom(seed: 42)
                 let margin: CGFloat = 150
 
                 ctx.translateBy(x: slowLayerOffset.width, y: slowLayerOffset.height)
-
-                let scaleCenter = CGPoint(x: size.width / 4, y: size.height / 1)
-                let scaleFactor: CGFloat = 1 + breathe * 0.15
-
-                ctx.translateBy(x: scaleCenter.x, y: scaleCenter.y)
-                ctx.scaleBy(x: scaleFactor, y: scaleFactor)
-                ctx.translateBy(x: -scaleCenter.x, y: -scaleCenter.y)
 
                 for _ in 0..<clumpCount {
                     let cx = rng.next(in: -margin...(size.width + margin))
@@ -133,14 +92,13 @@ struct DynamicChalkboardBackground: View {
             // 4. Top Glow
             LinearGradient(
                 colors: [
-                    Color.white.opacity(topGlowOpacity),
+                    Color.white.opacity(0.30),
                     Color.white.opacity(0.03),
                     Color.clear
                 ],
                 startPoint: .top,
                 endPoint: .center
             )
-            .offset(y: breathe * 8)
             .allowsHitTesting(false)
 
             // 5. Vignette
@@ -153,11 +111,9 @@ struct DynamicChalkboardBackground: View {
                 startRadius: 100,
                 endRadius: 800
             )
-            .offset(vignetteOffset)
             .allowsHitTesting(false)
         }
         .scaleEffect(1.1)
-        .animation(.easeOut(duration: 0.2), value: tilt)
     }
 }
 
