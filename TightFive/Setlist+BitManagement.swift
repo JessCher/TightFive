@@ -211,13 +211,19 @@ extension Setlist {
 // MARK: - Query Helpers
 
 extension Setlist {
-    
-    /// Get assignment for a specific block
+
+    /// Get assignment for a specific block (O(n) lookup - use assignmentLookup for batch operations)
     func assignment(for block: ScriptBlock) -> SetlistAssignment? {
         guard let assignmentId = block.assignmentId else { return nil }
         return assignments?.first { $0.id == assignmentId }
     }
-    
+
+    /// Pre-computed dictionary for O(1) assignment lookups.
+    /// Use this when rendering lists to avoid O(n²) performance.
+    var assignmentLookup: [UUID: SetlistAssignment] {
+        Dictionary(uniqueKeysWithValues: assignments.map { ($0.id, $0) })
+    }
+
     /// Check if setlist contains a specific bit (by ID)
     func containsBit(withId bitId: UUID) -> Bool {
         assignments?.contains { $0.bitId == bitId } ?? false

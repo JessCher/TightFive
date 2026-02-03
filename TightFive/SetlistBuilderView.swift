@@ -269,11 +269,13 @@ struct SetlistBuilderView: View {
     }
     
     private var scriptBlockList: some View {
-        List {
+        // Pre-compute assignment lookup for O(1) access instead of O(n) per block
+        let lookup = setlist.assignmentLookup
+        return List {
             ForEach(Array(setlist.scriptBlocks.enumerated()), id: \.element.id) { index, block in
                 ScriptBlockRowView(
                     block: block,
-                    assignment: setlist.assignment(for: block),
+                    assignment: block.assignmentId.flatMap { lookup[$0] },
                     isEditing: editingBlockId == block.id,
                     onStartEdit: { editingBlockId = block.id },
                     onEndEdit: { rtfData in
@@ -793,18 +795,20 @@ private struct BitDrawerSheet: View {
         sort: \Bit.updatedAt,
         order: .reverse
     ) private var allBits: [Bit]
-    
+
     @State private var searchQuery = ""
+    @State private var debouncedSearchQuery = ""
     @State private var showAllBits = false
     @State private var isMultiSelectMode = false
     @State private var selectedBits: Set<UUID> = []
-    
+
+    /// Cached filtered bits - uses debounced query to avoid filtering on every keystroke
     private var filteredBits: [Bit] {
         var bits = allBits
         if !showAllBits {
             bits = bits.filter { $0.status == .finished }
         }
-        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        let q = debouncedSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         if !q.isEmpty {
             bits = bits.filter { bit in
                 bit.text.localizedCaseInsensitiveContains(q)
@@ -894,9 +898,15 @@ private struct BitDrawerSheet: View {
                 }
             }
             .tfBackground()
+            .task(id: searchQuery) {
+                // Debounce search query to avoid filtering on every keystroke
+                try? await Task.sleep(for: .milliseconds(150))
+                guard !Task.isCancelled else { return }
+                debouncedSearchQuery = searchQuery
+            }
         }
     }
-    
+
     private var emptyState: some View {
         VStack(spacing: 14) {
             Spacer()
