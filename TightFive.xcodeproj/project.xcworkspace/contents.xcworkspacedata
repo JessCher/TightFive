@@ -4,19 +4,4 @@
    <FileRef
       location = "self:">
    </FileRef>
-   <FileRef
-      location = "group:PERFORMANCE_OPTIMIZATIONS_ROUND_2.md">
-   </FileRef>
-   <FileRef
-      location = "group:PERFORMANCE_BEST_PRACTICES.md">
-   </FileRef>
-   <FileRef
-      location = "group:PERFORMANCE_SUMMARY.md">
-   </FileRef>
-   <FileRef
-      location = "group:STAGE_MODE_FEATURE_FLAGS.md">
-   </FileRef>
-   <FileRef
-      location = "group:PERFORMANCE_OPTIMIZATION_FINAL_SUMMARY.md">
-   </FileRef>
 </Workspace>
