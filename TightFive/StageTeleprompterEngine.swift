@@ -7,7 +7,6 @@ import AVFoundation
 /// Single-pipeline Stage Mode engine:
 /// - Captures mic ONCE via AVAudioEngine
 /// - Feeds Speech recognition partial transcripts
-/// - Detects Stage Anchors (StageAnchorMatcher)
 /// - Records audio to disk (CAF PCM - reliable for real-time writing)
 ///
 /// Fixes vs prior version:
@@ -37,6 +36,7 @@ final class StageTeleprompterEngine: ObservableObject {
     // MARK: - Internals
 
     private let speechRecognizer: SFSpeechRecognizer?
+    private var matcher: AnchorMatcher = AnchorMatcher()
 
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
@@ -48,8 +48,6 @@ final class StageTeleprompterEngine: ObservableObject {
     private var timeTimer: Timer?
     private var watchdogTimer: Timer?
     private var startDate: Date?
-
-    private var matcher = StageAnchorMatcher(anchors: [])
     private var contextualStrings: [String] = []
 
     private var recordingURL: URL?
@@ -79,17 +77,6 @@ final class StageTeleprompterEngine: ObservableObject {
     }
 
     // MARK: - Public API
-
-    func configureAnchors(_ anchors: [StageAnchor]) {
-        matcher = StageAnchorMatcher(anchors: anchors)
-        contextualStrings = anchors
-            .filter { $0.isEnabled && $0.isValid }
-            .map { $0.phrase }
-    }
-
-    func resetAnchorState() {
-        matcher.reset()
-    }
 
     func start(filenameBase: String) async {
         errorMessage = nil
@@ -134,13 +121,8 @@ final class StageTeleprompterEngine: ObservableObject {
             fileSize = size
         }
         
-        // MARK: - AI: Generate Performance Insights
-        let insights = PerformanceAnalytics.analyze(
-            transcript: partialTranscript,
-            confidenceData: analyticsDataPoints,
-            totalLines: max(1, currentLineIndex),
-            duration: duration
-        )
+        // Generate insights from analytics data
+        let insights = generateInsights()
         
         return (url, duration, fileSize, insights)
     }
@@ -374,22 +356,6 @@ final class StageTeleprompterEngine: ObservableObject {
                 if let match = self.matcher.ingest(transcript: text) {
                     self.onAnchor?(match.anchor, match.confidence)
                 }
-                
-                // MARK: - AI: Analytics Data Collection
-                // Collect confidence data for post-performance analysis
-                if let startDate = self.startDate {
-                    let timestamp = Date().timeIntervalSince(startDate)
-                    // Use average confidence of segments (more stable than per-word)
-                    let segments = result.bestTranscription.segments
-                    let avgConfidence = segments.isEmpty ? 0.5 : 
-                        segments.map { $0.confidence }.reduce(0, +) / Float(segments.count)
-                    
-                    self.analyticsDataPoints.append((
-                        timestamp: timestamp,
-                        confidence: Double(avgConfidence),
-                        lineIndex: self.currentLineIndex
-                    ))
-                }
             }
         }
     }
@@ -469,4 +435,54 @@ final class StageTeleprompterEngine: ObservableObject {
         let seconds = Int(currentTime) % 60
         return String(format: "%d:%02d", minutes, seconds)
     }
+    
+    // MARK: - Analytics
+    
+    private func generateInsights() -> [PerformanceAnalytics.Insight] {
+        var insights: [PerformanceAnalytics.Insight] = []
+        
+        // Basic performance summary
+        if !analyticsDataPoints.isEmpty {
+            let avgConfidence = analyticsDataPoints.map(\.confidence).reduce(0, +) / Double(analyticsDataPoints.count)
+            
+            if avgConfidence > 0.8 {
+                insights.append(PerformanceAnalytics.Insight(
+                    title: "Strong Performance",
+                    description: String(format: "Average confidence: %.0f%%", avgConfidence * 100),
+                    severity: .info
+                ))
+            } else if avgConfidence < 0.5 {
+                insights.append(PerformanceAnalytics.Insight(
+                    title: "Recognition Challenges",
+                    description: "Consider adjusting microphone position or reducing background noise",
+                    severity: .warning
+                ))
+            }
+        }
+        
+        return insights
+    }
+    
+    // MARK: - Anchor Configuration
+    
+    func configureAnchors(_ anchors: [StageAnchor]) {
+        matcher.configure(anchors: anchors)
+        contextualStrings = anchors.filter(\.isEnabled).map(\.phrase)
+    }
 }
+// MARK: - Anchor Matcher
+
+/// Helper class for matching spoken text against anchor phrases
+private class AnchorMatcher {
+    private var anchors: [StageAnchor] = []
+    
+    func configure(anchors: [StageAnchor]) {
+        self.anchors = anchors.filter { $0.isEnabled && $0.isValid }
+    }
+    
+    func ingest(transcript: String) -> (anchor: StageAnchor, confidence: Double)? {
+        return anchors.findMatch(for: transcript)
+    }
+}
+
+

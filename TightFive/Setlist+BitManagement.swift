@@ -221,7 +221,7 @@ extension Setlist {
     /// Pre-computed dictionary for O(1) assignment lookups.
     /// Use this when rendering lists to avoid O(n²) performance.
     var assignmentLookup: [UUID: SetlistAssignment] {
-        Dictionary(uniqueKeysWithValues: assignments.map { ($0.id, $0) })
+        Dictionary(uniqueKeysWithValues: (assignments ?? []).map { ($0.id, $0) })
     }
 
     /// Check if setlist contains a specific bit (by ID)
