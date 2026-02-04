@@ -78,7 +78,7 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
     private var undoObservationTokens: [NSObjectProtocol] = []
     
     private var commitTimer: Timer?
-    private let commitDelay: TimeInterval = 0.30
+    private let commitDelay: TimeInterval = 0.50  // Increased from 0.30 to reduce commit frequency
     
     // Undo grouping
     private var undoBurstStartText: String?
@@ -151,36 +151,26 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
         // Remove previous observers
         for token in undoObservationTokens { NotificationCenter.default.removeObserver(token) }
         undoObservationTokens.removeAll()
-        
+
         guard let um = undoManager else { return }
         let center = NotificationCenter.default
-        weak let weakSelf = self
-        
-        let willUndo = center.addObserver(forName: .NSUndoManagerWillUndoChange, object: um, queue: .main) { _ in
-            Task { @MainActor in
-                guard let strongSelf = weakSelf else { return }
-                strongSelf.isPerformingUndoRedo = true
-                strongSelf.commitTimer?.invalidate()
-            }
+
+        // Note: queue: .main ensures we're on main thread, no Task wrapper needed
+        let willUndo = center.addObserver(forName: .NSUndoManagerWillUndoChange, object: um, queue: .main) { [weak self] _ in
+            self?.isPerformingUndoRedo = true
+            self?.commitTimer?.invalidate()
         }
-        let didUndo = center.addObserver(forName: .NSUndoManagerDidUndoChange, object: um, queue: .main) { _ in
-            Task { @MainActor in
-                weakSelf?.isPerformingUndoRedo = false
-            }
+        let didUndo = center.addObserver(forName: .NSUndoManagerDidUndoChange, object: um, queue: .main) { [weak self] _ in
+            self?.isPerformingUndoRedo = false
         }
-        let willRedo = center.addObserver(forName: .NSUndoManagerWillRedoChange, object: um, queue: .main) { _ in
-            Task { @MainActor in
-                guard let strongSelf = weakSelf else { return }
-                strongSelf.isPerformingUndoRedo = true
-                strongSelf.commitTimer?.invalidate()
-            }
+        let willRedo = center.addObserver(forName: .NSUndoManagerWillRedoChange, object: um, queue: .main) { [weak self] _ in
+            self?.isPerformingUndoRedo = true
+            self?.commitTimer?.invalidate()
         }
-        let didRedo = center.addObserver(forName: .NSUndoManagerDidRedoChange, object: um, queue: .main) { _ in
-            Task { @MainActor in
-                weakSelf?.isPerformingUndoRedo = false
-            }
+        let didRedo = center.addObserver(forName: .NSUndoManagerDidRedoChange, object: um, queue: .main) { [weak self] _ in
+            self?.isPerformingUndoRedo = false
         }
-        
+
         undoObservationTokens = [willUndo, didUndo, willRedo, didRedo]
     }
     
@@ -208,58 +198,56 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
     }
     
     @objc private func commitTimerFired(_ timer: Timer) {
-        Task { @MainActor in
-            self.commitNow()
-        }
+        // Timer scheduled on main run loop already runs on main thread - no Task needed
+        commitNow()
     }
     
     private func commitNow() {
         guard let tv = textView else { return }
-        
+
         // Capture the previous state for undo (from burst start or current)
         let previousText = undoBurstStartText ?? parent.text
         let newText = tv.text ?? ""
-        
+
         // Skip if nothing changed
         guard newText != previousText else {
             undoBurstStartText = nil
             return
         }
-        
+
         // Register undo action BEFORE updating the binding
         let um = externalUndoManager ?? textView?.undoManager
         if let um, !isPerformingUndoRedo {
             // Capture current values for the undo closure
             let capturedPrevious = previousText
-            
-            um.registerUndo(withTarget: self) { coordinator in
+
+            um.registerUndo(withTarget: self) { [weak self] coordinator in
+                guard self != nil else { return }
                 // Prevent redo registration during undo
                 coordinator.isPerformingUndoRedo = true
-                
+
                 // Update SwiftUI binding
                 coordinator.parent.text = capturedPrevious
                 coordinator.lastObservedText = capturedPrevious
-                
+
                 // Update text view content
                 if let tv = coordinator.textView {
                     let savedSelection = tv.selectedRange
                     tv.text = capturedPrevious
                     tv.selectedRange = coordinator.clampedSelection(savedSelection, toLength: capturedPrevious.count)
                 }
-                
-                // Small delay before allowing new commits
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    coordinator.isPerformingUndoRedo = false
-                }
+
+                // Reset flag synchronously - the notification observers handle the timing
+                coordinator.isPerformingUndoRedo = false
             }
             um.setActionName("Edit")
         }
-        
+
         // Now update the current state
         markInternalUpdate()
         parent.text = newText
         lastObservedText = newText
-        
+
         // Reset burst tracker
         undoBurstStartText = nil
     }
