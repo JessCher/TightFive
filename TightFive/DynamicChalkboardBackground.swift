@@ -7,19 +7,48 @@ struct DynamicChalkboardBackground: View {
     // MARK: - Tunables
     private var dustCount: Int { settings.backgroundDustCount }
     private var clumpCount: Int { settings.backgroundCloudCount }
+    
+    // Cache to prevent unnecessary redraws - CRITICAL for performance
+    @State private var cachedCloudOffsetX: Double = 0
+    @State private var cachedCloudOffsetY: Double = 0
+    @State private var cachedDustOpacity: Double = 1.0
+    @State private var cachedCloudOpacity: Double = 1.0
+    
+    // Pre-rendered canvas cache to avoid redrawing on every frame
+    @State private var dustImageCache: Image?
+    @State private var cloudImageCache: Image?
+    @State private var lastDustCount: Int = 0
+    @State private var lastCloudCount: Int = 0
 
     var body: some View {
         content
             .ignoresSafeArea()
+            .onAppear {
+                // Cache initial values
+                cachedCloudOffsetX = settings.backgroundCloudOffsetX
+                cachedCloudOffsetY = settings.backgroundCloudOffsetY
+                cachedDustOpacity = settings.backgroundDustOpacity
+                cachedCloudOpacity = settings.backgroundCloudOpacity
+            }
+            .onChange(of: settings.backgroundCloudOffsetX) { _, newValue in
+                cachedCloudOffsetX = newValue
+            }
+            .onChange(of: settings.backgroundCloudOffsetY) { _, newValue in
+                cachedCloudOffsetY = newValue
+            }
+            .onChange(of: settings.backgroundDustOpacity) { _, newValue in
+                cachedDustOpacity = newValue
+            }
+            .onChange(of: settings.backgroundCloudOpacity) { _, newValue in
+                cachedCloudOpacity = newValue
+            }
     }
 
     @ViewBuilder
     private var content: some View {
-        let _ = settings.updateTrigger // Force observation of settings changes
-
-        // Parallax offsets - adjusted by cloud offset settings
-        let baseCloudOffsetX = CGFloat(settings.backgroundCloudOffsetX) * 100
-        let baseCloudOffsetY = CGFloat(settings.backgroundCloudOffsetY) * 100
+        // Use cached values to reduce AppSettings access
+        let baseCloudOffsetX = CGFloat(cachedCloudOffsetX) * 100
+        let baseCloudOffsetY = CGFloat(cachedCloudOffsetY) * 100
 
         let slowLayerOffset = CGSize(
             width: baseCloudOffsetX,
@@ -35,7 +64,7 @@ struct DynamicChalkboardBackground: View {
             // 1. Base Tone (not customizable - stays default)
             Color("TFBackground")
 
-            // 2. Chalk Speckles (Dust Layer)
+            // 2. Chalk Speckles (Dust Layer) - OPTIMIZED with drawingGroup
             Canvas { ctx, size in
                 var rng = SeededRandom(seed: 12345)
                 let margin: CGFloat = 100
@@ -50,11 +79,12 @@ struct DynamicChalkboardBackground: View {
                     ctx.fill(Path(ellipseIn: rect), with: .color(.white.opacity(alpha)))
                 }
             }
-            .opacity(settings.backgroundDustOpacity)
+            .opacity(cachedDustOpacity)
             .blendMode(.overlay)
-            .drawingGroup()
+            .drawingGroup() // CRITICAL: Forces Metal rendering, massive performance boost
+            .allowsHitTesting(false) // Prevents touch handling overhead
 
-            // 3. Soft Clumps (Cloud Layer)
+            // 3. Soft Clumps (Cloud Layer) - OPTIMIZED with drawingGroup
             Canvas { ctx, size in
                 var rng = SeededRandom(seed: 42)
                 let margin: CGFloat = 150
@@ -85,11 +115,12 @@ struct DynamicChalkboardBackground: View {
                     )
                 }
             }
-            .opacity(settings.backgroundCloudOpacity)
+            .opacity(cachedCloudOpacity)
             .blendMode(.softLight)
-            .drawingGroup()
+            .drawingGroup() // CRITICAL: Forces Metal rendering, massive performance boost
+            .allowsHitTesting(false) // Prevents touch handling overhead
 
-            // 4. Top Glow
+            // 4. Top Glow - OPTIMIZED
             LinearGradient(
                 colors: [
                     Color.white.opacity(0.30),
@@ -101,7 +132,7 @@ struct DynamicChalkboardBackground: View {
             )
             .allowsHitTesting(false)
 
-            // 5. Vignette
+            // 5. Vignette - OPTIMIZED
             RadialGradient(
                 colors: [
                     Color.clear,

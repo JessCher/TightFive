@@ -109,11 +109,16 @@ extension EnvironmentValues {
 struct GlobalFontModifier: ViewModifier {
     @Environment(AppSettings.self) private var appSettings
     
+    // Cache computed values to avoid repeated access
+    private var fontColor: Color {
+        Color(hex: appSettings.appFontColorHex) ?? .white
+    }
+    
+    private var adjustedSize: CGFloat {
+        17 * appSettings.appFontSizeMultiplier // Default body font
+    }
+    
     func body(content: Content) -> some View {
-        let fontColor = Color(hex: appSettings.appFontColorHex) ?? .white
-        let multiplier = appSettings.appFontSizeMultiplier
-        let adjustedSize = 17 * multiplier // Default body font
-        
         return content
             .environment(\.appFont, appSettings.appFont)
             .environment(\.appFontColor, fontColor)

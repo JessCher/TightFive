@@ -77,6 +77,25 @@ struct SettingsView: View {
             } footer: {
                 Text("Configure Run Mode for your practice sessions.")
             }
+            
+            Section {
+                NavigationLink {
+                    DeveloperToolsSettingsView()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "hammer.fill")
+                            .foregroundStyle(TFTheme.yellow)
+                            .frame(width: 24)
+                        
+                        Text("Developer Tools")
+                            .foregroundStyle(.white)
+                    }
+                }
+            } header: {
+                Text("Development")
+            } footer: {
+                Text("Performance monitoring and debugging tools for development.")
+            }
         }
         .scrollContentBackground(.hidden)
         .tfBackground()

@@ -99,14 +99,14 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
     private var undoObservationTokens: [NSObjectProtocol] = []
 
     private var commitTimer: Timer?
-    private let commitDelay: TimeInterval = 0.50  // Increased from 0.30 to reduce RTF serialization frequency
+    private let commitDelay: TimeInterval = 0.75  // Increased to 750ms to further reduce RTF serialization frequency
 
     // Undo grouping
     private var undoBurstStartData: Data?
 
     // Toolbar throttling - use time-based debounce to reduce expensive list mode detection
     private var toolbarDebounceTimer: Timer?
-    private let toolbarDebounceDelay: TimeInterval = 0.10  // 100ms debounce
+    private let toolbarDebounceDelay: TimeInterval = 0.20  // Increased to 200ms debounce to reduce updates
 
     // Cache list mode to avoid regex on every keystroke
     private var cachedListMode: ListFormattingEngine.ListMode?

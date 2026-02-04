@@ -109,14 +109,14 @@ final class TFKeyboardState: ObservableObject {
 
     private init() {
         let nc = NotificationCenter.default
+        // PERFORMANCE: queue: .main + no Task wrapper = direct main thread execution
+        // Removed unnecessary Task wrappers since queue: .main already runs on main thread
         tokens.append(nc.addObserver(
             forName: UIResponder.keyboardWillShowNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.keyboardWillShow()
-            }
+            self?.keyboardWillShow()
         })
 
         tokens.append(nc.addObserver(
@@ -124,9 +124,7 @@ final class TFKeyboardState: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.keyboardWillHide()
-            }
+            self?.keyboardWillHide()
         })
     }
 
@@ -134,12 +132,12 @@ final class TFKeyboardState: ObservableObject {
         tokens.forEach { NotificationCenter.default.removeObserver($0) }
     }
 
-    @objc private func keyboardWillShow() {
-        // We are already @MainActor, so direct mutation is safe.
+    private func keyboardWillShow() {
+        // Already on main thread via queue: .main, safe to mutate @Published
         isVisible = true
     }
 
-    @objc private func keyboardWillHide() {
+    private func keyboardWillHide() {
         isVisible = false
     }
 }
@@ -153,7 +151,8 @@ struct TFUndoRedoControls: View {
     var body: some View {
         HStack(spacing: 10) {
             Button {
-                undoManager?.undo()  // ✅ Only call undo, let observers handle refresh
+                undoManager?.undo()
+                // Refresh happens automatically via undo manager notifications
             } label: {
                 Image(systemName: "arrow.uturn.backward")
                     .font(.system(size: 16, weight: .semibold))
@@ -166,7 +165,7 @@ struct TFUndoRedoControls: View {
 
             Button {
                 undoManager?.redo()
-                refresh()
+                // Refresh happens automatically via undo manager notifications
             } label: {
                 Image(systemName: "arrow.uturn.forward")
                     .font(.system(size: 16, weight: .semibold))
@@ -189,29 +188,27 @@ struct TFUndoRedoControls: View {
     }
 
     private func refresh() {
-        DispatchQueue.main.async {
-            self.canUndo = self.undoManager?.canUndo ?? false  // ✅ Next run loop
-            self.canRedo = self.undoManager?.canRedo ?? false
-        }
+        // PERFORMANCE: Direct synchronous check, no dispatch needed
+        // We're already on main thread in SwiftUI body/modifiers
+        canUndo = undoManager?.canUndo ?? false
+        canRedo = undoManager?.canRedo ?? false
     }
 
     private func observeUndoManager() {
         guard let um = undoManager else { return }
         let nc = NotificationCenter.default
 
-        // Any of these should prompt a refresh of canUndo/canRedo.
+        // PERFORMANCE: Reduced notification list to only essential ones
+        // Removed redundant willClose/checkpoint that were causing extra refreshes
         let names: [Notification.Name] = [
             .NSUndoManagerDidUndoChange,
             .NSUndoManagerDidRedoChange,
-            .NSUndoManagerDidOpenUndoGroup,
-            .NSUndoManagerDidCloseUndoGroup,
-            .NSUndoManagerWillCloseUndoGroup,
-            .NSUndoManagerCheckpoint
+            .NSUndoManagerDidCloseUndoGroup
         ]
 
         tokens = names.map { name in
             nc.addObserver(forName: name, object: um, queue: .main) { _ in
-                refresh()
+                self.refresh()
             }
         }
     }

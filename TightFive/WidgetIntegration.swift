@@ -1,4 +1,5 @@
 // WidgetIntegration.swift
+// WidgetIntegration.swift
 // TightFive
 //
 // Handles communication between the Quick Bit widget and the main app.
@@ -31,6 +32,10 @@ final class WidgetIntegrationManager: ObservableObject {
     /// Count of pending bits waiting to be processed
     @Published var pendingBitCount = 0
     
+    /// Throttle widget reloads to once every 5 seconds minimum
+    private var lastWidgetReloadTime: Date = .distantPast
+    private let minimumReloadInterval: TimeInterval = 5.0
+    
     private init() {}
     
     // MARK: - Widget Launch Flag Handling
@@ -50,7 +55,20 @@ final class WidgetIntegrationManager: ObservableObject {
     
     /// Syncs current app theme settings to the widget's shared container.
     /// Call this whenever Quick Bit theme settings change.
+    /// Throttled to prevent excessive reloads.
     func syncThemeToWidget() {
+        #if DEBUG
+        // Performance profiling (only if PerformanceProfiler is available)
+        let profiler = PerformanceProfiler.shared
+        profiler.measureSync("Widget Theme Sync") {
+            performSync()
+        }
+        #else
+        performSync()
+        #endif
+    }
+    
+    private func performSync() {
         let settings = AppSettings.shared
         
         let config = WidgetThemeConfiguration(
@@ -65,8 +83,13 @@ final class WidgetIntegrationManager: ObservableObject {
         
         config.saveToSharedDefaults()
         
-        // Reload widget timelines to reflect the new theme
-        WidgetCenter.shared.reloadAllTimelines()
+        // Throttle widget reloads - only reload if enough time has passed
+        let now = Date()
+        if now.timeIntervalSince(lastWidgetReloadTime) >= minimumReloadInterval {
+            WidgetCenter.shared.reloadAllTimelines()
+            lastWidgetReloadTime = now
+        }
+        // If throttled, the widget will pick up changes on its next natural refresh
     }
     
     private func mapTheme(_ theme: TileCardTheme) -> WidgetThemeConfiguration.Theme {
@@ -82,6 +105,18 @@ final class WidgetIntegrationManager: ObservableObject {
     /// Processes any Quick Bits that were saved from the widget.
     /// Call this on app launch and when returning from background.
     func processPendingBits(modelContext: ModelContext) {
+        #if DEBUG
+        // Performance profiling (only if PerformanceProfiler is available)
+        let profiler = PerformanceProfiler.shared
+        profiler.measureSync("Process Pending Bits") {
+            performProcessPendingBits(modelContext: modelContext)
+        }
+        #else
+        performProcessPendingBits(modelContext: modelContext)
+        #endif
+    }
+    
+    private func performProcessPendingBits(modelContext: ModelContext) {
         guard let defaults = AppGroupConstants.sharedDefaults else { return }
         
         // Get pending bits
@@ -110,8 +145,12 @@ final class WidgetIntegrationManager: ObservableObject {
             
             pendingBitCount = 0
             
-            // Reload widget to clear success state
-            WidgetCenter.shared.reloadAllTimelines()
+            // Reload widget to clear success state (throttled)
+            let now = Date()
+            if now.timeIntervalSince(lastWidgetReloadTime) >= minimumReloadInterval {
+                WidgetCenter.shared.reloadAllTimelines()
+                lastWidgetReloadTime = now
+            }
         } catch {
             print("Failed to save pending bits: \(error)")
         }

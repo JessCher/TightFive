@@ -51,12 +51,20 @@ struct PlainTextEditor: UIViewRepresentable {
         // Plain text only
         textView.allowsEditingTextAttributes = false
         
-        // Interaction
+        // Interaction + Performance
         textView.isScrollEnabled = true
         textView.isEditable = true
         textView.isUserInteractionEnabled = true
         textView.isSelectable = true
         textView.keyboardDismissMode = .interactive
+        
+        // PERFORMANCE: Enable non-contiguous layout for better scrolling with large text
+        textView.layoutManager.allowsNonContiguousLayout = true
+        
+        // PERFORMANCE FIX: Disable expensive text checking during typing
+        textView.layoutManager.showsInvisibleCharacters = false
+        textView.layoutManager.showsControlCharacters = false
+        textView.layoutManager.usesDefaultHyphenation = false
     }
 }
 
@@ -78,7 +86,7 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
     private var undoObservationTokens: [NSObjectProtocol] = []
     
     private var commitTimer: Timer?
-    private let commitDelay: TimeInterval = 0.50  // Increased from 0.30 to reduce commit frequency
+    private let commitDelay: TimeInterval = 0.75  // Increased to 750ms to reduce commit frequency
     
     // Undo grouping
     private var undoBurstStartText: String?
@@ -175,6 +183,16 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
     }
     
     func textViewDidChange(_ textView: UITextView) {
+        // PERFORMANCE FIX: Immediate lightweight update for smooth typing
+        // Update binding immediately for responsive UI, but defer expensive operations
+        let newText = textView.text ?? ""
+        if newText != lastObservedText {
+            markInternalUpdate()
+            parent.text = newText
+            lastObservedText = newText
+        }
+        
+        // Defer undo registration and save until typing pauses
         captureUndoBurstStartIfNeeded()
         scheduleCommit()
     }
@@ -194,7 +212,9 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
         commitTimer?.invalidate()
         let timer = Timer(timeInterval: commitDelay, target: self, selector: #selector(commitTimerFired(_:)), userInfo: nil, repeats: false)
         commitTimer = timer
-        RunLoop.main.add(timer, forMode: .common)
+        // PERFORMANCE FIX: Use .default instead of .common to avoid interfering with scrolling/animations
+        // .common blocks ScrollView and other tracking mode operations, causing lag
+        RunLoop.main.add(timer, forMode: .default)
     }
     
     @objc private func commitTimerFired(_ timer: Timer) {
@@ -243,9 +263,12 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
             um.setActionName("Edit")
         }
 
-        // Now update the current state
-        markInternalUpdate()
-        parent.text = newText
+        // PERFORMANCE FIX: State was already updated in textViewDidChange for responsive typing
+        // Just ensure we're in sync
+        if parent.text != newText {
+            markInternalUpdate()
+            parent.text = newText
+        }
         lastObservedText = newText
 
         // Reset burst tracker

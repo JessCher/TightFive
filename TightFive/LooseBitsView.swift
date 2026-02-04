@@ -69,7 +69,8 @@ struct LooseBitsView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(spacing: 12) {
+                // PERFORMANCE FIX: Use LazyVStack to defer rendering of off-screen items
+                LazyVStack(spacing: 12) {
                     // Sort button
                     HStack {
                         Spacer()
@@ -180,12 +181,13 @@ struct LooseBitsView: View {
                                     bit: bit,
                                     isFlipped: isFlipped,
                                     onTextFieldFocus: { textEditorID in
+                                        // PERFORMANCE: Reduced delay and simplified scroll animation
                                         // Auto-scroll to center text editor when keyboard appears
                                         activeTextFieldID = textEditorID
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                                            withAnimation(.easeInOut(duration: 0.4)) {
-                                                proxy.scrollTo(bit.id, anchor: .center)
-                                            }
+                                        // Reduced from 0.35s to 0.25s for snappier response
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                            // Removed animation wrapper - let ScrollView handle it naturally
+                                            proxy.scrollTo(bit.id, anchor: .center)
                                         }
                                     }
                                 )
@@ -538,6 +540,13 @@ private struct LooseUndoableTextEditor: UIViewRepresentable {
         textView.autocorrectionType = .yes
         textView.spellCheckingType = .yes
         textView.text = text
+        
+        // PERFORMANCE FIX: Enable performance optimizations
+        textView.layoutManager.allowsNonContiguousLayout = true
+        textView.layoutManager.showsInvisibleCharacters = false
+        textView.layoutManager.showsControlCharacters = false
+        textView.layoutManager.usesDefaultHyphenation = false
+        
         return textView
     }
 
@@ -558,6 +567,7 @@ private struct LooseUndoableTextEditor: UIViewRepresentable {
         let bit: Bit
         let isNotesField: Bool
         var isInternalUpdate = false
+        private var saveTimer: Timer?
 
         init(text: Binding<String>, modelContext: ModelContext, bit: Bit, isNotesField: Bool) {
             self._text = text
@@ -565,17 +575,44 @@ private struct LooseUndoableTextEditor: UIViewRepresentable {
             self.bit = bit
             self.isNotesField = isNotesField
         }
+        
+        deinit {
+            // Save on cleanup
+            saveTimer?.invalidate()
+            try? modelContext.save()
+        }
 
         func textViewDidChange(_ textView: UITextView) {
+            // PERFORMANCE FIX: Update immediately for responsive typing
             isInternalUpdate = true
-            text = textView.text
+            let newText = textView.text ?? ""
+            text = newText
+            
+            // Update model efficiently
             if isNotesField {
-                bit.notes = textView.text
+                bit.notes = newText
             } else {
-                bit.text = textView.text
+                bit.text = newText
             }
             bit.updatedAt = Date()
+            
+            // PERFORMANCE FIX: Batch save instead of saving on every keystroke
+            // Save will happen when editor loses focus or after a delay
+            // This reduces I/O operations significantly
+            scheduleSave()
+        }
+        
+        func textViewDidEndEditing(_ textView: UITextView) {
+            // Save immediately when done editing
+            saveTimer?.invalidate()
             try? modelContext.save()
+        }
+        
+        private func scheduleSave() {
+            saveTimer?.invalidate()
+            saveTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
+                try? self?.modelContext.save()
+            }
         }
     }
 }

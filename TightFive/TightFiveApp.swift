@@ -8,11 +8,61 @@ struct TightFiveApp: App {
     @State private var appSettings = AppSettings.shared
     @State private var showQuickBit = false
     
-    init() {
-        TFTheme.applySystemAppearance()
+    // CloudKit background task monitoring
+    @Environment(\.scenePhase) private var scenePhase
+    
+    // CLOUDKIT FIX: Create ModelContainer once as a static property to prevent duplicate registration
+    private static let sharedModelContainer: ModelContainer = {
+        let schema = Schema([
+            Bit.self,
+            Setlist.self,
+            BitVariation.self,
+            SetlistAssignment.self,
+            Performance.self,
+            UserProfile.self
+        ])
         
-        // Apply global font to UIKit components
-        configureGlobalAppearance()
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false,
+            allowsSave: true,
+            cloudKitDatabase: .automatic
+        )
+        
+        do {
+            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            print("✅ ModelContainer created with CloudKit sync")
+            return container
+        } catch {
+            // FALLBACK: Try without CloudKit
+            let fallbackConfig = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: false,
+                allowsSave: true,
+                cloudKitDatabase: .none
+            )
+            
+            do {
+                let container = try ModelContainer(for: schema, configurations: [fallbackConfig])
+                print("⚠️ ModelContainer created without CloudKit: \(error)")
+                return container
+            } catch {
+                fatalError("Could not create ModelContainer: \(error)")
+            }
+        }
+    }()
+    
+    // Force rebuild timestamp: 2026-02-03
+    
+    init() {
+        StartupProfiler.shared.start("App Init")
+        
+        // PERFORMANCE FIX: Move expensive work off critical launch path
+        Task { @MainActor in
+            TFTheme.applySystemAppearance()
+        }
+        
+        StartupProfiler.shared.end("App Init")
     }
 
     var body: some Scene {
@@ -27,69 +77,20 @@ struct TightFiveApp: App {
                         .presentationDetents([.medium, .large])
                 }
                 .onAppear {
-                    // Refresh global appearance when view appears
+                    // PERFORMANCE FIX: Only configure on first appearance, font changes handled by onChange
                     configureGlobalAppearance()
+                    
+                    // PERFORMANCE FIX: Removed profiling report to reduce launch overhead
                 }
                 .onChange(of: appSettings.appFont) { oldValue, newValue in
                     // Update global appearance when font changes
+                    // This already applies efficiently without manual refresh
                     configureGlobalAppearance()
                 }
+                .performanceOverlay()  // Add performance monitoring overlay
+                .startupCheckpoint("ContentView Appeared")
         }
-        .modelContainer(sharedModelContainer)
-    }
-    
-    // MARK: - Shared Model Container with iCloud Sync
-    
-    /// ModelContainer configured with iCloud sync enabled via CloudKit.
-    /// All data is automatically backed up and synced across user's devices.
-    private var sharedModelContainer: ModelContainer {
-        let schema = Schema([
-            Bit.self,
-            Setlist.self,
-            BitVariation.self,
-            SetlistAssignment.self,
-            Performance.self,
-            UserProfile.self
-        ])
-        
-        let modelConfiguration = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: false,
-            allowsSave: true,
-            cloudKitDatabase: .automatic  // ✨ Enables iCloud sync with CloudKit
-        )
-        
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            // Print detailed error information
-            print("❌ ModelContainer creation failed with error: \(error)")
-            print("📋 Error details: \(error.localizedDescription)")
-            
-            // Try to provide more helpful error message
-            if let swiftDataError = error as? any Error {
-                print("🔍 Full error: \(String(describing: swiftDataError))")
-            }
-            
-            // TEMPORARY DEBUG: Try creating without CloudKit to isolate the issue
-            print("⚠️ Attempting to create ModelContainer without CloudKit...")
-            let fallbackConfig = ModelConfiguration(
-                schema: schema,
-                isStoredInMemoryOnly: false,
-                allowsSave: true,
-                cloudKitDatabase: .none
-            )
-            
-            do {
-                let container = try ModelContainer(for: schema, configurations: [fallbackConfig])
-                print("✅ ModelContainer created successfully WITHOUT CloudKit")
-                print("💡 This suggests the issue is with CloudKit configuration")
-                return container
-            } catch {
-                print("❌ Even fallback creation failed: \(error)")
-                fatalError("Could not create ModelContainer even without CloudKit: \(error)")
-            }
-        }
+        .modelContainer(Self.sharedModelContainer)
     }
     
     private func configureGlobalAppearance() {
@@ -124,19 +125,9 @@ struct TightFiveApp: App {
             }
         }
         
-        // Force refresh of all windows
-        DispatchQueue.main.async {
-            for scene in UIApplication.shared.connectedScenes {
-                if let windowScene = scene as? UIWindowScene {
-                    for window in windowScene.windows {
-                        window.subviews.forEach { view in
-                            view.setNeedsLayout()
-                            view.setNeedsDisplay()
-                        }
-                    }
-                }
-            }
-        }
+        // REMOVED: Expensive window iteration that was causing lag on every font change
+        // UIKit appearance changes apply automatically on next view layout cycle
+        // No need to manually trigger layout on every subview in every window
     }
 }
 
