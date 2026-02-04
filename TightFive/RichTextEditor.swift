@@ -6,7 +6,8 @@
 //  - SwiftUI wrapper around UITextView
 //  - SRP: Coordinator orchestrates; engines mutate; toolbar renders
 //  - Cursor stability: internal-update guard + Data equality gate (no RTF byte compare loops)
-//  - Performance: debounced RTF persistence (default 300ms), non-contiguous layout
+//  - Performance: debounced RTF persistence (500ms), debounced toolbar updates (100ms)
+//  - Performance: list mode detection cached to avoid regex on every keystroke
 //  - Undo: burst-grouped (captures state at burst start, registers undo on commit)
 //  - Smart text: -- → — , ... → … (both include trailing space)
 //  - Lists: bullets, numbered, checkbox; continuation + exit behavior
@@ -103,8 +104,13 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
     // Undo grouping
     private var undoBurstStartData: Data?
 
-    // Toolbar throttling - avoid expensive updates on every keystroke
-    private var pendingToolbarUpdate = false
+    // Toolbar throttling - use time-based debounce to reduce expensive list mode detection
+    private var toolbarDebounceTimer: Timer?
+    private let toolbarDebounceDelay: TimeInterval = 0.10  // 100ms debounce
+
+    // Cache list mode to avoid regex on every keystroke
+    private var cachedListMode: ListFormattingEngine.ListMode?
+    private var cachedLineForListMode: String?
 
     init(parent: RichTextEditor) {
         self.parent = parent
@@ -112,9 +118,11 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
     }
 
     deinit {
-        // Clean up timer to prevent retain cycles and orphaned callbacks
+        // Clean up timers to prevent retain cycles and orphaned callbacks
         commitTimer?.invalidate()
         commitTimer = nil
+        toolbarDebounceTimer?.invalidate()
+        toolbarDebounceTimer = nil
         // Remove notification observers
         for token in undoObservationTokens {
             NotificationCenter.default.removeObserver(token)
@@ -244,15 +252,38 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
         scheduleToolbarUpdate(for: textView)
     }
 
-    /// Throttled toolbar update - coalesces rapid updates into a single call
+    /// Debounced toolbar update - coalesces rapid updates with time-based delay
+    /// Caches list mode detection to avoid expensive regex on every keystroke
     private func scheduleToolbarUpdate(for textView: UITextView) {
-        guard !pendingToolbarUpdate else { return }
-        pendingToolbarUpdate = true
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.pendingToolbarUpdate = false
-            self.toolbar.updateState(for: textView, listMode: self.listEngine.currentListMode(in: textView))
+        // Cancel any pending toolbar update
+        toolbarDebounceTimer?.invalidate()
+
+        // Schedule a new debounced update
+        toolbarDebounceTimer = Timer.scheduledTimer(withTimeInterval: toolbarDebounceDelay, repeats: false) { [weak self] _ in
+            guard let self = self, let tv = self.textView else { return }
+
+            // Cache list mode: only recompute if current line changed
+            let currentLine = self.getCurrentLineText(in: tv)
+            let listMode: ListFormattingEngine.ListMode?
+
+            if currentLine == self.cachedLineForListMode {
+                listMode = self.cachedListMode
+            } else {
+                listMode = self.listEngine.currentListMode(in: tv)
+                self.cachedListMode = listMode
+                self.cachedLineForListMode = currentLine
+            }
+
+            self.toolbar.updateState(for: tv, listMode: listMode)
         }
+    }
+
+    /// Get the current line text for caching purposes (lightweight, no regex)
+    private func getCurrentLineText(in textView: UITextView) -> String {
+        let ns = textView.text as NSString? ?? ""
+        let cursor = textView.selectedRange.location
+        let lineRange = ns.lineRange(for: NSRange(location: cursor, length: 0))
+        return ns.substring(with: lineRange)
     }
 
     func textView(_ textView: UITextView,

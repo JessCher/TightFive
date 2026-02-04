@@ -253,10 +253,7 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
     }
 }
 
-// Fix the typealias to match
-typealias Coordinator = PlainTextEditorCoordinator
-
 extension PlainTextEditor {
-    // Helper to make the Coordinator accessible
+    // Coordinator type for UIViewRepresentable conformance
     typealias Coordinator = PlainTextEditorCoordinator
 }
