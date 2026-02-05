@@ -10,9 +10,6 @@
 		887A94802F2DCA0700EF4A2A /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 887A947F2F2DCA0700EF4A2A /* WidgetKit.framework */; };
 		887A94822F2DCA0700EF4A2A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 887A94812F2DCA0700EF4A2A /* SwiftUI.framework */; };
 		887A948D2F2DCA0900EF4A2A /* QuickBitWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 887A947D2F2DCA0700EF4A2A /* QuickBitWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		88F6CD1C2F3316240061DC3E /* PERFORMANCE_MONITORING_README.md in Resources */ = {isa = PBXBuildFile; fileRef = 88F6CD1B2F3316240061DC3E /* PERFORMANCE_MONITORING_README.md */; };
-		88F6CD202F3316860061DC3E /* IMPLEMENTATION_SUMMARY.md in Resources */ = {isa = PBXBuildFile; fileRef = 88F6CD1F2F3316860061DC3E /* IMPLEMENTATION_SUMMARY.md */; };
-		88F6CD242F3316FB0061DC3E /* GETTING_STARTED_CHECKLIST.md in Resources */ = {isa = PBXBuildFile; fileRef = 88F6CD232F3316FB0061DC3E /* GETTING_STARTED_CHECKLIST.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -61,9 +58,6 @@
 		888E3FD82F20526900678706 /* TightFive.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TightFive.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		888E3FE72F20526B00678706 /* TightFiveTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TightFiveTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		888E3FF12F20526B00678706 /* TightFiveUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TightFiveUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		88F6CD1B2F3316240061DC3E /* PERFORMANCE_MONITORING_README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PERFORMANCE_MONITORING_README.md; sourceTree = "<group>"; };
-		88F6CD1F2F3316860061DC3E /* IMPLEMENTATION_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMPLEMENTATION_SUMMARY.md; sourceTree = "<group>"; };
-		88F6CD232F3316FB0061DC3E /* GETTING_STARTED_CHECKLIST.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GETTING_STARTED_CHECKLIST.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -71,6 +65,9 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
+				"MD docs/GETTING_STARTED_CHECKLIST.md",
+				"MD docs/IMPLEMENTATION_SUMMARY.md",
+				"MD docs/PERFORMANCE_MONITORING_README.md",
 			);
 			platformFiltersByRelativePath = {
 				Bit.swift = (ios, );
@@ -134,6 +131,9 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				AppGroupConstants.swift,
+				"MD docs/GETTING_STARTED_CHECKLIST.md",
+				"MD docs/IMPLEMENTATION_SUMMARY.md",
+				"MD docs/PERFORMANCE_MONITORING_README.md",
 				QuickBitIntent.swift,
 			);
 			target = 887A947C2F2DCA0700EF4A2A /* QuickBitWidgetExtension */;
@@ -223,9 +223,6 @@
 				887A94832F2DCA0700EF4A2A /* QuickBitWidget */,
 				887A947E2F2DCA0700EF4A2A /* Frameworks */,
 				888E3FD92F20526900678706 /* Products */,
-				88F6CD1B2F3316240061DC3E /* PERFORMANCE_MONITORING_README.md */,
-				88F6CD1F2F3316860061DC3E /* IMPLEMENTATION_SUMMARY.md */,
-				88F6CD232F3316FB0061DC3E /* GETTING_STARTED_CHECKLIST.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -389,9 +386,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				88F6CD242F3316FB0061DC3E /* GETTING_STARTED_CHECKLIST.md in Resources */,
-				88F6CD1C2F3316240061DC3E /* PERFORMANCE_MONITORING_README.md in Resources */,
-				88F6CD202F3316860061DC3E /* IMPLEMENTATION_SUMMARY.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

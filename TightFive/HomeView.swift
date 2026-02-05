@@ -62,12 +62,6 @@ struct HomeView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 8) {
-                    // MARK: - HIDDEN: IconLogo
-                    // Image("IconLogo")
-                    //     .resizable()
-                    //     .scaledToFit()
-                    //     .frame(width: 50, height: 50)
-
                     TightFiveWordmark(size: 22)
                 }
                 .offset(x: -15)

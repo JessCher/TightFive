@@ -160,7 +160,6 @@ struct TFUndoRedoControls: View {
                     .background(Color.white.opacity(0.06))
                     .clipShape(Circle())
             }
-            .disabled(!canUndo)
             .opacity(canUndo ? 1.0 : 0.35)
 
             Button {
@@ -173,7 +172,6 @@ struct TFUndoRedoControls: View {
                     .background(Color.white.opacity(0.06))
                     .clipShape(Circle())
             }
-            .disabled(!canRedo)
             .opacity(canRedo ? 1.0 : 0.35)
         }
         .foregroundStyle(TFTheme.yellow)

@@ -52,17 +52,9 @@ struct TightFiveApp: App {
         }
     }()
     
-    // Force rebuild timestamp: 2026-02-03
-    
+    // Configure appearance before views are created
     init() {
-        StartupProfiler.shared.start("App Init")
-        
-        // PERFORMANCE FIX: Move expensive work off critical launch path
-        Task { @MainActor in
-            TFTheme.applySystemAppearance()
-        }
-        
-        StartupProfiler.shared.end("App Init")
+        configureGlobalAppearance()
     }
 
     var body: some Scene {
@@ -76,19 +68,12 @@ struct TightFiveApp: App {
                     QuickBitEditor()
                         .presentationDetents([.medium, .large])
                 }
-                .onAppear {
-                    // PERFORMANCE FIX: Only configure on first appearance, font changes handled by onChange
-                    configureGlobalAppearance()
-                    
-                    // PERFORMANCE FIX: Removed profiling report to reduce launch overhead
-                }
                 .onChange(of: appSettings.appFont) { oldValue, newValue in
                     // Update global appearance when font changes
                     // This already applies efficiently without manual refresh
                     configureGlobalAppearance()
                 }
                 .performanceOverlay()  // Add performance monitoring overlay
-                .startupCheckpoint("ContentView Appeared")
         }
         .modelContainer(Self.sharedModelContainer)
     }
@@ -124,10 +109,6 @@ struct TightFiveApp: App {
                 ]
             }
         }
-        
-        // REMOVED: Expensive window iteration that was causing lag on every font change
-        // UIKit appearance changes apply automatically on next view layout cycle
-        // No need to manually trigger layout on every subview in every window
     }
 }
 
