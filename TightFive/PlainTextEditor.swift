@@ -65,6 +65,10 @@ struct PlainTextEditor: UIViewRepresentable {
         textView.layoutManager.showsInvisibleCharacters = false
         textView.layoutManager.showsControlCharacters = false
         textView.layoutManager.usesDefaultHyphenation = false
+        
+        // CRITICAL UNDO FIX: Disable UITextView's automatic undo registration
+        // We handle undo/redo manually in the coordinator for better control
+        textView.textStorage.delegate = nil  // Prevent automatic undo from text storage
     }
 }
 
@@ -114,9 +118,18 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
         
         textView.delegate = self
         
+        // CRITICAL FIX: Create a minimal toolbar to establish undo manager chain
+        // Without an inputAccessoryView, UITextView's undo manager doesn't properly activate
+        let toolbar = UIToolbar(frame: CGRect(x: 0, y: 0, width: 100, height: 44))
+        toolbar.items = []  // Empty toolbar, just here to activate undo
+        textView.inputAccessoryView = toolbar
+        
         // Initial load
         textView.text = parent.text
         lastObservedText = parent.text
+        
+        // CRITICAL FIX: Reload input views to activate undo manager
+        textView.reloadInputViews()
     }
     
     // MARK: SwiftUI -> UIKit sync
@@ -162,6 +175,12 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
 
         guard let um = undoManager else { return }
         let center = NotificationCenter.default
+
+        // CRITICAL FIX: Set the undo manager on the text view itself
+        // This ensures the responder chain properly uses our custom undo manager
+        if let tv = textView {
+            tv.undoManager?.removeAllActions()  // Clear any default actions
+        }
 
         // Note: queue: .main ensures we're on main thread, no Task wrapper needed
         let willUndo = center.addObserver(forName: .NSUndoManagerWillUndoChange, object: um, queue: .main) { [weak self] _ in

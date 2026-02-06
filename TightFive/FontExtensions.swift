@@ -7,14 +7,20 @@ extension View {
     func appFont(size: CGFloat, weight: Font.Weight = .regular) -> some View {
         let selectedFont = AppSettings.shared.appFont
         let multiplier = AppSettings.shared.appFontSizeMultiplier
+        let boldText = AppSettings.shared.boldText
         let adjustedSize = size * multiplier
-        return self.font(selectedFont.font(size: adjustedSize).weight(weight))
+        
+        // Apply bold weight if bold text is enabled
+        let finalWeight = boldText ? .bold : weight
+        
+        return self.font(selectedFont.font(size: adjustedSize).weight(finalWeight))
     }
     
     /// Applies the app's selected font using a text style (with size multiplier applied)
     func appFont(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> some View {
         let selectedFont = AppSettings.shared.appFont
         let multiplier = AppSettings.shared.appFontSizeMultiplier
+        let boldText = AppSettings.shared.boldText
         
         // Map text styles to approximate sizes
         let baseSize: CGFloat = {
@@ -35,7 +41,11 @@ extension View {
         }()
         
         let adjustedSize = baseSize * multiplier
-        return self.font(selectedFont.font(size: adjustedSize).weight(weight))
+        
+        // Apply bold weight if bold text is enabled
+        let finalWeight = boldText ? .bold : weight
+        
+        return self.font(selectedFont.font(size: adjustedSize).weight(finalWeight))
     }
 }
 
@@ -46,14 +56,20 @@ extension Text {
     func appFont(size: CGFloat, weight: Font.Weight = .regular) -> Text {
         let selectedFont = AppSettings.shared.appFont
         let multiplier = AppSettings.shared.appFontSizeMultiplier
+        let boldText = AppSettings.shared.boldText
         let adjustedSize = size * multiplier
-        return self.font(selectedFont.font(size: adjustedSize).weight(weight))
+        
+        // Apply bold weight if bold text is enabled
+        let finalWeight = boldText ? .bold : weight
+        
+        return self.font(selectedFont.font(size: adjustedSize).weight(finalWeight))
     }
     
     /// Applies the app's selected font using a text style (with size multiplier applied)
     func appFont(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Text {
         let selectedFont = AppSettings.shared.appFont
         let multiplier = AppSettings.shared.appFontSizeMultiplier
+        let boldText = AppSettings.shared.boldText
         
         let baseSize: CGFloat = {
             switch style {
@@ -73,7 +89,11 @@ extension Text {
         }()
         
         let adjustedSize = baseSize * multiplier
-        return self.font(selectedFont.font(size: adjustedSize).weight(weight))
+        
+        // Apply bold weight if bold text is enabled
+        let finalWeight = boldText ? .bold : weight
+        
+        return self.font(selectedFont.font(size: adjustedSize).weight(finalWeight))
     }
 }
 
@@ -138,4 +158,94 @@ extension View {
         return self.foregroundStyle(color)
     }
 }
+
+// MARK: - Accessibility View Modifiers
+extension View {
+    /// Applies animation with accessibility support (respects reduce motion)
+    func accessibleAnimation<V: Equatable>(_ animation: Animation?, value: V) -> some View {
+        let shouldAnimate = !AppSettings.shared.reduceMotion
+        return self.animation(shouldAnimate ? animation : nil, value: value)
+    }
+    
+    /// Applies animation with accessibility support (no binding value)
+    func accessibleAnimation(_ animation: Animation?) -> some View {
+        let shouldAnimate = !AppSettings.shared.reduceMotion
+        return self.animation(shouldAnimate ? animation : nil)
+    }
+    
+    /// Applies high contrast styling when enabled
+    func accessibleContrast() -> some View {
+        let highContrast = AppSettings.shared.highContrast
+        return self.modifier(HighContrastModifier(enabled: highContrast))
+    }
+    
+    /// Applies larger touch targets for buttons when enabled
+    func accessibleTapTarget() -> some View {
+        let largerTargets = AppSettings.shared.largerTouchTargets
+        return self.modifier(LargerTouchTargetModifier(enabled: largerTargets))
+    }
+    
+    /// Triggers haptic feedback if enabled
+    func hapticFeedback(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .medium) {
+        guard AppSettings.shared.hapticsEnabled else { return }
+        let generator = UIImpactFeedbackGenerator(style: style)
+        generator.impactOccurred()
+    }
+}
+
+/// Modifier to increase contrast for better visibility
+private struct HighContrastModifier: ViewModifier {
+    let enabled: Bool
+    
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .brightness(0.05)
+                .contrast(1.2)
+        } else {
+            content
+        }
+    }
+}
+
+/// Modifier to increase touch target sizes
+private struct LargerTouchTargetModifier: ViewModifier {
+    let enabled: Bool
+    
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .padding(4)
+        } else {
+            content
+        }
+    }
+}
+
+/// Button style that respects accessibility settings
+struct AccessibleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .accessibleAnimation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+            .accessibleTapTarget()
+            .onChange(of: configuration.isPressed) { oldValue, newValue in
+                if newValue {
+                    configuration.label.hapticFeedback(.light)
+                }
+            }
+    }
+}
+
+// MARK: - Animation Helper
+
+/// Executes withAnimation only if reduce motion is disabled
+func withAccessibleAnimation<Result>(_ animation: Animation? = .default, _ body: () throws -> Result) rethrows -> Result {
+    if AppSettings.shared.reduceMotion {
+        return try body()
+    } else {
+        return try withAnimation(animation, body)
+    }
+}
+
 

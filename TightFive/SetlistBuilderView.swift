@@ -524,7 +524,12 @@ struct SetlistBuilderView: View {
             rtfData = setlist.exportScriptRTFData()
         case .notes:
             plainText = NSAttributedString.fromRTF(setlist.notesRTF)?.string ?? ""
-            rtfData = setlist.notesRTF
+            // Normalize notes RTF colors for light backgrounds
+            if let notesAttr = NSAttributedString.fromRTF(setlist.notesRTF) {
+                rtfData = normalizeRTFColors(notesAttr)
+            } else {
+                rtfData = setlist.notesRTF
+            }
         }
         let filenameBase = setlist.title.isEmpty ? "Setlist" : setlist.title
         let safe = filenameBase.replacingOccurrences(of: "/", with: "-")
@@ -563,106 +568,202 @@ struct SetlistBuilderView: View {
             exportURL = nil
         }
     }
+    
+    /// Normalize RTF colors - convert light text to dark for standard document backgrounds
+    private func normalizeRTFColors(_ attributedString: NSAttributedString) -> Data? {
+        let normalized = NSMutableAttributedString(attributedString: attributedString)
+        normalized.enumerateAttribute(.foregroundColor, in: NSRange(location: 0, length: normalized.length)) { value, range, _ in
+            if let color = value as? UIColor {
+                // Check if the color is light (likely designed for dark backgrounds)
+                var white: CGFloat = 0
+                var alpha: CGFloat = 0
+                
+                // Convert to grayscale to check brightness
+                if color.getWhite(&white, alpha: &alpha) {
+                    // If color is very light (white > 0.7), replace with black
+                    if white > 0.7 {
+                        normalized.addAttribute(.foregroundColor, value: UIColor.black, range: range)
+                    }
+                } else {
+                    // For colors that can't be converted to grayscale, check RGB components
+                    var red: CGFloat = 0
+                    var green: CGFloat = 0
+                    var blue: CGFloat = 0
+                    if color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) {
+                        let brightness = (red + green + blue) / 3.0
+                        if brightness > 0.7 {
+                            normalized.addAttribute(.foregroundColor, value: UIColor.black, range: range)
+                        }
+                    }
+                }
+            }
+        }
+        
+        return try? normalized.data(from: NSRange(location: 0, length: normalized.length),
+                                     documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
+    }
 
     private func generatePDF(title: String, body: String) -> Data {
-        let pageWidth: CGFloat = 612
-        let pageHeight: CGFloat = 792
+        let pageWidth: CGFloat = 612  // 8.5" in points
+        let pageHeight: CGFloat = 792  // 11" in points
         let margin: CGFloat = 50
 
         let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight))
         return renderer.pdfData { context in
-            context.beginPage()
-
             let titleFont = UIFont.boldSystemFont(ofSize: 22)
             let bodyFont = UIFont.systemFont(ofSize: 12)
             let titleAttributes: [NSAttributedString.Key: Any] = [
                 .font: titleFont,
                 .foregroundColor: UIColor.black
             ]
-            let bodyAttributes: [NSAttributedString.Key: Any] = [
-                .font: bodyFont,
-                .foregroundColor: UIColor.black
-            ]
-
-            let drawableWidth = pageWidth - margin * 2
-            var yOffset = margin
-
-            // Draw title
-            let titleRect = CGRect(x: margin, y: yOffset, width: drawableWidth, height: 40)
-            title.draw(in: titleRect, withAttributes: titleAttributes)
-            yOffset += 40
-
-            // Draw body with page breaks
+            
             let paragraphStyle = NSMutableParagraphStyle()
             paragraphStyle.lineSpacing = 4
-            var bodyAttrs = bodyAttributes
-            bodyAttrs[.paragraphStyle] = paragraphStyle
+            let bodyAttributes: [NSAttributedString.Key: Any] = [
+                .font: bodyFont,
+                .foregroundColor: UIColor.black,
+                .paragraphStyle: paragraphStyle
+            ]
 
-            let attributedBody = NSAttributedString(string: body, attributes: bodyAttrs)
-            let framesetter = CTFramesetterCreateWithAttributedString(attributedBody)
-            var charIndex = 0
-            let totalLength = attributedBody.length
+            let drawableWidth = pageWidth - (margin * 2)
+            
+            // Start first page
+            context.beginPage()
+            var currentY = margin
 
-            while charIndex < totalLength {
-                if yOffset > margin {
-                    // First page already begun
+            // Draw title on first page
+            let titleHeight = title.boundingRect(
+                with: CGSize(width: drawableWidth, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: titleAttributes,
+                context: nil
+            ).height
+            
+            let titleRect = CGRect(x: margin, y: currentY, width: drawableWidth, height: titleHeight)
+            title.draw(in: titleRect, withAttributes: titleAttributes)
+            currentY += titleHeight + 20
+
+            // Prepare attributed body text
+            let attributedBody = NSAttributedString(string: body, attributes: bodyAttributes)
+            
+            // Draw body text with proper pagination
+            var textIndex = 0
+            
+            while textIndex < attributedBody.length {
+                let availableHeight = pageHeight - currentY - margin
+                
+                // Get remaining text
+                let remainingText = attributedBody.attributedSubstring(
+                    from: NSRange(location: textIndex, length: attributedBody.length - textIndex)
+                )
+                
+                // Find how many characters fit without cutting lines
+                let charsFit = findCharactersFittingCompleteLinesOnly(
+                    attributedString: remainingText,
+                    maxWidth: drawableWidth,
+                    maxHeight: availableHeight
+                )
+                
+                // Draw only the text that fits completely
+                if charsFit > 0 {
+                    let textToDraw = attributedBody.attributedSubstring(
+                        from: NSRange(location: textIndex, length: charsFit)
+                    )
+                    
+                    let drawHeight = textToDraw.boundingRect(
+                        with: CGSize(width: drawableWidth, height: .greatestFiniteMagnitude),
+                        options: [.usesLineFragmentOrigin, .usesFontLeading],
+                        context: nil
+                    ).height
+                    
+                    let drawRect = CGRect(x: margin, y: currentY, width: drawableWidth, height: drawHeight)
+                    textToDraw.draw(in: drawRect)
+                    
+                    textIndex += charsFit
                 } else {
-                    context.beginPage()
-                    yOffset = margin
+                    // Edge case: even a single character doesn't fit, force draw something
+                    let forcedLength = min(1, remainingText.length)
+                    let textToDraw = attributedBody.attributedSubstring(
+                        from: NSRange(location: textIndex, length: forcedLength)
+                    )
+                    
+                    let drawRect = CGRect(x: margin, y: currentY, width: drawableWidth, height: availableHeight)
+                    textToDraw.draw(in: drawRect)
+                    textIndex += forcedLength
                 }
-
-                let remainingHeight = pageHeight - yOffset - margin
-                let framePath = CGPath(rect: CGRect(x: margin, y: yOffset, width: drawableWidth, height: remainingHeight), transform: nil)
-                let range = CFRangeMake(charIndex, 0)
-                let fitRange = CTFramesetterSuggestFrameSizeWithConstraints(framesetter, range, nil,
-                    CGSize(width: drawableWidth, height: remainingHeight), nil)
-
-                let drawRect = CGRect(x: margin, y: yOffset, width: drawableWidth, height: fitRange.height)
-                let subRange = CFRangeMake(charIndex, 0)
-                let suggestSize = CTFramesetterSuggestFrameSizeWithConstraints(framesetter, subRange, nil,
-                    CGSize(width: drawableWidth, height: remainingHeight), nil)
-
-                // Draw text block using NSAttributedString drawing
-                let chunkEnd = min(charIndex + estimateCharsFitting(text: body, from: charIndex, width: drawableWidth, height: remainingHeight, font: bodyFont), totalLength)
-                let chunk = (body as NSString).substring(with: NSRange(location: charIndex, length: chunkEnd - charIndex))
-                let chunkAttr = NSAttributedString(string: chunk, attributes: bodyAttrs)
-                let usedRect = chunkAttr.boundingRect(with: CGSize(width: drawableWidth, height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil)
-                chunkAttr.draw(in: CGRect(x: margin, y: yOffset, width: drawableWidth, height: usedRect.height))
-
-                charIndex = chunkEnd
-                yOffset += usedRect.height + 10
-
-                if charIndex < totalLength && yOffset + 50 > pageHeight - margin {
+                
+                // Move to next page if needed
+                if textIndex < attributedBody.length {
                     context.beginPage()
-                    yOffset = margin
+                    currentY = margin
                 }
             }
         }
     }
-
-    private func estimateCharsFitting(text: String, from startIndex: Int, width: CGFloat, height: CGFloat, font: UIFont) -> Int {
-        let nsText = text as NSString
-        let totalLength = nsText.length
-        let remaining = totalLength - startIndex
-        guard remaining > 0 else { return 0 }
-
-        // Binary search for the number of characters that fit
-        var lo = 0
-        var hi = remaining
-        let attrs: [NSAttributedString.Key: Any] = [.font: font]
-        let constraintSize = CGSize(width: width, height: height)
-
-        while lo < hi {
-            let mid = (lo + hi + 1) / 2
-            let sub = nsText.substring(with: NSRange(location: startIndex, length: mid))
-            let rect = (sub as NSString).boundingRect(with: constraintSize, options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs, context: nil)
-            if rect.height <= height {
-                lo = mid
+    
+    /// Find characters that fit without cutting lines in half
+    private func findCharactersFittingCompleteLinesOnly(attributedString: NSAttributedString, maxWidth: CGFloat, maxHeight: CGFloat) -> Int {
+        let length = attributedString.length
+        guard length > 0 else { return 0 }
+        
+        // Binary search for complete lines that fit
+        var low = 0
+        var high = length
+        var bestFit = 0
+        
+        while low <= high {
+            let mid = (low + high) / 2
+            if mid == 0 {
+                low = 1
+                continue
+            }
+            
+            let substring = attributedString.attributedSubstring(from: NSRange(location: 0, length: mid))
+            let size = substring.boundingRect(
+                with: CGSize(width: maxWidth, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                context: nil
+            )
+            
+            if size.height <= maxHeight {
+                bestFit = mid
+                low = mid + 1
             } else {
-                hi = mid - 1
+                high = mid - 1
             }
         }
-        return max(lo, 1) // At least 1 char to avoid infinite loop
+        
+        // Now find the last complete line break before or at bestFit
+        if bestFit > 0 && bestFit < length {
+            let string = attributedString.string as NSString
+            
+            // Look backwards from bestFit to find a line break or space
+            var adjustedFit = bestFit
+            
+            // First try to find a paragraph break
+            for i in stride(from: bestFit - 1, through: max(0, bestFit - 100), by: -1) {
+                let char = string.character(at: i)
+                if char == 0x0A || char == 0x0D {  // Line feed or carriage return
+                    adjustedFit = i + 1
+                    break
+                }
+            }
+            
+            // If no paragraph break found nearby, try to break at a space to avoid mid-word breaks
+            if adjustedFit == bestFit {
+                for i in stride(from: bestFit - 1, through: max(0, bestFit - 50), by: -1) {
+                    let char = string.character(at: i)
+                    if char == 0x20 {  // Space
+                        adjustedFit = i + 1
+                        break
+                    }
+                }
+            }
+            
+            return adjustedFit
+        }
+        
+        return bestFit
     }
     
     private func duplicateSetlist() {
@@ -1221,7 +1322,38 @@ extension Setlist {
             }
         }
         guard result.length > 0 else { return nil }
-        return try? result.data(from: NSRange(location: 0, length: result.length),
+        
+        // Convert colors to be appropriate for light backgrounds (standard documents)
+        // Replace white/light text colors with black for better readability
+        let normalizedResult = NSMutableAttributedString(attributedString: result)
+        normalizedResult.enumerateAttribute(.foregroundColor, in: NSRange(location: 0, length: normalizedResult.length)) { value, range, _ in
+            if let color = value as? UIColor {
+                // Check if the color is light (likely designed for dark backgrounds)
+                var white: CGFloat = 0
+                var alpha: CGFloat = 0
+                
+                // Convert to grayscale to check brightness
+                if color.getWhite(&white, alpha: &alpha) {
+                    // If color is very light (white > 0.7), replace with black
+                    if white > 0.7 {
+                        normalizedResult.addAttribute(.foregroundColor, value: UIColor.black, range: range)
+                    }
+                } else {
+                    // For colors that can't be converted to grayscale, check RGB components
+                    var red: CGFloat = 0
+                    var green: CGFloat = 0
+                    var blue: CGFloat = 0
+                    if color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) {
+                        let brightness = (red + green + blue) / 3.0
+                        if brightness > 0.7 {
+                            normalizedResult.addAttribute(.foregroundColor, value: UIColor.black, range: range)
+                        }
+                    }
+                }
+            }
+        }
+        
+        return try? normalizedResult.data(from: NSRange(location: 0, length: normalizedResult.length),
                                 documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
     }
 

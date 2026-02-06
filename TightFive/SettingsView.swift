@@ -411,50 +411,6 @@ struct BackgroundSettingsView: View {
                 Text("Adjust the density, opacity, position, and colors of the atmospheric clouds.")
             }
             
-            // Dust Settings Section
-            Section {
-                // Dust Count
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Dust Density")
-                            .appFont(.body)
-                        Spacer()
-                        Text("\(Int(dustCount))")
-                            .font(.body.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Slider(value: $dustCount, in: 0...2000, step: 50)
-                        .tint(TFTheme.yellow)
-                        .onChange(of: dustCount) { _, newValue in
-                            AppSettings.shared.backgroundDustCount = Int(newValue)
-                        }
-                }
-                .padding(.vertical, 4)
-                
-                // Dust Opacity
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Dust Opacity")
-                            .appFont(.body)
-                        Spacer()
-                        Text("\(Int(dustOpacity * 100))%")
-                            .font(.body.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                    }
-                    
-                    Slider(value: $dustOpacity, in: 0...1.0, step: 0.01)
-                        .tint(TFTheme.yellow)
-                        .onChange(of: dustOpacity) { _, newValue in
-                            AppSettings.shared.backgroundDustOpacity = newValue
-                        }
-                }
-                .padding(.vertical, 4)
-            } header: {
-                Text("Chalk Speckles")
-            } footer: {
-                Text("Adjust the density and opacity of the fine chalk dust particles.")
-            }
             
             // Reset Section
             Section {

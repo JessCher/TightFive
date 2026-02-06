@@ -63,6 +63,11 @@ class CueCardSettingsStore {
         didSet { UserDefaults.standard.set(advanceButtonColor.rawValue, forKey: "cueCard_advanceButtonColor") }
     }
 
+    /// Size for manual advance buttons in Stage Mode
+    var advanceButtonSize: AdvanceButtonSize = .medium {
+        didSet { UserDefaults.standard.set(advanceButtonSize.rawValue, forKey: "cueCard_advanceButtonSize") }
+    }
+
     // MARK: - Recording Settings
 
     /// Whether to record audio during Stage Mode performances (default: on)
@@ -134,6 +139,11 @@ class CueCardSettingsStore {
             advanceButtonColor = advanceButtonColorValue
         }
 
+        if let advanceButtonSizeRaw = defaults.string(forKey: "cueCard_advanceButtonSize"),
+           let advanceButtonSizeValue = AdvanceButtonSize(rawValue: advanceButtonSizeRaw) {
+            advanceButtonSize = advanceButtonSizeValue
+        }
+
         if defaults.object(forKey: "cueCard_recordingEnabled") != nil {
             recordingEnabled = defaults.bool(forKey: "cueCard_recordingEnabled")
         }
@@ -165,6 +175,7 @@ class CueCardSettingsStore {
         enableAnimations = true
         transitionStyle = .slide
         advanceButtonColor = .white
+        advanceButtonSize = .medium
         recordingEnabled = true
     }
 }
@@ -266,3 +277,41 @@ enum AdvanceButtonColor: String, CaseIterable, Identifiable {
         rawValue.capitalized
     }
 }
+enum AdvanceButtonSize: String, CaseIterable, Identifiable {
+    case small = "small"
+    case medium = "medium"
+    case large = "large"
+    case extraLarge = "extraLarge"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .small: return "Small"
+        case .medium: return "Medium"
+        case .large: return "Large"
+        case .extraLarge: return "Extra Large"
+        }
+    }
+
+    /// Button icon size (SF Symbol point size)
+    var iconSize: CGFloat {
+        switch self {
+        case .small: return 20
+        case .medium: return 28
+        case .large: return 36
+        case .extraLarge: return 44
+        }
+    }
+
+    /// Button frame size
+    var frameSize: CGFloat {
+        switch self {
+        case .small: return 44
+        case .medium: return 60
+        case .large: return 76
+        case .extraLarge: return 92
+        }
+    }
+}
+

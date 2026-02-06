@@ -43,6 +43,7 @@ struct TexturedCardModifier: ViewModifier {
         let gritLayer1 = Color(hex: appSettings.tileCardGritLayer1ColorHex) ?? Color("TFYellow")
         let gritLayer2 = Color(hex: appSettings.tileCardGritLayer2ColorHex) ?? .white.opacity(0.3)
         let gritLayer3 = Color(hex: appSettings.tileCardGritLayer3ColorHex) ?? .white.opacity(0.1)
+        let highContrast = appSettings.highContrast
         
         content
             .background(
@@ -134,11 +135,11 @@ struct TexturedCardModifier: ViewModifier {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .strokeBorder(Color("TFCardStroke"), lineWidth: 1.5)
-                    .opacity(0.9)
+                    .strokeBorder(Color("TFCardStroke"), lineWidth: highContrast ? 2.5 : 1.5)
+                    .opacity(highContrast ? 1.0 : 0.9)
                     .blendMode(.overlay)
             )
-            .shadow(color: .black.opacity(0.6), radius: 4, x: 0, y: 2)
+            .shadow(color: .black.opacity(highContrast ? 0.8 : 0.6), radius: highContrast ? 6 : 4, x: 0, y: 2)
     }
 }
 

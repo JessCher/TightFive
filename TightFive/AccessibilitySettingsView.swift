@@ -13,6 +13,7 @@ struct AccessibilitySettingsView: View {
                         .appFont(.title3, weight: .semibold)
                         .foregroundStyle(TFTheme.yellow)
                         .padding(.horizontal, 4)
+                        .accessibilityAddTraits(.isHeader)
 
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -24,15 +25,19 @@ struct AccessibilitySettingsView: View {
                                 .appFont(.caption)
                                 .foregroundStyle(.white.opacity(0.6))
                         }
+                        .accessibilityElement(children: .combine)
 
                         Spacer()
 
-                        Toggle("", isOn: $settings.reduceMotion)
+                        Toggle("Reduce motion", isOn: $settings.reduceMotion)
                             .labelsHidden()
                             .tint(TFTheme.yellow)
+                            .accessibilityLabel("Reduce motion")
+                            .accessibilityHint("Minimizes animations and transitions throughout the app")
                     }
                     .padding(16)
                     .tfDynamicCard(cornerRadius: 16)
+                    .accessibilityElement(children: .contain)
                 }
 
                 // Visual
@@ -41,6 +46,7 @@ struct AccessibilitySettingsView: View {
                         .appFont(.title3, weight: .semibold)
                         .foregroundStyle(TFTheme.yellow)
                         .padding(.horizontal, 4)
+                        .accessibilityAddTraits(.isHeader)
 
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -52,15 +58,19 @@ struct AccessibilitySettingsView: View {
                                 .appFont(.caption)
                                 .foregroundStyle(.white.opacity(0.6))
                         }
+                        .accessibilityElement(children: .combine)
 
                         Spacer()
 
-                        Toggle("", isOn: $settings.highContrast)
+                        Toggle("High contrast", isOn: $settings.highContrast)
                             .labelsHidden()
                             .tint(TFTheme.yellow)
+                            .accessibilityLabel("High contrast")
+                            .accessibilityHint("Increases contrast for text and UI elements")
                     }
                     .padding(16)
                     .tfDynamicCard(cornerRadius: 16)
+                    .accessibilityElement(children: .contain)
 
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -72,15 +82,19 @@ struct AccessibilitySettingsView: View {
                                 .appFont(.caption)
                                 .foregroundStyle(.white.opacity(0.6))
                         }
+                        .accessibilityElement(children: .combine)
 
                         Spacer()
 
-                        Toggle("", isOn: $settings.boldText)
+                        Toggle("Bold text", isOn: $settings.boldText)
                             .labelsHidden()
                             .tint(TFTheme.yellow)
+                            .accessibilityLabel("Bold text")
+                            .accessibilityHint("Uses heavier font weight for all text")
                     }
                     .padding(16)
                     .tfDynamicCard(cornerRadius: 16)
+                    .accessibilityElement(children: .contain)
 
                     // Text size
                     VStack(alignment: .leading, spacing: 10) {
@@ -100,19 +114,25 @@ struct AccessibilitySettingsView: View {
 
                         Slider(value: $settings.appFontSizeMultiplier, in: 0.8...1.6, step: 0.05)
                             .tint(TFTheme.yellow)
+                            .accessibilityLabel("Text size")
+                            .accessibilityValue("\(Int(settings.appFontSizeMultiplier * 100)) percent")
+                            .accessibilityHint("Adjusts text size across the entire app")
 
                         HStack {
                             Text("A")
                                 .font(.system(size: 12))
                                 .foregroundStyle(.white.opacity(0.5))
+                                .accessibilityHidden(true)
                             Spacer()
                             Text("A")
                                 .font(.system(size: 22))
                                 .foregroundStyle(.white.opacity(0.5))
+                                .accessibilityHidden(true)
                         }
                     }
                     .padding(16)
                     .tfDynamicCard(cornerRadius: 16)
+                    .accessibilityElement(children: .contain)
                 }
 
                 // Interaction
@@ -121,6 +141,7 @@ struct AccessibilitySettingsView: View {
                         .appFont(.title3, weight: .semibold)
                         .foregroundStyle(TFTheme.yellow)
                         .padding(.horizontal, 4)
+                        .accessibilityAddTraits(.isHeader)
 
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -132,15 +153,19 @@ struct AccessibilitySettingsView: View {
                                 .appFont(.caption)
                                 .foregroundStyle(.white.opacity(0.6))
                         }
+                        .accessibilityElement(children: .combine)
 
                         Spacer()
 
-                        Toggle("", isOn: $settings.hapticsEnabled)
+                        Toggle("Haptic feedback", isOn: $settings.hapticsEnabled)
                             .labelsHidden()
                             .tint(TFTheme.yellow)
+                            .accessibilityLabel("Haptic feedback")
+                            .accessibilityHint("Vibration feedback for taps and gestures")
                     }
                     .padding(16)
                     .tfDynamicCard(cornerRadius: 16)
+                    .accessibilityElement(children: .contain)
 
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -152,15 +177,19 @@ struct AccessibilitySettingsView: View {
                                 .appFont(.caption)
                                 .foregroundStyle(.white.opacity(0.6))
                         }
+                        .accessibilityElement(children: .combine)
 
                         Spacer()
 
-                        Toggle("", isOn: $settings.largerTouchTargets)
+                        Toggle("Larger touch targets", isOn: $settings.largerTouchTargets)
                             .labelsHidden()
                             .tint(TFTheme.yellow)
+                            .accessibilityLabel("Larger touch targets")
+                            .accessibilityHint("Increases button and control sizes for easier tapping")
                     }
                     .padding(16)
                     .tfDynamicCard(cornerRadius: 16)
+                    .accessibilityElement(children: .contain)
                 }
 
                 // Footer
@@ -168,6 +197,7 @@ struct AccessibilitySettingsView: View {
                     .appFont(.footnote)
                     .foregroundStyle(.white.opacity(0.5))
                     .padding(.top, 8)
+                    .accessibilityAddTraits(.isStaticText)
             }
             .padding(.horizontal, 18)
             .padding(.top, 14)
@@ -181,6 +211,7 @@ struct AccessibilitySettingsView: View {
                 TFWordmarkTitle(title: "Accessibility", size: 20)
             }
         }
+        .accessibilityElement(children: .contain)
     }
 }
 

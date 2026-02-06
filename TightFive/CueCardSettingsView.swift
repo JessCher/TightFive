@@ -378,6 +378,26 @@ struct CueCardSettingsView: View {
             }
             .padding(16)
             .tfDynamicCard(cornerRadius: 16)
+
+            // Advance Button Size Card
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Advance button size")
+                    .appFont(.headline)
+                    .foregroundStyle(.white)
+
+                Text("Size of the previous/next card buttons")
+                    .appFont(.caption)
+                    .foregroundStyle(.white.opacity(0.6))
+
+                Picker("Advance button size", selection: $cueCardSettings.advanceButtonSize) {
+                    ForEach(AdvanceButtonSize.allCases) { size in
+                        Text(size.displayName).tag(size)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+            .padding(16)
+            .tfDynamicCard(cornerRadius: 16)
         }
     }
 
@@ -613,23 +633,6 @@ struct CueCardSettingsView: View {
             .padding(16)
             .tfDynamicCard(cornerRadius: 16)
             
-            // Transition Style Card
-            if cueCardSettings.enableAnimations {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Transition style")
-                        .appFont(.headline)
-                        .foregroundStyle(.white)
-                    
-                    Picker("Transition style", selection: $cueCardSettings.transitionStyle) {
-                        ForEach(CardTransitionStyle.allCases) { style in
-                            Text(style.displayName).tag(style)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
-                .padding(16)
-                .tfDynamicCard(cornerRadius: 16)
-            }
         }
     }
     

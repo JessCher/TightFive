@@ -62,7 +62,7 @@ struct FlippableBitCard<FrontContent: View, BackContent: View>: View {
                 .frame(maxHeight: isFlipped ? nil : 0)
                 .clipped()
         }
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped)
+        .accessibleAnimation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped)
     }
 }
 
