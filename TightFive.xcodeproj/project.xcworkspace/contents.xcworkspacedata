@@ -5,24 +5,6 @@
       location = "self:">
    </FileRef>
    <FileRef
-      location = "group:PerformanceProfiler.swift">
-   </FileRef>
-   <FileRef
-      location = "group:StartupProfiler.swift">
-   </FileRef>
-   <FileRef
-      location = "group:PERFORMANCE_PROFILING_GUIDE.md">
-   </FileRef>
-   <FileRef
-      location = "group:PROFILING_SUMMARY.md">
-   </FileRef>
-   <FileRef
-      location = "group:QUICK_PERFORMANCE_FIXES.md">
-   </FileRef>
-   <FileRef
-      location = "group:EXPORT_GUIDE.md">
-   </FileRef>
-   <FileRef
-      location = "group:CSV_EXPORT_FIX.md">
+      location = "group:SETTINGS_SYNC_SUMMARY.md">
    </FileRef>
 </Workspace>
