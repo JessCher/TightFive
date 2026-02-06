@@ -12,19 +12,19 @@ struct HomeView: View {
 
                 VStack(spacing: 14) {
                     NavigationLink {
-                        LooseBitsView()
+                        BitsTabView()
                     } label: {
-                        HomeTile(title: "Loose Ideas",
-                                 subtitle: "Save joke ideas for later.",
-                                 iconName: "IconLooseBits")
+                        HomeTile(title: "Bits",
+                                 subtitle: "All your material in one place.",
+                                 iconName: "IconFinishedBits")
                     }
 
                     NavigationLink {
-                        FinishedBitsView()
+                        NotebookView()
                     } label: {
-                        HomeTile(title: "Finished Bits",
-                                 subtitle: "Refine your best stuff.",
-                                 iconName: "IconFinishedBits")
+                        HomeTile(title: "Notebook",
+                                 subtitle: "Jot down thoughts and ideas.",
+                                 iconName: "IconLooseBits")
                     }
 
                     NavigationLink {

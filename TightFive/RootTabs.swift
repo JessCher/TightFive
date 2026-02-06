@@ -19,10 +19,15 @@ struct RootTabs: View {
             .tabItem { Label("Setlists", systemImage: "list.bullet") }
             
             NavigationStack {
+                NotebookView()
+            }
+            .tabItem { Label("Notebook", systemImage: "book.fill") }
+
+            NavigationStack {
                 RunModeLauncherView()
             }
             .tabItem { Label("Run Through", systemImage: "timer") }
-            
+
             NavigationStack {
                 ShowNotesView()
             }
