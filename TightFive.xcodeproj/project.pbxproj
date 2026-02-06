@@ -80,6 +80,9 @@
 				LooseBitsView.swift = (ios, );
 				MoreView.swift = (ios, );
 				NavigationGestureDisabler.swift = (ios, );
+				Note.swift = (ios, );
+				NoteFolder.swift = (ios, );
+				NotebookView.swift = (ios, );
 				Performance.swift = (ios, );
 				PerformanceAnalytics.swift = (ios, );
 				PerformanceRecorder.swift = (ios, );

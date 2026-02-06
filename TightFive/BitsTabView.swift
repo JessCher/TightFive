@@ -1,35 +1,57 @@
 import SwiftUI
 import SwiftData
 
-/// Combined view for the Bits tab that shows both loose and finished bits
+/// Combined view for the Bits tab that shows loose, finished, and favorited bits
 /// with a segmented picker to switch between them.
+///
+/// **Scroll behavior:**
+/// - Search bar is hidden above screen by default, pulls down when user drags/scrolls up
+/// - Tabs stay at the top of scrollable content and travel off-screen with scroll
+/// - This maximizes screen real estate for bit cards
 struct BitsTabView: View {
     @State private var selectedSegment: BitSegment = .loose
+    @State private var query: String = ""
+    @State private var showQuickBit = false
+    @State private var selectedBit: Bit?
 
     enum BitSegment: String, CaseIterable {
-        case loose = "Loose"
+        case loose = "Ideas"
         case finished = "Finished"
+        case favorites = "Favorites"
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Segmented picker
-            Picker("Bits", selection: $selectedSegment) {
-                ForEach(BitSegment.allCases, id: \.self) { segment in
-                    Text(segment.rawValue).tag(segment)
+        ScrollView {
+            VStack(spacing: 0) {
+                // Segmented picker - scrolls with content for maximum card real estate
+                Picker("Bits", selection: $selectedSegment) {
+                    ForEach(BitSegment.allCases, id: \.self) { segment in
+                        Text(segment.rawValue).tag(segment)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
+
+                // Tab content (no nested ScrollView - parent ScrollView handles scrolling)
+                switch selectedSegment {
+                case .loose:
+                    LooseBitsContent(query: query, selectedBit: $selectedBit)
+                case .finished:
+                    FinishedBitsContent(query: query, selectedBit: $selectedBit)
+                case .favorites:
+                    FavoritesBitsContent(query: query, selectedBit: $selectedBit)
                 }
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 12)
-
-            // Content based on selection
-            switch selectedSegment {
-            case .loose:
-                LooseBitsContent()
-            case .finished:
-                FinishedBitsContent()
+        }
+        // Search bar: hidden above screen by default, pulls down when user drags/scrolls up
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "Search bits")
+        .navigationDestination(item: $selectedBit) { bit in
+            if bit.status == .loose {
+                LooseBitDetailView(bit: bit)
+            } else {
+                FinishedBitDetailView(bit: bit)
             }
         }
         .tfBackground()
@@ -40,207 +62,6 @@ struct BitsTabView: View {
                 TFWordmarkTitle(title: "Bits", size: 22)
                     .offset(x: -6)
             }
-        }
-    }
-}
-
-// MARK: - Loose Bits Content
-
-private struct LooseBitsContent: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(filter: #Predicate<Bit> { bit in
-        !bit.isDeleted && bit.statusRaw == "loose"
-    }, sort: \Bit.updatedAt, order: .reverse) private var looseBits: [Bit]
-
-    @State private var query: String = ""
-    @State private var showQuickBit = false
-    @State private var selectedBit: Bit?
-    @State private var flippedBitIds: Set<UUID> = []
-    @State private var sortCriteria: BitSortCriteria = .dateCreated
-    @State private var sortAscending: Bool = false // false = descending (newest/longest first)
-    
-    private enum BitSortCriteria: String, CaseIterable, Identifiable {
-        case dateModified = "Date Modified"
-        case dateCreated = "Date Created"
-        case length = "Length"
-        
-        var id: String { rawValue }
-        
-        var systemImage: String {
-            switch self {
-            case .dateModified:
-                return "calendar.badge.clock"
-            case .dateCreated:
-                return "calendar.badge.plus"
-            case .length:
-                return "text.alignleft"
-            }
-        }
-    }
-
-    private var filtered: [Bit] {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        let searchFiltered = q.isEmpty ? looseBits : looseBits.filter { bit in
-            bit.text.localizedCaseInsensitiveContains(q)
-            || bit.title.localizedCaseInsensitiveContains(q)
-            || bit.tags.contains(where: { $0.localizedCaseInsensitiveContains(q) })
-        }
-        
-        // Apply sorting
-        return searchFiltered.sorted { bit1, bit2 in
-            let comparison: Bool
-            switch sortCriteria {
-            case .dateModified:
-                comparison = bit1.updatedAt < bit2.updatedAt
-            case .dateCreated:
-                comparison = bit1.createdAt < bit2.createdAt
-            case .length:
-                comparison = wordCount(for: bit1) < wordCount(for: bit2)
-            }
-            return sortAscending ? comparison : !comparison
-        }
-    }
-    
-    private func wordCount(for bit: Bit) -> Int {
-        bit.text.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                // Sort button
-                HStack {
-                    Spacer()
-                    Menu {
-                        // Sort criteria section
-                        Section("Sort By") {
-                            ForEach(BitSortCriteria.allCases) { criteria in
-                                Button {
-                                    sortCriteria = criteria
-                                } label: {
-                                    HStack {
-                                        Image(systemName: criteria.systemImage)
-                                        Text(criteria.rawValue)
-                                        Spacer()
-                                        if sortCriteria == criteria {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Direction section
-                        Section("Order") {
-                            Button {
-                                sortAscending = false
-                            } label: {
-                                HStack {
-                                    Image(systemName: "arrow.down")
-                                    Text(sortDirectionLabel(descending: true))
-                                    Spacer()
-                                    if !sortAscending {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                            
-                            Button {
-                                sortAscending = true
-                            } label: {
-                                HStack {
-                                    Image(systemName: "arrow.up")
-                                    Text(sortDirectionLabel(descending: false))
-                                    Spacer()
-                                    if sortAscending {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        Image(systemName: sortAscending ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(TFTheme.yellow)
-                            .frame(width: 44, height: 32)
-                            .background(Color.white.opacity(0.10))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color("TFCardStroke").opacity(0.9), lineWidth: 1)
-                            )
-                    }
-                }
-                .padding(.horizontal, 2)
-                
-                if filtered.isEmpty {
-                    emptyState
-                        .padding(.top, 40)
-                } else {
-                    ForEach(filtered) { bit in
-                        let isFlipped = Binding(
-                            get: { flippedBitIds.contains(bit.id) },
-                            set: { newValue in
-                                if newValue {
-                                    flippedBitIds.insert(bit.id)
-                                } else {
-                                    flippedBitIds.remove(bit.id)
-                                }
-                            }
-                        )
-
-                        BitSwipeView(
-                            bit: bit,
-                            onFinish: {
-                                withAnimation(.snappy) { markAsFinished(bit) }
-                            },
-                            onDelete: {
-                                withAnimation(.snappy) { softDeleteBit(bit) }
-                            },
-                            onTap: {
-                                if !isFlipped.wrappedValue {
-                                    selectedBit = bit
-                                }
-                            }
-                        ) {
-                            LooseFlippableBitCard(bit: bit, isFlipped: isFlipped)
-                                .id(bit.id)
-                                .padding(.vertical, isFlipped.wrappedValue ? 8 : 0)
-                                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped.wrappedValue)
-                                .contentShape(Rectangle())
-                                .contextMenu {
-                                    Button {
-                                        withAnimation {
-                                            bit.isFavorite.toggle()
-                                            bit.updatedAt = Date()
-                                            try? modelContext.save()
-                                        }
-                                    } label: {
-                                        Label(
-                                            bit.isFavorite ? "Unfavorite" : "Favorite",
-                                            systemImage: bit.isFavorite ? "star.slash" : "star.fill"
-                                        )
-                                    }
-
-                                    Button {
-                                        withAnimation(.snappy) { markAsFinished(bit) }
-                                    } label: {
-                                        Label("Mark as Finished", systemImage: "checkmark.seal.fill")
-                                    }
-                                }
-                        }
-                    }
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
-            .padding(.bottom, 28)
-        }
-        .searchable(text: $query, prompt: "Search loose bits")
-        .navigationDestination(item: $selectedBit) { bit in
-            LooseBitDetailView(bit: bit)
-        }
-        .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showQuickBit = true
@@ -262,6 +83,213 @@ private struct LooseBitsContent: View {
             QuickBitEditor()
                 .presentationDetents([.medium, .large])
         }
+    }
+}
+
+// MARK: - Shared Sort Criteria
+
+/// Shared sorting options used across all Bits tab content views
+private enum BitSortCriteria: String, CaseIterable, Identifiable {
+    case dateModified = "Date Modified"
+    case dateCreated = "Date Created"
+    case length = "Length"
+
+    var id: String { rawValue }
+
+    var systemImage: String {
+        switch self {
+        case .dateModified: return "calendar.badge.clock"
+        case .dateCreated: return "calendar.badge.plus"
+        case .length: return "text.alignleft"
+        }
+    }
+}
+
+/// Reusable sort menu button used across all tab content views
+private struct BitSortMenuButton: View {
+    @Binding var sortCriteria: BitSortCriteria
+    @Binding var sortAscending: Bool
+
+    var body: some View {
+        HStack {
+            Spacer()
+            Menu {
+                Section("Sort By") {
+                    ForEach(BitSortCriteria.allCases) { criteria in
+                        Button {
+                            sortCriteria = criteria
+                        } label: {
+                            HStack {
+                                Image(systemName: criteria.systemImage)
+                                Text(criteria.rawValue)
+                                Spacer()
+                                if sortCriteria == criteria {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Section("Order") {
+                    Button {
+                        sortAscending = false
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.down")
+                            Text(sortDirectionLabel(descending: true))
+                            Spacer()
+                            if !sortAscending {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+
+                    Button {
+                        sortAscending = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.up")
+                            Text(sortDirectionLabel(descending: false))
+                            Spacer()
+                            if sortAscending {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: sortAscending ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(TFTheme.yellow)
+                    .frame(width: 44, height: 32)
+                    .background(Color.white.opacity(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color("TFCardStroke").opacity(0.9), lineWidth: 1)
+                    )
+            }
+        }
+        .padding(.horizontal, 2)
+    }
+
+    private func sortDirectionLabel(descending: Bool) -> String {
+        switch sortCriteria {
+        case .dateModified, .dateCreated:
+            return descending ? "Newest First" : "Oldest First"
+        case .length:
+            return descending ? "Longest First" : "Shortest First"
+        }
+    }
+}
+
+// MARK: - Shared Helpers
+
+private func wordCount(for bit: Bit) -> Int {
+    bit.text.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
+}
+
+private func sortedBits(_ bits: [Bit], criteria: BitSortCriteria, ascending: Bool) -> [Bit] {
+    bits.sorted { bit1, bit2 in
+        let comparison: Bool
+        switch criteria {
+        case .dateModified:
+            comparison = bit1.updatedAt < bit2.updatedAt
+        case .dateCreated:
+            comparison = bit1.createdAt < bit2.createdAt
+        case .length:
+            comparison = wordCount(for: bit1) < wordCount(for: bit2)
+        }
+        return ascending ? comparison : !comparison
+    }
+}
+
+private func searchFilter(_ bits: [Bit], query: String) -> [Bit] {
+    let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !q.isEmpty else { return bits }
+    return bits.filter { bit in
+        bit.text.localizedCaseInsensitiveContains(q)
+        || bit.title.localizedCaseInsensitiveContains(q)
+        || bit.tags.contains(where: { $0.localizedCaseInsensitiveContains(q) })
+    }
+}
+
+// MARK: - Loose Bits Content
+
+/// Inline content for the Loose (Ideas) tab. Rendered inside parent ScrollView.
+private struct LooseBitsContent: View {
+    let query: String
+    @Binding var selectedBit: Bit?
+
+    @Environment(\.modelContext) private var modelContext
+    @Query(filter: #Predicate<Bit> { bit in
+        !bit.isDeleted && bit.statusRaw == "loose"
+    }, sort: \Bit.updatedAt, order: .reverse) private var looseBits: [Bit]
+
+    @State private var flippedBitIds: Set<UUID> = []
+    @State private var sortCriteria: BitSortCriteria = .dateCreated
+    @State private var sortAscending: Bool = false
+
+    private var filtered: [Bit] {
+        sortedBits(searchFilter(looseBits, query: query), criteria: sortCriteria, ascending: sortAscending)
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            BitSortMenuButton(sortCriteria: $sortCriteria, sortAscending: $sortAscending)
+
+            if filtered.isEmpty {
+                emptyState
+                    .padding(.top, 40)
+            } else {
+                ForEach(filtered) { bit in
+                    let isFlipped = Binding(
+                        get: { flippedBitIds.contains(bit.id) },
+                        set: { newValue in
+                            if newValue { flippedBitIds.insert(bit.id) }
+                            else { flippedBitIds.remove(bit.id) }
+                        }
+                    )
+
+                    BitSwipeView(
+                        bit: bit,
+                        onFinish: { withAnimation(.snappy) { markAsFinished(bit) } },
+                        onDelete: { withAnimation(.snappy) { softDeleteBit(bit) } },
+                        onTap: { if !isFlipped.wrappedValue { selectedBit = bit } }
+                    ) {
+                        LooseFlippableBitCard(bit: bit, isFlipped: isFlipped)
+                            .id(bit.id)
+                            .padding(.vertical, isFlipped.wrappedValue ? 8 : 0)
+                            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped.wrappedValue)
+                            .contentShape(Rectangle())
+                            .contextMenu {
+                                Button {
+                                    withAnimation {
+                                        bit.isFavorite.toggle()
+                                        bit.updatedAt = Date()
+                                        try? modelContext.save()
+                                    }
+                                } label: {
+                                    Label(
+                                        bit.isFavorite ? "Unfavorite" : "Favorite",
+                                        systemImage: bit.isFavorite ? "star.slash" : "star.fill"
+                                    )
+                                }
+
+                                Button {
+                                    withAnimation(.snappy) { markAsFinished(bit) }
+                                } label: {
+                                    Label("Mark as Finished", systemImage: "checkmark.seal.fill")
+                                }
+                            }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+        .padding(.bottom, 28)
     }
 
     private var emptyState: some View {
@@ -275,19 +303,6 @@ private struct LooseBitsContent: View {
                 .foregroundStyle(TFTheme.text.opacity(0.65))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 26)
-
-            Button {
-                showQuickBit = true
-            } label: {
-                Text("Quick Bit")
-                    .appFont(.headline, weight: .semibold)
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .background(TFTheme.yellow)
-                    .clipShape(Capsule())
-            }
-            .padding(.top, 6)
         }
     }
 
@@ -301,20 +316,15 @@ private struct LooseBitsContent: View {
         bit.softDelete(context: modelContext)
         try? modelContext.save()
     }
-    
-    private func sortDirectionLabel(descending: Bool) -> String {
-        switch sortCriteria {
-        case .dateModified, .dateCreated:
-            return descending ? "Newest First" : "Oldest First"
-        case .length:
-            return descending ? "Longest First" : "Shortest First"
-        }
-    }
 }
 
 // MARK: - Finished Bits Content
 
+/// Inline content for the Finished tab. Rendered inside parent ScrollView.
 private struct FinishedBitsContent: View {
+    let query: String
+    @Binding var selectedBit: Bit?
+
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<Bit> { bit in
         !bit.isDeleted && bit.statusRaw == "finished"
@@ -326,228 +336,81 @@ private struct FinishedBitsContent: View {
         allSetlists.filter { $0.isDraft }
     }
 
-    @State private var query: String = ""
-    @State private var showQuickBit = false
-    @State private var selectedBit: Bit?
     @State private var flippedBitIds: Set<UUID> = []
     @State private var sortCriteria: BitSortCriteria = .dateCreated
-    @State private var sortAscending: Bool = false // false = descending (newest/longest first)
-    
-    private enum BitSortCriteria: String, CaseIterable, Identifiable {
-        case dateModified = "Date Modified"
-        case dateCreated = "Date Created"
-        case length = "Length"
-        
-        var id: String { rawValue }
-        
-        var systemImage: String {
-            switch self {
-            case .dateModified:
-                return "calendar.badge.clock"
-            case .dateCreated:
-                return "calendar.badge.plus"
-            case .length:
-                return "text.alignleft"
-            }
-        }
-    }
+    @State private var sortAscending: Bool = false
 
     private var filtered: [Bit] {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        let searchFiltered = q.isEmpty ? finishedBits : finishedBits.filter { bit in
-            bit.text.localizedCaseInsensitiveContains(q)
-            || bit.title.localizedCaseInsensitiveContains(q)
-            || bit.tags.contains(where: { $0.localizedCaseInsensitiveContains(q) })
-        }
-        
-        // Apply sorting
-        return searchFiltered.sorted { bit1, bit2 in
-            let comparison: Bool
-            switch sortCriteria {
-            case .dateModified:
-                comparison = bit1.updatedAt < bit2.updatedAt
-            case .dateCreated:
-                comparison = bit1.createdAt < bit2.createdAt
-            case .length:
-                comparison = wordCount(for: bit1) < wordCount(for: bit2)
-            }
-            return sortAscending ? comparison : !comparison
-        }
-    }
-    
-    private func wordCount(for bit: Bit) -> Int {
-        bit.text.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
+        sortedBits(searchFilter(finishedBits, query: query), criteria: sortCriteria, ascending: sortAscending)
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                // Sort button
-                HStack {
-                    Spacer()
-                    Menu {
-                        // Sort criteria section
-                        Section("Sort By") {
-                            ForEach(BitSortCriteria.allCases) { criteria in
+        VStack(spacing: 12) {
+            BitSortMenuButton(sortCriteria: $sortCriteria, sortAscending: $sortAscending)
+
+            if filtered.isEmpty {
+                emptyState
+                    .padding(.top, 40)
+            } else {
+                ForEach(filtered) { bit in
+                    let isFlipped = Binding(
+                        get: { flippedBitIds.contains(bit.id) },
+                        set: { newValue in
+                            if newValue { flippedBitIds.insert(bit.id) }
+                            else { flippedBitIds.remove(bit.id) }
+                        }
+                    )
+
+                    BitSwipeView(
+                        bit: bit,
+                        onFinish: { shareBit(bit) },
+                        onDelete: { withAnimation(.snappy) { softDeleteBit(bit) } },
+                        onTap: { if !isFlipped.wrappedValue { selectedBit = bit } }
+                    ) {
+                        FinishedFlippableBitCard(bit: bit, isFlipped: isFlipped)
+                            .id(bit.id)
+                            .padding(.vertical, isFlipped.wrappedValue ? 8 : 0)
+                            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped.wrappedValue)
+                            .contentShape(Rectangle())
+                            .contextMenu {
                                 Button {
-                                    sortCriteria = criteria
+                                    withAnimation {
+                                        bit.isFavorite.toggle()
+                                        bit.updatedAt = Date()
+                                        try? modelContext.save()
+                                    }
                                 } label: {
-                                    HStack {
-                                        Image(systemName: criteria.systemImage)
-                                        Text(criteria.rawValue)
-                                        Spacer()
-                                        if sortCriteria == criteria {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
+                                    Label(
+                                        bit.isFavorite ? "Unfavorite" : "Favorite",
+                                        systemImage: bit.isFavorite ? "star.slash" : "star.fill"
+                                    )
                                 }
-                            }
-                        }
-                        
-                        // Direction section
-                        Section("Order") {
-                            Button {
-                                sortAscending = false
-                            } label: {
-                                HStack {
-                                    Image(systemName: "arrow.down")
-                                    Text(sortDirectionLabel(descending: true))
-                                    Spacer()
-                                    if !sortAscending {
-                                        Image(systemName: "checkmark")
-                                    }
+
+                                Button {
+                                    shareBit(bit)
+                                } label: {
+                                    Label("Share", systemImage: "square.and.arrow.up")
                                 }
-                            }
-                            
-                            Button {
-                                sortAscending = true
-                            } label: {
-                                HStack {
-                                    Image(systemName: "arrow.up")
-                                    Text(sortDirectionLabel(descending: false))
-                                    Spacer()
-                                    if sortAscending {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        Image(systemName: sortAscending ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(TFTheme.yellow)
-                            .frame(width: 44, height: 32)
-                            .background(Color.white.opacity(0.10))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color("TFCardStroke").opacity(0.9), lineWidth: 1)
-                            )
-                    }
-                }
-                .padding(.horizontal, 2)
-                
-                if filtered.isEmpty {
-                    emptyState
-                        .padding(.top, 40)
-                } else {
-                    ForEach(filtered) { bit in
-                        let isFlipped = Binding(
-                            get: { flippedBitIds.contains(bit.id) },
-                            set: { newValue in
-                                if newValue {
-                                    flippedBitIds.insert(bit.id)
+
+                                if inProgressSetlists.isEmpty {
+                                    Text("No in-progress setlists")
                                 } else {
-                                    flippedBitIds.remove(bit.id)
-                                }
-                            }
-                        )
-
-                        BitSwipeView(
-                            bit: bit,
-                            onFinish: {
-                                shareBit(bit)
-                            },
-                            onDelete: {
-                                withAnimation(.snappy) { softDeleteBit(bit) }
-                            },
-                            onTap: {
-                                if !isFlipped.wrappedValue {
-                                    selectedBit = bit
-                                }
-                            }
-                        ) {
-                            FinishedFlippableBitCard(bit: bit, isFlipped: isFlipped)
-                                .id(bit.id)
-                                .padding(.vertical, isFlipped.wrappedValue ? 8 : 0)
-                                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped.wrappedValue)
-                                .contentShape(Rectangle())
-                                .contextMenu {
-                                    Button {
-                                        withAnimation {
-                                            bit.isFavorite.toggle()
-                                            bit.updatedAt = Date()
-                                            try? modelContext.save()
-                                        }
-                                    } label: {
-                                        Label(
-                                            bit.isFavorite ? "Unfavorite" : "Favorite",
-                                            systemImage: bit.isFavorite ? "star.slash" : "star.fill"
-                                        )
-                                    }
-
-                                    Button {
-                                        shareBit(bit)
-                                    } label: {
-                                        Label("Share", systemImage: "square.and.arrow.up")
-                                    }
-
-                                    if inProgressSetlists.isEmpty {
-                                        Text("No in-progress setlists")
-                                    } else {
-                                        Menu("Add to setlist\u{2026}") {
-                                            ForEach(inProgressSetlists) { setlist in
-                                                Button(setlist.title.isEmpty ? "Untitled Set" : setlist.title) {
-                                                    add(bit: bit, to: setlist)
-                                                }
+                                    Menu("Add to setlist\u{2026}") {
+                                        ForEach(inProgressSetlists) { setlist in
+                                            Button(setlist.title.isEmpty ? "Untitled Set" : setlist.title) {
+                                                add(bit: bit, to: setlist)
                                             }
                                         }
                                     }
                                 }
-                        }
+                            }
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
-            .padding(.bottom, 28)
         }
-        .searchable(text: $query, prompt: "Search finished bits")
-        .navigationDestination(item: $selectedBit) { bit in
-            FinishedBitDetailView(bit: bit)
-        }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showQuickBit = true
-                } label: {
-                    Image(systemName: "plus")
-                        .appFont(size: 18, weight: .bold)
-                        .foregroundStyle(TFTheme.yellow)
-                        .frame(width: 44, height: 44)
-                        .background(Color.white.opacity(0.10))
-                        .clipShape(Circle())
-                        .overlay(
-                            Circle().stroke(Color("TFCardStroke").opacity(0.9), lineWidth: 1)
-                        )
-                }
-                .accessibilityLabel("New Bit")
-            }
-        }
-        .sheet(isPresented: $showQuickBit) {
-            QuickBitEditor()
-                .presentationDetents([.medium, .large])
-        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+        .padding(.bottom, 28)
     }
 
     private var emptyState: some View {
@@ -561,19 +424,6 @@ private struct FinishedBitsContent: View {
                 .foregroundStyle(TFTheme.text.opacity(0.65))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 26)
-
-            Button {
-                showQuickBit = true
-            } label: {
-                Text("Quick Bit")
-                    .appFont(.headline, weight: .semibold)
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
-                    .background(TFTheme.yellow)
-                    .clipShape(Capsule())
-            }
-            .padding(.top, 6)
         }
     }
 
@@ -586,15 +436,6 @@ private struct FinishedBitsContent: View {
         setlist.insertBit(bit, at: nil, context: modelContext)
         setlist.updatedAt = Date()
         try? modelContext.save()
-    }
-    
-    private func sortDirectionLabel(descending: Bool) -> String {
-        switch sortCriteria {
-        case .dateModified, .dateCreated:
-            return descending ? "Newest First" : "Oldest First"
-        case .length:
-            return descending ? "Longest First" : "Shortest First"
-        }
     }
 
     private func shareBit(_ bit: Bit) {
@@ -620,6 +461,141 @@ private struct FinishedBitsContent: View {
     }
 }
 
+// MARK: - Favorites Content
+
+/// Inline content for the Favorites tab. Shows all favorited bits regardless of status.
+private struct FavoritesBitsContent: View {
+    let query: String
+    @Binding var selectedBit: Bit?
+
+    @Environment(\.modelContext) private var modelContext
+
+    /// All non-deleted favorited bits (both loose and finished)
+    @Query(filter: #Predicate<Bit> { bit in
+        !bit.isDeleted && bit.isFavorite
+    }, sort: \Bit.updatedAt, order: .reverse) private var favoriteBits: [Bit]
+
+    @State private var flippedBitIds: Set<UUID> = []
+    @State private var sortCriteria: BitSortCriteria = .dateCreated
+    @State private var sortAscending: Bool = false
+
+    private var filtered: [Bit] {
+        sortedBits(searchFilter(favoriteBits, query: query), criteria: sortCriteria, ascending: sortAscending)
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            BitSortMenuButton(sortCriteria: $sortCriteria, sortAscending: $sortAscending)
+
+            if filtered.isEmpty {
+                emptyState
+                    .padding(.top, 40)
+            } else {
+                ForEach(filtered) { bit in
+                    let isFlipped = Binding(
+                        get: { flippedBitIds.contains(bit.id) },
+                        set: { newValue in
+                            if newValue { flippedBitIds.insert(bit.id) }
+                            else { flippedBitIds.remove(bit.id) }
+                        }
+                    )
+
+                    // Use the appropriate card based on bit status
+                    if bit.status == .finished {
+                        BitSwipeView(
+                            bit: bit,
+                            onFinish: { /* No swipe-right action for favorites */ },
+                            onDelete: { withAnimation(.snappy) { softDeleteBit(bit) } },
+                            onTap: { if !isFlipped.wrappedValue { selectedBit = bit } }
+                        ) {
+                            FinishedFlippableBitCard(bit: bit, isFlipped: isFlipped)
+                                .id(bit.id)
+                                .padding(.vertical, isFlipped.wrappedValue ? 8 : 0)
+                                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped.wrappedValue)
+                                .contentShape(Rectangle())
+                                .contextMenu {
+                                    favoriteContextMenu(for: bit)
+                                    statusLabel(for: bit)
+                                }
+                        }
+                    } else {
+                        BitSwipeView(
+                            bit: bit,
+                            onFinish: { withAnimation(.snappy) { markAsFinished(bit) } },
+                            onDelete: { withAnimation(.snappy) { softDeleteBit(bit) } },
+                            onTap: { if !isFlipped.wrappedValue { selectedBit = bit } }
+                        ) {
+                            LooseFlippableBitCard(bit: bit, isFlipped: isFlipped)
+                                .id(bit.id)
+                                .padding(.vertical, isFlipped.wrappedValue ? 8 : 0)
+                                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isFlipped.wrappedValue)
+                                .contentShape(Rectangle())
+                                .contextMenu {
+                                    favoriteContextMenu(for: bit)
+                                    statusLabel(for: bit)
+                                }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 4)
+        .padding(.bottom, 28)
+    }
+
+    @ViewBuilder
+    private func favoriteContextMenu(for bit: Bit) -> some View {
+        Button {
+            withAnimation {
+                bit.isFavorite.toggle()
+                bit.updatedAt = Date()
+                try? modelContext.save()
+            }
+        } label: {
+            Label("Unfavorite", systemImage: "star.slash")
+        }
+    }
+
+    @ViewBuilder
+    private func statusLabel(for bit: Bit) -> some View {
+        Label(
+            bit.status == .loose ? "Loose Idea" : "Finished Bit",
+            systemImage: bit.status == .loose ? "lightbulb" : "checkmark.seal"
+        )
+        .disabled(true)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "star")
+                .font(.system(size: 36))
+                .foregroundStyle(TFTheme.text.opacity(0.4))
+
+            Text("No favorites yet")
+                .appFont(.title3, weight: .semibold)
+                .foregroundStyle(TFTheme.text)
+
+            Text("Long-press any bit and tap Favorite to see it here.")
+                .appFont(.subheadline)
+                .foregroundStyle(TFTheme.text.opacity(0.65))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 26)
+        }
+    }
+
+    private func markAsFinished(_ bit: Bit) {
+        bit.status = .finished
+        bit.updatedAt = Date()
+        try? modelContext.save()
+    }
+
+    private func softDeleteBit(_ bit: Bit) {
+        bit.softDelete(context: modelContext)
+        try? modelContext.save()
+    }
+}
+
 // MARK: - Shared Card Row
 
 private struct BitsTabCardRow: View {
@@ -640,7 +616,7 @@ private struct BitsTabCardRow: View {
                     .foregroundStyle(TFTheme.text.opacity(0.55))
 
                 if bit.variationCount > 0 {
-                    Text("•")
+                    Text("\u{2022}")
                         .appFont(.subheadline)
                         .foregroundStyle(TFTheme.text.opacity(0.4))
 
@@ -650,7 +626,7 @@ private struct BitsTabCardRow: View {
                 }
 
                 if bit.isFavorite {
-                    Text("•")
+                    Text("\u{2022}")
                         .appFont(.subheadline)
                         .foregroundStyle(TFTheme.text.opacity(0.4))
 
