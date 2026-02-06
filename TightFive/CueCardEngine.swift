@@ -311,72 +311,87 @@ final class CueCardEngine: ObservableObject {
     
     private func startPipeline(filenameBase: String, recognizer: SFSpeechRecognizer) throws {
         teardownPipelineOnly()
-        
-        try FileManager.default.createDirectory(
-            at: Performance.recordingsDirectory,
-            withIntermediateDirectories: true,
-            attributes: nil
-        )
-        
+
+        let shouldRecord = CueCardSettingsStore.shared.recordingEnabled
+
         let engine = AVAudioEngine()
         self.audioEngine = engine
-        
-        let safeBase = filenameBase.isEmpty ? "Performance" : filenameBase
-        let filename = Performance.generateFilename(for: safeBase)
-            .replacingOccurrences(of: ".caf", with: ".m4a")
-        
-        let url = Performance.recordingsDirectory.appendingPathComponent(filename)
-        self.recordingURL = url
-        
+
+        var converter: AVAudioConverter?
+
+        if shouldRecord {
+            try FileManager.default.createDirectory(
+                at: Performance.recordingsDirectory,
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
+
+            let safeBase = filenameBase.isEmpty ? "Performance" : filenameBase
+            let filename = Performance.generateFilename(for: safeBase)
+                .replacingOccurrences(of: ".caf", with: ".m4a")
+
+            let url = Performance.recordingsDirectory.appendingPathComponent(filename)
+            self.recordingURL = url
+
+            let recordingFormat = AVAudioFormat(
+                commonFormat: .pcmFormatFloat32,
+                sampleRate: 48000,
+                channels: 1,
+                interleaved: false
+            )!
+
+            let settings: [String: Any] = [
+                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+                AVSampleRateKey: 48000,
+                AVNumberOfChannelsKey: 1,
+                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
+                AVEncoderBitRateKey: 96000
+            ]
+
+            self.audioFile = try AVAudioFile(forWriting: url, settings: settings)
+
+            let inputNode = engine.inputNode
+            let inputFormat = inputNode.outputFormat(forBus: 0)
+
+            guard let conv = AVAudioConverter(from: inputFormat, to: recordingFormat) else {
+                throw NSError(domain: "CueCardEngine", code: -1,
+                             userInfo: [NSLocalizedDescriptionKey: "Failed to create audio converter"])
+            }
+            converter = conv
+        }
+
+        startRecognitionOnly(recognizer: recognizer)
+
         let inputNode = engine.inputNode
         let inputFormat = inputNode.outputFormat(forBus: 0)
-        
-        let recordingFormat = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: 48000,
-            channels: 1,
-            interleaved: false
-        )!
-        
-        let settings: [String: Any] = [
-            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 48000,
-            AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
-            AVEncoderBitRateKey: 96000
-        ]
-        
-        self.audioFile = try AVAudioFile(forWriting: url, settings: settings)
-        
-        startRecognitionOnly(recognizer: recognizer)
-        
-        guard let converter = AVAudioConverter(from: inputFormat, to: recordingFormat) else {
-            throw NSError(domain: "CueCardEngine", code: -1,
-                         userInfo: [NSLocalizedDescriptionKey: "Failed to create audio converter"])
-        }
-        
+
         inputNode.removeTap(onBus: 0)
         inputNode.installTap(onBus: 0, bufferSize: 256, format: inputFormat) { [weak self] buffer, _ in
             guard let self else { return }
-            
-            let frameCapacity = AVAudioFrameCount(recordingFormat.sampleRate * Double(buffer.frameLength) / inputFormat.sampleRate)
-            guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: recordingFormat, frameCapacity: frameCapacity) else { return }
-            
-            var error: NSError?
-            let inputBlock: AVAudioConverterInputBlock = { inNumPackets, outStatus in
-                outStatus.pointee = .haveData
-                return buffer
-            }
-            
-            converter.convert(to: convertedBuffer, error: &error, withInputFrom: inputBlock)
-            
-            do { try self.audioFile?.write(from: convertedBuffer) }
-            catch {
-                Task { @MainActor in
-                    self.errorMessage = "Recording write failed: \(error.localizedDescription)"
+
+            // Write to audio file only if recording is enabled
+            if shouldRecord, let converter {
+                let recordingFormat = converter.outputFormat
+                let frameCapacity = AVAudioFrameCount(recordingFormat.sampleRate * Double(buffer.frameLength) / inputFormat.sampleRate)
+                guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: recordingFormat, frameCapacity: frameCapacity) else { return }
+
+                var error: NSError?
+                let inputBlock: AVAudioConverterInputBlock = { inNumPackets, outStatus in
+                    outStatus.pointee = .haveData
+                    return buffer
+                }
+
+                converter.convert(to: convertedBuffer, error: &error, withInputFrom: inputBlock)
+
+                do { try self.audioFile?.write(from: convertedBuffer) }
+                catch {
+                    Task { @MainActor in
+                        self.errorMessage = "Recording write failed: \(error.localizedDescription)"
+                    }
                 }
             }
-            
+
+            // Always feed speech recognition
             self.recognitionRequest?.append(buffer)
 
             // Meter (throttled to reduce UI redraws - ~10 updates/sec instead of ~200)
@@ -389,10 +404,10 @@ final class CueCardEngine: ObservableObject {
                 }
             }
         }
-        
+
         engine.prepare()
         try engine.start()
-        
+
         startDate = Date()
         startTimers(recognizer: recognizer)
     }

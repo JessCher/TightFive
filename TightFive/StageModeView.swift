@@ -144,16 +144,33 @@ struct StageModeViewCueCard: View {
                 duration: result.duration,
                 fileSize: result.fileSize
             )
-            
+
             // Store insights as strings (can be enhanced with structured data later)
-            performance.insights = result.insights.map { 
+            performance.insights = result.insights.map {
                 PerformanceAnalytics.Insight(
                     title: $0,
                     description: "",
                     severity: .info
                 )
             }
-            
+
+            modelContext.insert(performance)
+            try? modelContext.save()
+            showSaveConfirmation = true
+        } else if !settings.recordingEnabled {
+            // Recording was disabled - save performance without audio
+            let duration = engine.currentTime
+            engine.stop()
+
+            let performance = Performance(
+                setlistId: setlist.id,
+                setlistTitle: setlist.title,
+                venue: venue,
+                audioFilename: "",
+                duration: duration,
+                fileSize: 0
+            )
+
             modelContext.insert(performance)
             try? modelContext.save()
             showSaveConfirmation = true
@@ -215,10 +232,16 @@ struct StageModeViewCueCard: View {
     
     private var recordingIndicator: some View {
         HStack(spacing: 8) {
-            Circle()
-                .fill(Color.red)
-                .frame(width: 10, height: 10)
-            
+            if settings.recordingEnabled {
+                Circle()
+                    .fill(Color.red)
+                    .frame(width: 10, height: 10)
+            } else {
+                Image(systemName: "mic.slash.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+
             Text(engine.formattedTime)
                 .font(.system(size: 16, weight: .medium, design: .monospaced))
                 .foregroundStyle(.white)
@@ -368,24 +391,32 @@ struct StageModeViewCueCard: View {
                 engine.goToPreviousCard()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(engine.hasPreviousCard ? .white.opacity(0.9) : .white.opacity(0.3))
-                    .frame(width: 44, height: 44)
-                    .background(Color.white.opacity(engine.hasPreviousCard ? 0.1 : 0.05))
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(engine.hasPreviousCard ? settings.advanceButtonColor.color.opacity(0.95) : .white.opacity(0.3))
+                    .frame(width: 60, height: 60)
+                    .background(engine.hasPreviousCard ? settings.advanceButtonColor.color.opacity(0.15) : Color.white.opacity(0.05))
                     .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(engine.hasPreviousCard ? settings.advanceButtonColor.color.opacity(0.3) : Color.clear, lineWidth: 1.5)
+                    )
             }
             .disabled(!engine.hasPreviousCard)
-            
+
             // Next card
             Button {
                 engine.advanceToNextCard(automatic: false)
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(engine.hasNextCard ? .white.opacity(0.9) : .white.opacity(0.3))
-                    .frame(width: 44, height: 44)
-                    .background(Color.white.opacity(engine.hasNextCard ? 0.1 : 0.05))
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(engine.hasNextCard ? settings.advanceButtonColor.color.opacity(0.95) : .white.opacity(0.3))
+                    .frame(width: 60, height: 60)
+                    .background(engine.hasNextCard ? settings.advanceButtonColor.color.opacity(0.15) : Color.white.opacity(0.05))
                     .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(engine.hasNextCard ? settings.advanceButtonColor.color.opacity(0.3) : Color.clear, lineWidth: 1.5)
+                    )
             }
             .disabled(!engine.hasNextCard)
         }
@@ -412,8 +443,10 @@ struct StageModeViewCueCard: View {
                 Text("Save Performance?")
                     .appFont(.title2, weight: .bold)
                     .foregroundStyle(.white)
-                
-                Text("Do you want to save this performance recording?")
+
+                Text(settings.recordingEnabled
+                    ? "Do you want to save this performance recording?"
+                    : "Do you want to save this performance? (Recording was disabled)")
                     .appFont(.subheadline)
                     .foregroundStyle(.white.opacity(0.7))
                     .multilineTextAlignment(.center)

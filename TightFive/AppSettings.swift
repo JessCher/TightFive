@@ -815,6 +815,71 @@ class AppSettings {
         return Color(hex: appFontColorHex) ?? .white
     }
 
+    // MARK: - Accessibility Settings
+
+    /// Reduce motion - disables animations across the app
+    var reduceMotion: Bool {
+        get {
+            observeChanges()
+            return UserDefaults.standard.bool(forKey: "accessibilityReduceMotion")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "accessibilityReduceMotion")
+            notifyChange()
+        }
+    }
+
+    /// High contrast mode - increases text/element contrast
+    var highContrast: Bool {
+        get {
+            observeChanges()
+            return UserDefaults.standard.bool(forKey: "accessibilityHighContrast")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "accessibilityHighContrast")
+            notifyChange()
+        }
+    }
+
+    /// Enable haptic feedback throughout the app
+    var hapticsEnabled: Bool {
+        get {
+            observeChanges()
+            guard UserDefaults.standard.object(forKey: "accessibilityHapticsEnabled") != nil else {
+                return true // Default: on
+            }
+            return UserDefaults.standard.bool(forKey: "accessibilityHapticsEnabled")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "accessibilityHapticsEnabled")
+            notifyChange()
+        }
+    }
+
+    /// Bold text throughout the app
+    var boldText: Bool {
+        get {
+            observeChanges()
+            return UserDefaults.standard.bool(forKey: "accessibilityBoldText")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "accessibilityBoldText")
+            notifyChange()
+        }
+    }
+
+    /// Larger touch targets for buttons
+    var largerTouchTargets: Bool {
+        get {
+            observeChanges()
+            return UserDefaults.standard.bool(forKey: "accessibilityLargerTouchTargets")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "accessibilityLargerTouchTargets")
+            notifyChange()
+        }
+    }
+
     private init() {}
 }
 

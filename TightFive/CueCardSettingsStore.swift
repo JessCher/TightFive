@@ -56,13 +56,27 @@ class CueCardSettingsStore {
         didSet { UserDefaults.standard.set(anchorPhraseSensitivity, forKey: "cueCard_anchorSensitivity") }
     }
     
+    // MARK: - Advance Button Settings
+
+    /// Color for manual advance buttons in Stage Mode
+    var advanceButtonColor: AdvanceButtonColor = .white {
+        didSet { UserDefaults.standard.set(advanceButtonColor.rawValue, forKey: "cueCard_advanceButtonColor") }
+    }
+
+    // MARK: - Recording Settings
+
+    /// Whether to record audio during Stage Mode performances (default: on)
+    var recordingEnabled: Bool = true {
+        didSet { UserDefaults.standard.set(recordingEnabled, forKey: "cueCard_recordingEnabled") }
+    }
+
     // MARK: - Animation Settings
-    
+
     /// Enable card transition animations
     var enableAnimations: Bool = true {
         didSet { UserDefaults.standard.set(enableAnimations, forKey: "cueCard_enableAnimations") }
     }
-    
+
     /// Transition style
     var transitionStyle: CardTransitionStyle = .slide {
         didSet { UserDefaults.standard.set(transitionStyle.rawValue, forKey: "cueCard_transitionStyle") }
@@ -109,10 +123,19 @@ class CueCardSettingsStore {
         }
         
         enableAnimations = defaults.bool(forKey: "cueCard_enableAnimations")
-        
+
         if let transitionStyleRaw = defaults.string(forKey: "cueCard_transitionStyle"),
            let transitionStyleValue = CardTransitionStyle(rawValue: transitionStyleRaw) {
             transitionStyle = transitionStyleValue
+        }
+
+        if let advanceButtonColorRaw = defaults.string(forKey: "cueCard_advanceButtonColor"),
+           let advanceButtonColorValue = AdvanceButtonColor(rawValue: advanceButtonColorRaw) {
+            advanceButtonColor = advanceButtonColorValue
+        }
+
+        if defaults.object(forKey: "cueCard_recordingEnabled") != nil {
+            recordingEnabled = defaults.bool(forKey: "cueCard_recordingEnabled")
         }
     }
     
@@ -124,7 +147,8 @@ class CueCardSettingsStore {
             "cueCard_lineSpacing": 12.0,
             "cueCard_exitSensitivity": 0.6,
             "cueCard_anchorSensitivity": 0.5,
-            "cueCard_enableAnimations": true
+            "cueCard_enableAnimations": true,
+            "cueCard_recordingEnabled": true
         ])
     }
     
@@ -140,6 +164,8 @@ class CueCardSettingsStore {
         anchorPhraseSensitivity = 0.5
         enableAnimations = true
         transitionStyle = .slide
+        advanceButtonColor = .white
+        recordingEnabled = true
     }
 }
 
@@ -207,9 +233,35 @@ enum CardTransitionStyle: String, CaseIterable, Identifiable {
     case slide = "slide"
     case fade = "fade"
     case scale = "scale"
-    
+
     var id: String { rawValue }
-    
+
+    var displayName: String {
+        rawValue.capitalized
+    }
+}
+
+enum AdvanceButtonColor: String, CaseIterable, Identifiable {
+    case white = "white"
+    case yellow = "yellow"
+    case green = "green"
+    case blue = "blue"
+    case red = "red"
+    case orange = "orange"
+
+    var id: String { rawValue }
+
+    var color: Color {
+        switch self {
+        case .white: return .white
+        case .yellow: return Color("TFYellow")
+        case .green: return .green
+        case .blue: return .blue
+        case .red: return .red
+        case .orange: return .orange
+        }
+    }
+
     var displayName: String {
         rawValue.capitalized
     }

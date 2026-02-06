@@ -27,7 +27,7 @@ struct CueCardSettingsView: View {
                                 .appFont(.headline)
                                 .foregroundStyle(.white)
                             
-                            Text("All modes record audio and create performance notes")
+                            Text("Choose how your script is displayed during performances")
                                 .appFont(.caption)
                                 .foregroundStyle(.white.opacity(0.6))
                                 .padding(.bottom, 4)
@@ -64,6 +64,45 @@ struct CueCardSettingsView: View {
                         .tfDynamicCard(cornerRadius: 16)
                     }
                     
+                    // Recording toggle (applies to all modes)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Recording")
+                            .appFont(.title3, weight: .semibold)
+                            .foregroundStyle(TFTheme.yellow)
+                            .padding(.horizontal, 4)
+
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Record performances")
+                                    .appFont(.headline)
+                                    .foregroundStyle(.white)
+
+                                Text("Capture audio during Stage Mode for show notes")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.white.opacity(0.6))
+                            }
+
+                            Spacer()
+
+                            Toggle("", isOn: $cueCardSettings.recordingEnabled)
+                                .labelsHidden()
+                                .tint(TFTheme.yellow)
+                        }
+                        .padding(16)
+                        .tfDynamicCard(cornerRadius: 16)
+
+                        if !cueCardSettings.recordingEnabled {
+                            HStack(spacing: 8) {
+                                Image(systemName: "info.circle.fill")
+                                    .foregroundStyle(.orange)
+                                Text("Audio will not be captured during Stage Mode. Performance duration will still be tracked.")
+                                    .appFont(.caption)
+                                    .foregroundStyle(.orange.opacity(0.9))
+                            }
+                            .padding(.horizontal, 4)
+                        }
+                    }
+
                     // Mode-specific settings
                     switch cueCardSettings.stageModeType {
                     case .cueCards:
@@ -292,7 +331,7 @@ struct CueCardSettingsView: View {
                 Text("Text color")
                     .appFont(.headline)
                     .foregroundStyle(.white)
-                
+
                 Picker("Text color", selection: $cueCardSettings.textColor) {
                     ForEach(CueCardTextColor.allCases) { color in
                         Text(color.displayName).tag(color)
@@ -302,9 +341,46 @@ struct CueCardSettingsView: View {
             }
             .padding(16)
             .tfDynamicCard(cornerRadius: 16)
+
+            // Advance Button Color Card
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Advance button color")
+                    .appFont(.headline)
+                    .foregroundStyle(.white)
+
+                Text("Color of the previous/next card buttons")
+                    .appFont(.caption)
+                    .foregroundStyle(.white.opacity(0.6))
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 50), spacing: 10)], spacing: 10) {
+                    ForEach(AdvanceButtonColor.allCases) { btnColor in
+                        Button {
+                            cueCardSettings.advanceButtonColor = btnColor
+                        } label: {
+                            Circle()
+                                .fill(btnColor.color)
+                                .frame(width: 40, height: 40)
+                                .overlay(
+                                    Circle()
+                                        .stroke(cueCardSettings.advanceButtonColor == btnColor ? .white : .clear, lineWidth: 3)
+                                )
+                                .overlay(
+                                    cueCardSettings.advanceButtonColor == btnColor ?
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundStyle(.black.opacity(0.6))
+                                    : nil
+                                )
+                        }
+                    }
+                }
+                .padding(.top, 4)
+            }
+            .padding(16)
+            .tfDynamicCard(cornerRadius: 16)
         }
     }
-    
+
     // MARK: - Script Display Settings
     
     private var scriptDisplaySettings: some View {

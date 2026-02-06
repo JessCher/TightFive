@@ -48,6 +48,8 @@ struct SetlistBuilderView: View {
     @State private var showShareSheet = false
     
     @State private var showExportChoice = false
+    @State private var showExportFormatChoice = false
+    @State private var pendingExportKind: ExportKind = .script
     @State private var exportURL: URL?
     
     var body: some View {
@@ -98,8 +100,21 @@ struct SetlistBuilderView: View {
             Button("Cancel", role: .cancel) {}
         }
         .confirmationDialog("Export", isPresented: $showExportChoice, titleVisibility: .visible) {
-            Button("Export Script") { exportSetlist(as: .script) }
-            Button("Export Notes") { exportSetlist(as: .notes) }
+            Button("Export Script") {
+                pendingExportKind = .script
+                showExportFormatChoice = true
+            }
+            Button("Export Notes") {
+                pendingExportKind = .notes
+                showExportFormatChoice = true
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog("Choose Format", isPresented: $showExportFormatChoice, titleVisibility: .visible) {
+            Button("Plain Text (.txt)") { exportSetlist(as: pendingExportKind, format: .txt) }
+            Button("PDF (.pdf)") { exportSetlist(as: pendingExportKind, format: .pdf) }
+            Button("Rich Text (.rtf)") { exportSetlist(as: pendingExportKind, format: .rtf) }
+            Button("Markdown (.md)") { exportSetlist(as: pendingExportKind, format: .markdown) }
             Button("Cancel", role: .cancel) {}
         }
         .sheet(item: $exportURL) { url in
@@ -498,30 +513,162 @@ struct SetlistBuilderView: View {
     }
     
     private enum ExportKind { case script, notes }
+    private enum ExportFormat: String { case txt, pdf, rtf, markdown }
 
-    private func exportSetlist(as kind: ExportKind) {
-        let text: String
+    private func exportSetlist(as kind: ExportKind, format: ExportFormat = .txt) {
+        let plainText: String
+        let rtfData: Data?
         switch kind {
         case .script:
-            text = setlist.exportPlainText()
+            plainText = setlist.exportPlainText()
+            rtfData = setlist.exportScriptRTFData()
         case .notes:
-            text = NSAttributedString.fromRTF(setlist.notesRTF)?.string ?? ""
+            plainText = NSAttributedString.fromRTF(setlist.notesRTF)?.string ?? ""
+            rtfData = setlist.notesRTF
         }
         let filenameBase = setlist.title.isEmpty ? "Setlist" : setlist.title
         let safe = filenameBase.replacingOccurrences(of: "/", with: "-")
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).txt")
+
         do {
-            try text.data(using: .utf8)?.write(to: url, options: .atomic)
+            let url: URL
+            switch format {
+            case .txt:
+                url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).txt")
+                try plainText.data(using: .utf8)?.write(to: url, options: .atomic)
+            case .pdf:
+                url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).pdf")
+                let pdfData = generatePDF(title: setlist.title, body: plainText)
+                try pdfData.write(to: url, options: .atomic)
+            case .rtf:
+                url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).rtf")
+                if let rtf = rtfData, !rtf.isEmpty {
+                    try rtf.write(to: url, options: .atomic)
+                } else {
+                    let attributed = NSAttributedString(string: plainText, attributes: [
+                        .font: UIFont.systemFont(ofSize: 14),
+                        .foregroundColor: UIColor.black
+                    ])
+                    let data = try attributed.data(from: NSRange(location: 0, length: attributed.length),
+                                                    documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
+                    try data.write(to: url, options: .atomic)
+                }
+            case .markdown:
+                url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).md")
+                let md = "# \(setlist.title)\n\n\(plainText)"
+                try md.data(using: .utf8)?.write(to: url, options: .atomic)
+            }
             exportURL = url
         } catch {
             print("Export failed: \(error)")
             exportURL = nil
         }
     }
+
+    private func generatePDF(title: String, body: String) -> Data {
+        let pageWidth: CGFloat = 612
+        let pageHeight: CGFloat = 792
+        let margin: CGFloat = 50
+
+        let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight))
+        return renderer.pdfData { context in
+            context.beginPage()
+
+            let titleFont = UIFont.boldSystemFont(ofSize: 22)
+            let bodyFont = UIFont.systemFont(ofSize: 12)
+            let titleAttributes: [NSAttributedString.Key: Any] = [
+                .font: titleFont,
+                .foregroundColor: UIColor.black
+            ]
+            let bodyAttributes: [NSAttributedString.Key: Any] = [
+                .font: bodyFont,
+                .foregroundColor: UIColor.black
+            ]
+
+            let drawableWidth = pageWidth - margin * 2
+            var yOffset = margin
+
+            // Draw title
+            let titleRect = CGRect(x: margin, y: yOffset, width: drawableWidth, height: 40)
+            title.draw(in: titleRect, withAttributes: titleAttributes)
+            yOffset += 40
+
+            // Draw body with page breaks
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.lineSpacing = 4
+            var bodyAttrs = bodyAttributes
+            bodyAttrs[.paragraphStyle] = paragraphStyle
+
+            let attributedBody = NSAttributedString(string: body, attributes: bodyAttrs)
+            let framesetter = CTFramesetterCreateWithAttributedString(attributedBody)
+            var charIndex = 0
+            let totalLength = attributedBody.length
+
+            while charIndex < totalLength {
+                if yOffset > margin {
+                    // First page already begun
+                } else {
+                    context.beginPage()
+                    yOffset = margin
+                }
+
+                let remainingHeight = pageHeight - yOffset - margin
+                let framePath = CGPath(rect: CGRect(x: margin, y: yOffset, width: drawableWidth, height: remainingHeight), transform: nil)
+                let range = CFRangeMake(charIndex, 0)
+                let fitRange = CTFramesetterSuggestFrameSizeWithConstraints(framesetter, range, nil,
+                    CGSize(width: drawableWidth, height: remainingHeight), nil)
+
+                let drawRect = CGRect(x: margin, y: yOffset, width: drawableWidth, height: fitRange.height)
+                let subRange = CFRangeMake(charIndex, 0)
+                let suggestSize = CTFramesetterSuggestFrameSizeWithConstraints(framesetter, subRange, nil,
+                    CGSize(width: drawableWidth, height: remainingHeight), nil)
+
+                // Draw text block using NSAttributedString drawing
+                let chunkEnd = min(charIndex + estimateCharsFitting(text: body, from: charIndex, width: drawableWidth, height: remainingHeight, font: bodyFont), totalLength)
+                let chunk = (body as NSString).substring(with: NSRange(location: charIndex, length: chunkEnd - charIndex))
+                let chunkAttr = NSAttributedString(string: chunk, attributes: bodyAttrs)
+                let usedRect = chunkAttr.boundingRect(with: CGSize(width: drawableWidth, height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil)
+                chunkAttr.draw(in: CGRect(x: margin, y: yOffset, width: drawableWidth, height: usedRect.height))
+
+                charIndex = chunkEnd
+                yOffset += usedRect.height + 10
+
+                if charIndex < totalLength && yOffset + 50 > pageHeight - margin {
+                    context.beginPage()
+                    yOffset = margin
+                }
+            }
+        }
+    }
+
+    private func estimateCharsFitting(text: String, from startIndex: Int, width: CGFloat, height: CGFloat, font: UIFont) -> Int {
+        let nsText = text as NSString
+        let totalLength = nsText.length
+        let remaining = totalLength - startIndex
+        guard remaining > 0 else { return 0 }
+
+        // Binary search for the number of characters that fit
+        var lo = 0
+        var hi = remaining
+        let attrs: [NSAttributedString.Key: Any] = [.font: font]
+        let constraintSize = CGSize(width: width, height: height)
+
+        while lo < hi {
+            let mid = (lo + hi + 1) / 2
+            let sub = nsText.substring(with: NSRange(location: startIndex, length: mid))
+            let rect = (sub as NSString).boundingRect(with: constraintSize, options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attrs, context: nil)
+            if rect.height <= height {
+                lo = mid
+            } else {
+                hi = mid - 1
+            }
+        }
+        return max(lo, 1) // At least 1 char to avoid infinite loop
+    }
     
     private func duplicateSetlist() {
         let clone = setlist.duplicate()
         clone.updatedAt = Date()
+        modelContext.insert(clone)
         try? modelContext.save()
     }
     
@@ -1053,6 +1200,29 @@ extension Setlist {
             }
         }
         return lines.joined(separator: "\n\n")
+    }
+
+    func exportScriptRTFData() -> Data? {
+        let result = NSMutableAttributedString()
+        for block in scriptBlocks {
+            switch block {
+            case .freeform(_, let rtf):
+                if let attr = NSAttributedString.fromRTF(rtf), attr.length > 0 {
+                    if result.length > 0 { result.append(NSAttributedString(string: "\n\n")) }
+                    result.append(attr)
+                }
+            case .bit:
+                if let assignment = assignment(for: block) {
+                    if let attr = NSAttributedString.fromRTF(assignment.performedRTF), attr.length > 0 {
+                        if result.length > 0 { result.append(NSAttributedString(string: "\n\n")) }
+                        result.append(attr)
+                    }
+                }
+            }
+        }
+        guard result.length > 0 else { return nil }
+        return try? result.data(from: NSRange(location: 0, length: result.length),
+                                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
     }
 
     func duplicate() -> Setlist {
