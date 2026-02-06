@@ -1,12 +1,13 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 /// Main Notebook page displaying all notes as collapsed cards sorted by creation date.
 ///
 /// **Architecture:**
 /// - Notes display as collapsed cards showing title + content preview
 /// - Tapping a card opens the full note editor (pushed via NavigationStack)
-/// - Swipe-to-delete matches existing Bits pattern
+/// - Swipe left to delete, swipe right to add to folder (matches CardSwipeView style)
 /// - "Folders" button slides in the folders navigation stack from the right
 /// - "Create New Note" button in the header
 struct NotebookView: View {
@@ -18,6 +19,9 @@ struct NotebookView: View {
 
     @State private var selectedNote: Note?
     @State private var showFolders = false
+    @State private var showDeleteConfirmation = false
+    @State private var noteToDelete: Note?
+    @State private var noteForFolderPicker: Note?
 
     var body: some View {
         ScrollView {
@@ -27,26 +31,25 @@ struct NotebookView: View {
                         .padding(.top, 60)
                 } else {
                     ForEach(allNotes) { note in
-                        NoteCardView(note: note)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedNote = note
-                            }
-                            .contextMenu {
-                                if let folder = note.folder {
-                                    Label("In: \(folder.displayName)", systemImage: "folder")
-                                        .disabled(true)
-                                }
-
-                                Button(role: .destructive) {
-                                    withAnimation(.snappy) {
-                                        note.softDelete()
-                                        try? modelContext.save()
-                                    }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
+                        CardSwipeView(
+                            swipeRightEnabled: true,
+                            swipeRightIcon: "folder.badge.plus",
+                            swipeRightColor: TFTheme.yellow,
+                            swipeRightLabel: "Folder",
+                            swipeLeftIcon: "trash.fill",
+                            swipeLeftColor: .red,
+                            swipeLeftLabel: "Delete",
+                            onSwipeRight: {
+                                noteForFolderPicker = note
+                            },
+                            onSwipeLeft: {
+                                noteToDelete = note
+                                showDeleteConfirmation = true
+                            },
+                            onTap: { selectedNote = note }
+                        ) {
+                            NoteCardView(note: note)
+                        }
                     }
                 }
             }
@@ -79,6 +82,7 @@ struct NotebookView: View {
                         .frame(width: 40, height: 40)
                 }
                 .accessibilityLabel("Folders")
+                .accessibilityHint("Open folder management")
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -96,7 +100,24 @@ struct NotebookView: View {
                         )
                 }
                 .accessibilityLabel("New Note")
+                .accessibilityHint("Create a new note")
             }
+        }
+        .alert("Delete Note?", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                if let note = noteToDelete {
+                    withAnimation(.snappy) {
+                        note.softDelete()
+                        try? modelContext.save()
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This note will be moved to the trash.")
+        }
+        .sheet(item: $noteForFolderPicker) { note in
+            NoteFolderPickerView(note: note)
         }
     }
 
@@ -105,6 +126,7 @@ struct NotebookView: View {
             Image(systemName: "book.closed")
                 .font(.system(size: 36))
                 .foregroundStyle(TFTheme.text.opacity(0.4))
+                .accessibilityHidden(true)
 
             Text("No notes yet")
                 .appFont(.title3, weight: .semibold)
@@ -128,14 +150,16 @@ struct NotebookView: View {
                     .clipShape(Capsule())
             }
             .padding(.top, 6)
+            .accessibilityLabel("New Note")
+            .accessibilityHint("Create your first note")
         }
+        .accessibilityElement(children: .contain)
     }
 
     private func createNewNote() {
         let note = Note()
         modelContext.insert(note)
-        
-        // Explicitly save the new note
+
         do {
             try modelContext.save()
             selectedNote = note
@@ -149,7 +173,7 @@ struct NotebookView: View {
 
 /// Collapsed card for a note, showing title + content preview.
 /// Matches the visual style of Bit cards (tfDynamicCard).
-private struct NoteCardView: View {
+struct NoteCardView: View {
     let note: Note
 
     var body: some View {
@@ -194,6 +218,9 @@ private struct NoteCardView: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 18)
         .tfDynamicCard(cornerRadius: 18)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(note.displayTitle)\(note.hasContent ? ", \(note.contentPreview)" : "")")
+        .accessibilityHint("Tap to edit note")
     }
 }
 
@@ -206,15 +233,24 @@ private struct NoteCardView: View {
 /// - Title input at the top
 /// - Rich text editor for note content
 /// - Folder assignment via dropdown
+/// - Export/Duplicate/Copy menu (matches Setlist Builder)
 /// - Auto-saves on changes
 struct NoteEditorView: View {
     @Bindable var note: Note
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.undoManager) private var undoManager
     @ObservedObject private var keyboard = TFKeyboardState.shared
 
     @Query(sort: \NoteFolder.name) private var allFolders: [NoteFolder]
     @State private var showFolderPicker = false
+
+    // Export state
+    @State private var showExportFormatChoice = false
+    @State private var exportURL: URL?
+    @State private var showDeleteConfirmation = false
+
+    private enum ExportFormat: String { case txt, pdf, rtf, markdown }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -225,9 +261,9 @@ struct NoteEditorView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 8)
+                .accessibilityLabel("Note title")
                 .onChange(of: note.title) { _, _ in
                     note.updatedAt = Date()
-                    // No save here - let SwiftData autosave handle it
                 }
 
             Divider()
@@ -254,6 +290,8 @@ struct NoteEditorView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
             }
+            .accessibilityLabel("Folder: \(note.folder?.displayName ?? "None")")
+            .accessibilityHint("Tap to change folder")
 
             Divider()
                 .background(.white.opacity(0.15))
@@ -263,7 +301,6 @@ struct NoteEditorView: View {
             RichTextEditor(rtfData: $note.contentRTF, undoManager: undoManager)
                 .onChange(of: note.contentRTF) { _, _ in
                     note.updatedAt = Date()
-                    // No save here - let SwiftData autosave handle it
                 }
                 .padding(.horizontal, 8)
         }
@@ -277,18 +314,139 @@ struct NoteEditorView: View {
                     .foregroundStyle(TFTheme.text)
                     .lineLimit(1)
             }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    // Export
+                    Button {
+                        showExportFormatChoice = true
+                    } label: {
+                        Label("Export", systemImage: "square.and.arrow.up")
+                    }
+
+                    // Duplicate
+                    Button {
+                        duplicateNote()
+                    } label: {
+                        Label("Duplicate", systemImage: "plus.square.on.square")
+                    }
+
+                    // Copy
+                    Button {
+                        copyNoteToClipboard()
+                    } label: {
+                        Label("Copy Content", systemImage: "doc.on.doc")
+                    }
+
+                    Divider()
+
+                    Button(role: .destructive) {
+                        showDeleteConfirmation = true
+                    } label: {
+                        Label("Delete Note", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(TFTheme.yellow)
+                }
+                .accessibilityLabel("Note options")
+            }
         }
         .sheet(isPresented: $showFolderPicker) {
             NoteFolderPickerView(note: note)
         }
+        .confirmationDialog("Choose Format", isPresented: $showExportFormatChoice, titleVisibility: .visible) {
+            Button("Plain Text (.txt)") { exportNote(format: .txt) }
+            Button("PDF (.pdf)") { exportNote(format: .pdf) }
+            Button("Rich Text (.rtf)") { exportNote(format: .rtf) }
+            Button("Markdown (.md)") { exportNote(format: .markdown) }
+            Button("Cancel", role: .cancel) {}
+        }
+        .sheet(item: $exportURL) { url in
+            ShareSheet(items: [url]) { _ in }
+        }
+        .alert("Delete Note?", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                note.softDelete()
+                try? modelContext.save()
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This note will be moved to the trash.")
+        }
         .onDisappear {
-            // Ensure any pending changes are saved when leaving the editor
             do {
                 try modelContext.save()
             } catch {
                 print("❌ Failed to save note on dismiss: \(error)")
             }
         }
+    }
+
+    // MARK: - Export
+
+    private func exportNote(format: ExportFormat) {
+        let plainText = noteContentAsPlainText()
+        let rtfData = note.contentRTF
+
+        let filenameBase = note.title.isEmpty ? "Note" : note.title
+        let safe = filenameBase
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: "\\", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+
+        do {
+            let url: URL
+            switch format {
+            case .txt:
+                url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).txt")
+                try plainText.data(using: .utf8)?.write(to: url, options: .atomic)
+            case .pdf:
+                url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).pdf")
+                let pdfData = ExportHelpers.generatePDF(title: note.displayTitle, body: plainText)
+                try pdfData.write(to: url, options: .atomic)
+            case .rtf:
+                url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).rtf")
+                if let noteAttr = NSAttributedString.fromRTF(rtfData),
+                   let normalizedData = ExportHelpers.normalizeRTFColors(noteAttr) {
+                    try normalizedData.write(to: url, options: .atomic)
+                } else {
+                    let attributed = NSAttributedString(string: plainText, attributes: [
+                        .font: UIFont.systemFont(ofSize: 14),
+                        .foregroundColor: UIColor.black
+                    ])
+                    let data = try attributed.data(
+                        from: NSRange(location: 0, length: attributed.length),
+                        documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+                    )
+                    try data.write(to: url, options: .atomic)
+                }
+            case .markdown:
+                url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).md")
+                let md = "# \(note.displayTitle)\n\n\(plainText)"
+                try md.data(using: .utf8)?.write(to: url, options: .atomic)
+            }
+            exportURL = url
+        } catch {
+            print("Export failed: \(error)")
+            exportURL = nil
+        }
+    }
+
+    private func duplicateNote() {
+        let clone = Note(title: note.title + " Copy", contentRTF: note.contentRTF)
+        clone.folder = note.folder
+        modelContext.insert(clone)
+        try? modelContext.save()
+    }
+
+    private func copyNoteToClipboard() {
+        UIPasteboard.general.string = noteContentAsPlainText()
+    }
+
+    private func noteContentAsPlainText() -> String {
+        NSAttributedString.fromRTF(note.contentRTF)?.string ?? ""
     }
 }
 
@@ -323,6 +481,8 @@ private struct NoteFolderPickerView: View {
                         }
                     }
                 }
+                .accessibilityLabel("No Folder")
+                .accessibilityHint(note.folder == nil ? "Currently selected" : "Remove from folder")
 
                 // Folder options
                 ForEach(allFolders) { folder in
@@ -344,6 +504,8 @@ private struct NoteFolderPickerView: View {
                             }
                         }
                     }
+                    .accessibilityLabel(folder.displayName)
+                    .accessibilityHint(note.folder?.id == folder.id ? "Currently selected" : "Move note to this folder")
                 }
             }
             .scrollContentBackground(.hidden)
@@ -370,79 +532,28 @@ struct NoteFoldersView: View {
 
     @State private var showCreateFolder = false
     @State private var newFolderName = ""
-    @State private var isLoading = true
-    @State private var loadError: String?
 
     var body: some View {
-        Group {
-            if isLoading {
-                ProgressView("Loading folders...")
-                    .padding()
-            } else if let loadError {
-                // Show error state with option to clear corrupted data
-                VStack(spacing: 20) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.orange)
-                    
-                    Text("Folders Error")
-                        .appFont(.title2, weight: .bold)
-                        .foregroundStyle(TFTheme.text)
-                    
-                    Text(loadError)
-                        .appFont(.subheadline)
-                        .foregroundStyle(TFTheme.text.opacity(0.7))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                    
-                    Button {
-                        clearCorruptedFolders()
-                    } label: {
-                        Text("Clear Corrupted Folders")
-                            .appFont(.headline, weight: .semibold)
-                            .foregroundStyle(.black)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 12)
-                            .background(TFTheme.yellow)
-                            .clipShape(Capsule())
-                    }
-                    
-                    Text("This will only remove folder data, not your notes, bits, or setlists.")
-                        .appFont(.caption)
-                        .foregroundStyle(TFTheme.text.opacity(0.5))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                }
-                .padding()
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        if folders.isEmpty {
-                            emptyState
-                                .padding(.top, 60)
-                        } else {
-                            ForEach(folders) { folder in
-                                NavigationLink(value: folder) {
-                                    FolderCardView(folder: folder)
-                                }
-                                .buttonStyle(.plain) // Prevent NavigationLink from interfering
-                                .contextMenu {
-                                    Button(role: .destructive) {
-                                        withAnimation(.snappy) {
-                                            deleteFolder(folder)
-                                        }
-                                    } label: {
-                                        Label("Delete Folder", systemImage: "trash")
-                                    }
-                                }
-                            }
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                if folders.isEmpty {
+                    emptyState
+                        .padding(.top, 60)
+                } else {
+                    ForEach(folders) { folder in
+                        NavigationLink(value: folder) {
+                            FolderCardView(folder: folder)
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(folder.displayName) folder")
+                        .accessibilityHint("Opens folder to view notes")
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 28)
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 28)
         }
         .tfBackground()
         .navigationTitle("Folders")
@@ -472,6 +583,7 @@ struct NoteFoldersView: View {
                         )
                 }
                 .accessibilityLabel("New Folder")
+                .accessibilityHint("Create a new folder")
             }
         }
         .alert("New Folder", isPresented: $showCreateFolder) {
@@ -483,61 +595,6 @@ struct NoteFoldersView: View {
         } message: {
             Text("Enter a name for the new folder.")
         }
-        .task {
-            // Safely load folders with error handling
-            await loadFolders()
-        }
-    }
-    
-    private func loadFolders() async {
-        // Small delay to allow view to appear
-        try? await Task.sleep(for: .milliseconds(100))
-        
-        do {
-            // Try to access folders safely
-            let count = folders.count
-            print("✅ Folders view loaded with \(count) folders")
-            isLoading = false
-        } catch {
-            print("❌ Failed to load folders: \(error)")
-            loadError = "Unable to load folders. They may be corrupted from before the schema was fixed."
-            isLoading = false
-        }
-    }
-    
-    private func clearCorruptedFolders() {
-        Task {
-            do {
-                // Fetch all folders directly with FetchDescriptor for better control
-                let descriptor = FetchDescriptor<NoteFolder>()
-                let allFolders = try modelContext.fetch(descriptor)
-                
-                print("🧹 Clearing \(allFolders.count) potentially corrupted folders...")
-                
-                // Delete all folders
-                for folder in allFolders {
-                    modelContext.delete(folder)
-                }
-                
-                // Also fetch and preserve any orphaned notes (notes without folders)
-                let noteDescriptor = FetchDescriptor<Note>()
-                let allNotes = try modelContext.fetch(noteDescriptor)
-                print("📝 Found \(allNotes.count) notes (these will be preserved)")
-                
-                // Save the cleanup
-                try modelContext.save()
-                
-                print("✅ Corrupted folders cleared. Your notes, bits, and setlists are safe.")
-                
-                // Reset state
-                loadError = nil
-                isLoading = false
-                
-            } catch {
-                print("❌ Failed to clear folders: \(error)")
-                loadError = "Failed to clear: \(error.localizedDescription)"
-            }
-        }
     }
 
     private var emptyState: some View {
@@ -545,6 +602,7 @@ struct NoteFoldersView: View {
             Image(systemName: "folder")
                 .font(.system(size: 36))
                 .foregroundStyle(TFTheme.text.opacity(0.4))
+                .accessibilityHidden(true)
 
             Text("No folders yet")
                 .appFont(.title3, weight: .semibold)
@@ -569,30 +627,29 @@ struct NoteFoldersView: View {
                     .clipShape(Capsule())
             }
             .padding(.top, 6)
+            .accessibilityLabel("Create Folder")
         }
+        .accessibilityElement(children: .contain)
     }
 
     private func createFolder() {
         let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        
+
         let folder = NoteFolder(name: trimmed)
         modelContext.insert(folder)
-        
-        // Explicitly save the new folder
+
         do {
             try modelContext.save()
-            print("✅ Folder created successfully: \(trimmed)")
         } catch {
             print("❌ Failed to save new folder: \(error)")
         }
     }
-    
+
     private func deleteFolder(_ folder: NoteFolder) {
         do {
             modelContext.delete(folder)
             try modelContext.save()
-            print("✅ Folder deleted successfully")
         } catch {
             print("❌ Failed to delete folder: \(error)")
         }
@@ -602,8 +659,6 @@ struct NoteFoldersView: View {
 // MARK: - Folder Card View
 
 /// Card showing a folder's name. Used in the Folders list.
-/// Note: We don't show the note count here to avoid expensive relationship queries that can freeze the UI.
-/// The count is visible in the folder detail view instead.
 private struct FolderCardView: View {
     let folder: NoteFolder
 
@@ -617,7 +672,7 @@ private struct FolderCardView: View {
                 Text(folder.displayName)
                     .appFont(.headline, weight: .semibold)
                     .foregroundStyle(TFTheme.text)
-                
+
                 Text(folder.createdAt, style: .date)
                     .appFont(.caption)
                     .foregroundStyle(TFTheme.text.opacity(0.45))
@@ -647,6 +702,8 @@ struct FolderDetailView: View {
     @State private var showEditName = false
     @State private var editedName = ""
     @State private var showDeleteConfirmation = false
+    @State private var showDeleteNoteConfirmation = false
+    @State private var noteToDelete: Note?
 
     /// Active (non-deleted) notes in this folder, sorted by creation date
     private var folderNotes: [Note] {
@@ -663,30 +720,27 @@ struct FolderDetailView: View {
                         .padding(.top, 60)
                 } else {
                     ForEach(folderNotes) { note in
-                        NoteCardView(note: note)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedNote = note
-                            }
-                            .contextMenu {
-                                Button {
-                                    // Remove from folder (move to All Notes)
-                                    note.folder = nil
-                                    note.updatedAt = Date()
-                                    try? modelContext.save()
-                                } label: {
-                                    Label("Remove from Folder", systemImage: "folder.badge.minus")
-                                }
-
-                                Button(role: .destructive) {
-                                    withAnimation(.snappy) {
-                                        note.softDelete()
-                                        try? modelContext.save()
-                                    }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
+                        CardSwipeView(
+                            swipeRightEnabled: true,
+                            swipeRightIcon: "folder.badge.minus",
+                            swipeRightColor: TFTheme.yellow,
+                            swipeRightLabel: "Remove",
+                            swipeLeftIcon: "trash.fill",
+                            swipeLeftColor: .red,
+                            swipeLeftLabel: "Delete",
+                            onSwipeRight: {
+                                note.folder = nil
+                                note.updatedAt = Date()
+                                try? modelContext.save()
+                            },
+                            onSwipeLeft: {
+                                noteToDelete = note
+                                showDeleteNoteConfirmation = true
+                            },
+                            onTap: { selectedNote = note }
+                        ) {
+                            NoteCardView(note: note)
+                        }
                     }
                 }
             }
@@ -732,6 +786,7 @@ struct FolderDetailView: View {
                         .foregroundStyle(TFTheme.yellow)
                         .frame(width: 40, height: 40)
                 }
+                .accessibilityLabel("Folder options")
             }
         }
         .alert("Rename Folder", isPresented: $showEditName) {
@@ -754,6 +809,19 @@ struct FolderDetailView: View {
         } message: {
             Text("This will permanently delete the folder and all \(folderNotes.count) note\(folderNotes.count == 1 ? "" : "s") inside it.")
         }
+        .alert("Delete Note?", isPresented: $showDeleteNoteConfirmation) {
+            Button("Delete", role: .destructive) {
+                if let note = noteToDelete {
+                    withAnimation(.snappy) {
+                        note.softDelete()
+                        try? modelContext.save()
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This note will be moved to the trash.")
+        }
     }
 
     private var emptyState: some View {
@@ -761,6 +829,7 @@ struct FolderDetailView: View {
             Image(systemName: "doc.text")
                 .font(.system(size: 36))
                 .foregroundStyle(TFTheme.text.opacity(0.4))
+                .accessibilityHidden(true)
 
             Text("No notes in this folder")
                 .appFont(.title3, weight: .semibold)
@@ -784,15 +853,17 @@ struct FolderDetailView: View {
                     .clipShape(Capsule())
             }
             .padding(.top, 6)
+            .accessibilityLabel("New Note")
+            .accessibilityHint("Create a note in this folder")
         }
+        .accessibilityElement(children: .contain)
     }
 
     private func createNoteInFolder() {
         let note = Note()
         note.folder = folder
         modelContext.insert(note)
-        
-        // Explicitly save the new note
+
         do {
             try modelContext.save()
             selectedNote = note

@@ -202,6 +202,12 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
     }
     
     func textViewDidChange(_ textView: UITextView) {
+        // CRITICAL: Capture undo burst start BEFORE updating the binding.
+        // If we update parent.text first, captureUndoBurstStartIfNeeded() would
+        // snapshot the NEW text as the burst start, making undo comparisons always
+        // see no change (previousText == newText), so no undo would ever register.
+        captureUndoBurstStartIfNeeded()
+
         // PERFORMANCE FIX: Immediate lightweight update for smooth typing
         // Update binding immediately for responsive UI, but defer expensive operations
         let newText = textView.text ?? ""
@@ -210,9 +216,8 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
             parent.text = newText
             lastObservedText = newText
         }
-        
+
         // Defer undo registration and save until typing pauses
-        captureUndoBurstStartIfNeeded()
         scheduleCommit()
     }
     
