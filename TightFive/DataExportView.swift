@@ -48,6 +48,8 @@ struct DataExportView: View {
                         Divider().opacity(0.2)
                         exportItemRow(icon: "list.bullet.rectangle.fill", title: "Setlists", description: "All setlists with script content and notes")
                         Divider().opacity(0.2)
+                        exportItemRow(icon: "book.closed.fill", title: "Notebook", description: "All notebook pages with titles, folders, and content")
+                        Divider().opacity(0.2)
                         exportItemRow(icon: "star.fill", title: "Show Notes", description: "Performance notes, ratings, and insights")
                         Divider().opacity(0.2)
                         exportItemRow(icon: "waveform.circle.fill", title: "Recordings", description: "All audio recordings from Stage Mode")
@@ -228,7 +230,30 @@ struct DataExportView: View {
             try content.data(using: .utf8)?.write(to: file, options: .atomic)
         }
 
-        // 4. Export Show Notes (Performances)
+        // 4. Export Notebook
+        exportProgress = "Exporting notebook..."
+        let notebookDir = tempDir.appendingPathComponent("Notebook")
+        try fm.createDirectory(at: notebookDir, withIntermediateDirectories: true)
+
+        let notes = try modelContext.fetch(FetchDescriptor<Note>(predicate: #Predicate { !$0.isDeleted }))
+        for note in notes {
+            let safeName = sanitizeFilename(note.displayTitle)
+            var content = "Title: \(note.displayTitle)\n"
+            content += "Created: \(note.createdAt)\n"
+            content += "Updated: \(note.updatedAt)\n"
+            if let folder = note.folder?.displayName {
+                content += "Folder: \(folder)\n"
+            }
+            let noteText = NSAttributedString.fromRTF(note.contentRTF)?.string ?? ""
+            if !noteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                content += "\n--- Content ---\n\(noteText)\n"
+            }
+
+            let file = notebookDir.appendingPathComponent("\(safeName).txt")
+            try content.data(using: .utf8)?.write(to: file, options: .atomic)
+        }
+
+        // 5. Export Show Notes (Performances)
         exportProgress = "Exporting show notes..."
         let showNotesDir = tempDir.appendingPathComponent("ShowNotes")
         try fm.createDirectory(at: showNotesDir, withIntermediateDirectories: true)
@@ -255,7 +280,7 @@ struct DataExportView: View {
             try content.data(using: .utf8)?.write(to: file, options: .atomic)
         }
 
-        // 5. Copy Recordings
+        // 6. Copy Recordings
         exportProgress = "Copying recordings..."
         let recordingsDir = tempDir.appendingPathComponent("Recordings")
         try fm.createDirectory(at: recordingsDir, withIntermediateDirectories: true)
@@ -267,7 +292,7 @@ struct DataExportView: View {
             }
         }
 
-        // 6. Create zip using NSFileCoordinator
+        // 7. Create zip using NSFileCoordinator
         exportProgress = "Creating archive..."
         let zipURL = fm.temporaryDirectory.appendingPathComponent("TightFive_Export.zip")
         try? fm.removeItem(at: zipURL) // Remove old if exists

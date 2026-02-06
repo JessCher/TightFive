@@ -535,7 +535,7 @@ struct SetlistBuilderView: View {
             plainText = NSAttributedString.fromRTF(setlist.notesRTF)?.string ?? ""
             // Normalize notes RTF colors for light backgrounds
             if let notesAttr = NSAttributedString.fromRTF(setlist.notesRTF) {
-                rtfData = normalizeRTFColors(notesAttr)
+                rtfData = ExportHelpers.normalizeRTFColors(notesAttr)
             } else {
                 rtfData = setlist.notesRTF
             }
@@ -551,7 +551,7 @@ struct SetlistBuilderView: View {
                 try plainText.data(using: .utf8)?.write(to: url, options: .atomic)
             case .pdf:
                 url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).pdf")
-                let pdfData = generatePDF(title: setlist.title, body: plainText)
+                let pdfData = ExportHelpers.generatePDF(title: setlist.title, body: plainText)
                 try pdfData.write(to: url, options: .atomic)
             case .rtf:
                 url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).rtf")
@@ -578,86 +578,6 @@ struct SetlistBuilderView: View {
         }
     }
     
-    /// Normalize RTF colors - convert light text to dark for standard document backgrounds
-    private func normalizeRTFColors(_ attributedString: NSAttributedString) -> Data? {
-        let normalized = NSMutableAttributedString(attributedString: attributedString)
-        normalized.enumerateAttribute(.foregroundColor, in: NSRange(location: 0, length: normalized.length)) { value, range, _ in
-            if let color = value as? UIColor {
-                // Check if the color is light (likely designed for dark backgrounds)
-                var white: CGFloat = 0
-                var alpha: CGFloat = 0
-                
-                // Convert to grayscale to check brightness
-                if color.getWhite(&white, alpha: &alpha) {
-                    // If color is very light (white > 0.7), replace with black
-                    if white > 0.7 {
-                        normalized.addAttribute(.foregroundColor, value: UIColor.black, range: range)
-                    }
-                } else {
-                    // For colors that can't be converted to grayscale, check RGB components
-                    var red: CGFloat = 0
-                    var green: CGFloat = 0
-                    var blue: CGFloat = 0
-                    if color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) {
-                        let brightness = (red + green + blue) / 3.0
-                        if brightness > 0.7 {
-                            normalized.addAttribute(.foregroundColor, value: UIColor.black, range: range)
-                        }
-                    }
-                }
-            }
-        }
-        
-        return try? normalized.data(from: NSRange(location: 0, length: normalized.length),
-                                     documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
-    }
-
-    private func generatePDF(title: String, body: String) -> Data {
-        let pageWidth: CGFloat = 612  // 8.5" in points
-        let pageHeight: CGFloat = 792  // 11" in points
-        let margin: CGFloat = 50
-
-        let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight))
-        return renderer.pdfData { context in
-            let titleFont = UIFont.boldSystemFont(ofSize: 22)
-            let bodyFont = UIFont.systemFont(ofSize: 12)
-            let titleAttributes: [NSAttributedString.Key: Any] = [
-                .font: titleFont,
-                .foregroundColor: UIColor.black
-            ]
-            
-            let paragraphStyle = NSMutableParagraphStyle()
-            paragraphStyle.lineSpacing = 4
-            let bodyAttributes: [NSAttributedString.Key: Any] = [
-                .font: bodyFont,
-                .foregroundColor: UIColor.black,
-                .paragraphStyle: paragraphStyle
-            ]
-
-            let drawableWidth = pageWidth - (margin * 2)
-            
-            // Start first page
-            context.beginPage()
-            var currentY = margin
-
-            // Draw title on first page
-            let titleHeight = title.boundingRect(
-                with: CGSize(width: drawableWidth, height: .greatestFiniteMagnitude),
-                options: [.usesLineFragmentOrigin, .usesFontLeading],
-                attributes: titleAttributes,
-                context: nil
-            ).height
-            
-            let titleRect = CGRect(x: margin, y: currentY, width: drawableWidth, height: titleHeight)
-            title.draw(in: titleRect, withAttributes: titleAttributes)
-            currentY += titleHeight + 20
-
-            // Prepare attributed body text
-            let attributedBody = NSAttributedString(string: body, attributes: bodyAttributes)
-            
-            // Draw body text with proper pagination
-            var textIndex = 0
-            
             while textIndex < attributedBody.length {
                 let availableHeight = pageHeight - currentY - margin
                 
@@ -2280,6 +2200,5 @@ struct AutoGeneratedCueCardRow: View {
         .tfDynamicCard(cornerRadius: 16)
     }
 }
-
 
 

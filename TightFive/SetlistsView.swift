@@ -131,8 +131,14 @@ struct InProgressSetlistsView: View {
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(setlists) { s in
-                            SetlistSwipeView(
+                            CardSwipeView(
                                 swipeRightEnabled: false,
+                                swipeRightIcon: "play.fill",
+                                swipeRightColor: .green,
+                                swipeRightLabel: "Run",
+                                swipeLeftIcon: "trash.fill",
+                                swipeLeftColor: .red,
+                                swipeLeftLabel: "Delete",
                                 onSwipeRight: {},
                                 onSwipeLeft: {
                                     setlistToDelete = s
@@ -256,11 +262,14 @@ struct FinishedSetlistsView: View {
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(setlists) { s in
-                            SetlistSwipeView(
+                            CardSwipeView(
                                 swipeRightEnabled: true,
                                 swipeRightIcon: "play.fill",
                                 swipeRightColor: .green,
                                 swipeRightLabel: "Run",
+                                swipeLeftIcon: "trash.fill",
+                                swipeLeftColor: .red,
+                                swipeLeftLabel: "Delete",
                                 onSwipeRight: { runThroughSetlist = s },
                                 onSwipeLeft: {
                                     setlistToDelete = s
@@ -377,113 +386,6 @@ struct FinishedSetlistsView: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 18)
         .tfDynamicCard(cornerRadius: 18)
-    }
-}
-
-// MARK: - Setlist Swipe View
-
-/// Swipe gesture container for setlist rows
-/// Supports swipe left to delete and optional swipe right for custom action
-private struct SetlistSwipeView<Content: View>: View {
-    var swipeRightEnabled: Bool = false
-    var swipeRightIcon: String = "play.fill"
-    var swipeRightColor: Color = .green
-    var swipeRightLabel: String = "Run"
-    var onSwipeRight: () -> Void = {}
-    var onSwipeLeft: () -> Void
-    var onTap: () -> Void
-    @ViewBuilder var content: () -> Content
-
-    @State private var offset: CGFloat = 0
-    @State private var isSwiping = false
-    private let actionThreshold: CGFloat = 100
-
-    var body: some View {
-        ZStack {
-            // Background action indicators
-            HStack {
-                // Right swipe action (revealed on right swipe)
-                if swipeRightEnabled {
-                    HStack(spacing: 6) {
-                        Image(systemName: swipeRightIcon)
-                            .font(.system(size: 18, weight: .bold))
-                        Text(swipeRightLabel)
-                            .appFont(.caption, weight: .bold)
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.leading, 20)
-                    .scaleEffect(min(offset / actionThreshold, 1.0))
-                    .opacity(max(0, min(Double(offset) / Double(actionThreshold), 1.0)))
-                }
-
-                Spacer()
-
-                // Left swipe action (revealed on left swipe - delete)
-                HStack(spacing: 6) {
-                    Text("Delete")
-                        .appFont(.caption, weight: .bold)
-                    Image(systemName: "trash.fill")
-                        .font(.system(size: 18, weight: .bold))
-                }
-                .foregroundStyle(.white)
-                .padding(.trailing, 20)
-                .scaleEffect(min(-offset / actionThreshold, 1.0))
-                .opacity(max(0, min(Double(-offset) / Double(actionThreshold), 1.0)))
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(
-                offset > 0
-                    ? swipeRightColor.opacity(min(Double(offset) / Double(actionThreshold), 1.0) * 0.3)
-                    : Color.red.opacity(min(Double(-offset) / Double(actionThreshold), 1.0) * 0.3)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-
-            // Foreground content
-            content()
-                .offset(x: offset)
-                .gesture(
-                    DragGesture(minimumDistance: 20)
-                        .onChanged { gesture in
-                            isSwiping = true
-                            let translation = gesture.translation.width
-                            // Limit right swipe if not enabled
-                            if !swipeRightEnabled && translation > 0 {
-                                offset = translation * 0.2 // Rubber band effect
-                            } else {
-                                offset = translation
-                            }
-                        }
-                        .onEnded { gesture in
-                            let translation = gesture.translation.width
-
-                            if swipeRightEnabled && translation > actionThreshold {
-                                // Trigger right swipe action
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    offset = 0
-                                }
-                                onSwipeRight()
-                            } else if translation < -actionThreshold {
-                                // Trigger left swipe action (delete)
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    offset = 0
-                                }
-                                onSwipeLeft()
-                            } else {
-                                // Snap back
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    offset = 0
-                                }
-                            }
-
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                isSwiping = false
-                            }
-                        }
-                )
-                .onTapGesture {
-                    if !isSwiping { onTap() }
-                }
-        }
     }
 }
 
