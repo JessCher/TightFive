@@ -50,6 +50,10 @@ final class Setlist {
     /// JSON-encoded custom cue cards for traditional mode
     var customCueCardsData: Data = Data()
     
+    /// JSON-encoded custom phrase overrides for modular mode script blocks
+    /// Maps block UUID to custom anchor/exit phrases
+    var modularCustomPhrasesData: Data = Data()
+    
     // MARK: - Status
     
     /// True = still being developed, False = ready for stage
@@ -135,6 +139,17 @@ extension Setlist {
         }
         set {
             customCueCardsData = (try? JSONEncoder().encode(newValue)) ?? Data()
+        }
+    }
+    
+    /// Custom phrase overrides for modular mode (maps block ID to custom phrases)
+    var modularCustomPhrases: [UUID: CustomPhraseOverride] {
+        get {
+            guard !modularCustomPhrasesData.isEmpty else { return [:] }
+            return (try? JSONDecoder().decode([UUID: CustomPhraseOverride].self, from: modularCustomPhrasesData)) ?? [:]
+        }
+        set {
+            modularCustomPhrasesData = (try? JSONEncoder().encode(newValue)) ?? Data()
         }
     }
 }
@@ -323,4 +338,16 @@ public struct CustomCueCard: Identifiable, Codable, Equatable {
     }
 }
 
+// MARK: - Custom Phrase Override Model
+
+/// Custom anchor/exit phrase overrides for a modular script block
+public struct CustomPhraseOverride: Codable, Equatable {
+    public var anchorPhrase: String?
+    public var exitPhrase: String?
+    
+    public init(anchorPhrase: String? = nil, exitPhrase: String? = nil) {
+        self.anchorPhrase = anchorPhrase
+        self.exitPhrase = exitPhrase
+    }
+}
 

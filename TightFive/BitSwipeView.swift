@@ -57,7 +57,6 @@ struct BitSwipeView<Content: View>: View {
                     .offset(x: offset < 0 ? 0 : geo.size.width / 2)
                 }
             }
-            .cornerRadius(18)
 
             // Foreground Layer (The Card)
             content
@@ -106,5 +105,6 @@ struct BitSwipeView<Content: View>: View {
                     }
                 }
         }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }

@@ -391,9 +391,9 @@ struct StageModeViewCueCard: View {
                 engine.goToPreviousCard()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: settings.advanceButtonSize.iconSize, weight: .bold))
                     .foregroundStyle(engine.hasPreviousCard ? settings.advanceButtonColor.color.opacity(0.95) : .white.opacity(0.3))
-                    .frame(width: 60, height: 60)
+                    .frame(width: settings.advanceButtonSize.frameSize, height: settings.advanceButtonSize.frameSize)
                     .background(engine.hasPreviousCard ? settings.advanceButtonColor.color.opacity(0.15) : Color.white.opacity(0.05))
                     .clipShape(Circle())
                     .overlay(
@@ -408,9 +408,9 @@ struct StageModeViewCueCard: View {
                 engine.advanceToNextCard(automatic: false)
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: settings.advanceButtonSize.iconSize, weight: .bold))
                     .foregroundStyle(engine.hasNextCard ? settings.advanceButtonColor.color.opacity(0.95) : .white.opacity(0.3))
-                    .frame(width: 60, height: 60)
+                    .frame(width: settings.advanceButtonSize.frameSize, height: settings.advanceButtonSize.frameSize)
                     .background(engine.hasNextCard ? settings.advanceButtonColor.color.opacity(0.15) : Color.white.opacity(0.05))
                     .clipShape(Circle())
                     .overlay(

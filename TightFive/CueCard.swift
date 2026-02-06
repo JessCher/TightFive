@@ -7,6 +7,7 @@ import SwiftUI
 /// - Full content text (displayed on screen)
 /// - Anchor phrase (first ~10-20 words) - confirms we're IN this block
 /// - Exit phrase (last ~10-20 words) - triggers transition to NEXT block
+/// - Optional custom phrases - comedian can override default detection phrases
 struct CueCard: Identifiable, Equatable {
     let id: UUID
     let blockId: UUID
@@ -19,26 +20,50 @@ struct CueCard: Identifiable, Equatable {
     /// Last ~10-20 words of the block - triggers transition to next card
     let exitPhrase: String
     
+    /// Optional custom anchor phrase (overrides default if set)
+    let customAnchorPhrase: String?
+    
+    /// Optional custom exit phrase (overrides default if set)
+    let customExitPhrase: String?
+    
     /// Normalized words for matching (full text)
     let normalizedWords: [String]
     
-    /// Normalized anchor phrase words
+    /// Normalized anchor phrase words (uses custom if available)
     let normalizedAnchor: [String]
     
-    /// Normalized exit phrase words
+    /// Normalized exit phrase words (uses custom if available)
     let normalizedExit: [String]
+    
+    /// The effective anchor phrase used for recognition
+    var effectiveAnchorPhrase: String {
+        customAnchorPhrase ?? anchorPhrase
+    }
+    
+    /// The effective exit phrase used for recognition
+    var effectiveExitPhrase: String {
+        customExitPhrase ?? exitPhrase
+    }
     
     var isEmpty: Bool {
         fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    
+    /// Whether this card has custom phrases set by the comedian
+    var hasCustomPhrases: Bool {
+        customAnchorPhrase != nil || customExitPhrase != nil
     }
 }
 
 // MARK: - Factory
 
 extension CueCard {
-    /// Extract cue cards from setlist script blocks
+    /// Extract cue cards from setlist script blocks with support for custom phrases
     static func extractCards(from setlist: Setlist) -> [CueCard] {
         var cards: [CueCard] = []
+        
+        // Load custom phrase overrides if they exist
+        let customPhrasesMap = loadCustomPhrases(from: setlist)
         
         for (blockIndex, block) in setlist.scriptBlocks.enumerated() {
             let text = block.plainText(using: setlist.assignments)
@@ -48,22 +73,53 @@ extension CueCard {
             
             guard !text.isEmpty else { continue }
             
-            let (anchor, exit) = extractPhrases(from: text)
+            // Extract default phrases
+            let (defaultAnchor, defaultExit) = extractPhrases(from: text)
+            
+            // Check for custom overrides
+            let customPhrases = customPhrasesMap[block.id]
+            let customAnchor = customPhrases?.anchor
+            let customExit = customPhrases?.exit
+            
+            // Use custom phrases for normalization if available
+            let effectiveAnchor = customAnchor ?? defaultAnchor
+            let effectiveExit = customExit ?? defaultExit
             
             cards.append(CueCard(
                 id: UUID(),
                 blockId: block.id,
                 blockIndex: blockIndex,
                 fullText: text,
-                anchorPhrase: anchor,
-                exitPhrase: exit,
+                anchorPhrase: defaultAnchor,
+                exitPhrase: defaultExit,
+                customAnchorPhrase: customAnchor,
+                customExitPhrase: customExit,
                 normalizedWords: normalizeWords(text),
-                normalizedAnchor: normalizeWords(anchor),
-                normalizedExit: normalizeWords(exit)
+                normalizedAnchor: normalizeWords(effectiveAnchor),
+                normalizedExit: normalizeWords(effectiveExit)
             ))
         }
         
         return cards
+    }
+    
+    /// Load custom phrase overrides from setlist metadata
+    private static func loadCustomPhrases(from setlist: Setlist) -> [UUID: (anchor: String?, exit: String?)] {
+        // For traditional mode, use CustomCueCard data
+        if setlist.currentScriptMode == .traditional {
+            var map: [UUID: (anchor: String?, exit: String?)] = [:]
+            for customCard in setlist.customCueCards {
+                map[customCard.id] = (customCard.anchorPhrase, customCard.exitPhrase)
+            }
+            return map
+        }
+        
+        // For modular mode, use modularCustomPhrases
+        var map: [UUID: (anchor: String?, exit: String?)] = [:]
+        for (blockId, override) in setlist.modularCustomPhrases {
+            map[blockId] = (override.anchorPhrase, override.exitPhrase)
+        }
+        return map
     }
     
     /// Extract anchor (first ~10-20 words) and exit (last ~10-20 words) phrases

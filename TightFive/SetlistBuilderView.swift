@@ -39,7 +39,7 @@ struct SetlistBuilderView: View {
     @State private var showCueCardSettings = false
     @State private var showRunMode = false
     @State private var showScriptModeSettings = false
-    @State private var showCustomCueCardEditor = false
+    @State private var showEditCueCardPhrases = false
 
     @ObservedObject private var keyboard = TFKeyboardState.shared
     
@@ -82,8 +82,13 @@ struct SetlistBuilderView: View {
         .sheet(isPresented: $showScriptModeSettings) {
             ScriptModeSettingsView(setlist: setlist)
         }
-        .sheet(isPresented: $showCustomCueCardEditor) {
-            CustomCueCardEditorView(setlist: setlist)
+        .sheet(isPresented: $showEditCueCardPhrases) {
+            // Show appropriate editor based on script mode
+            if setlist.currentScriptMode == .traditional {
+                CustomCueCardEditorView(setlist: setlist)
+            } else {
+                EditCueCardPhrasesView(setlist: setlist)
+            }
         }
         .fullScreenCover(isPresented: $showStageMode) {
             StageModeView(setlist: setlist)
@@ -407,11 +412,15 @@ struct SetlistBuilderView: View {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 if setlist.hasScriptContent && !setlist.isDraft {
-                    // Configure Cue Cards - available for both modes
+                    // Configure/Edit Cue Cards - label changes based on script mode
                     Button {
-                        showCustomCueCardEditor = true
+                        showEditCueCardPhrases = true
                     } label: {
-                        Label("Configure Cue Cards", systemImage: "rectangle.stack")
+                        if setlist.currentScriptMode == .traditional {
+                            Label("Configure Cue Cards", systemImage: "rectangle.stack")
+                        } else {
+                            Label("Edit Cue Card Phrases", systemImage: "text.bubble")
+                        }
                     }
                     
                     Button {

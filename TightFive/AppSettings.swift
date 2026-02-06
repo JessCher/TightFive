@@ -10,33 +10,216 @@ class AppSettings {
 
     /// Internal trigger to force UI updates - read this in views to observe changes
     var updateTrigger: Int = 0
+    
+    /// iCloud Key-Value Store for syncing settings across devices
+    private let cloudStore = NSUbiquitousKeyValueStore.default
+    
+    /// Local UserDefaults for immediate local storage and fallback
+    private let localStore = UserDefaults.standard
+    
+    /// Queue for synchronizing access to storage operations
+    private let syncQueue = DispatchQueue(label: "com.tightfive.settings.sync", qos: .userInitiated)
+    
+    /// Tracks last sync time for throttling
+    private var lastSyncTime: Date = Date.distantPast
+    
+    /// Debounce timer for batching sync operations
+    private var syncTimer: Timer?
 
     /// Force a UI update
     private func notifyChange() {
         updateTrigger += 1
     }
+    
+    /// Force refresh from iCloud (public method for app lifecycle)
+    func forceRefresh() {
+        cloudStore.synchronize()
+        notifyChange()
+    }
 
     /// Registers observation dependency for computed properties.
     /// The @Observable macro only tracks stored properties. Since all settings are
-    /// computed (backed by UserDefaults), reading updateTrigger here ties the
+    /// computed (backed by iCloud KV Store), reading updateTrigger here ties the
     /// computed property access to a tracked stored property so SwiftUI views
     /// properly invalidate when settings change.
     private func observeChanges() {
         _ = updateTrigger
+    }
+    
+    // MARK: - Storage Helpers
+    
+    /// Get a string value with proper cloud/local priority
+    private func getString(forKey key: String, default defaultValue: String? = nil) -> String? {
+        // Always check cloud first, then local, then default
+        if let cloudValue = cloudStore.string(forKey: key) {
+            // Sync to local for consistency
+            if localStore.string(forKey: key) != cloudValue {
+                localStore.set(cloudValue, forKey: key)
+            }
+            return cloudValue
+        }
+        
+        if let localValue = localStore.string(forKey: key) {
+            // If local exists but cloud doesn't, sync to cloud
+            cloudStore.set(localValue, forKey: key)
+            scheduleSyncIfNeeded()
+            return localValue
+        }
+        
+        return defaultValue
+    }
+    
+    /// Set a string value with reliable sync
+    private func setString(_ value: String, forKey key: String) {
+        syncQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Write to both stores atomically
+            self.localStore.set(value, forKey: key)
+            self.cloudStore.set(value, forKey: key)
+            
+            // Force immediate synchronization
+            self.scheduleSyncIfNeeded()
+        }
+    }
+    
+    /// Get a double value with proper cloud/local priority
+    private func getDouble(forKey key: String) -> Double {
+        if let cloudValue = cloudStore.object(forKey: key) as? Double {
+            if localStore.double(forKey: key) != cloudValue {
+                localStore.set(cloudValue, forKey: key)
+            }
+            return cloudValue
+        }
+        
+        let localValue = localStore.double(forKey: key)
+        if localValue != 0 || localStore.object(forKey: key) != nil {
+            cloudStore.set(localValue, forKey: key)
+            scheduleSyncIfNeeded()
+            return localValue
+        }
+        
+        return 0
+    }
+    
+    /// Set a double value with reliable sync
+    private func setDouble(_ value: Double, forKey key: String) {
+        syncQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.localStore.set(value, forKey: key)
+            self.cloudStore.set(value, forKey: key)
+            self.scheduleSyncIfNeeded()
+        }
+    }
+    
+    /// Get a bool value with proper cloud/local priority
+    private func getBool(forKey key: String) -> Bool {
+        if let cloudValue = cloudStore.object(forKey: key) as? Bool {
+            if localStore.bool(forKey: key) != cloudValue {
+                localStore.set(cloudValue, forKey: key)
+            }
+            return cloudValue
+        }
+        
+        let localValue = localStore.bool(forKey: key)
+        if localStore.object(forKey: key) != nil {
+            cloudStore.set(localValue, forKey: key)
+            scheduleSyncIfNeeded()
+            return localValue
+        }
+        
+        return false
+    }
+    
+    /// Set a bool value with reliable sync
+    private func setBool(_ value: Bool, forKey key: String) {
+        syncQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.localStore.set(value, forKey: key)
+            self.cloudStore.set(value, forKey: key)
+            self.scheduleSyncIfNeeded()
+        }
+    }
+    
+    /// Get an int value with proper cloud/local priority
+    private func getInt(forKey key: String) -> Int {
+        if let cloudValue = cloudStore.object(forKey: key) as? Int64 {
+            let intValue = Int(cloudValue)
+            if localStore.integer(forKey: key) != intValue {
+                localStore.set(intValue, forKey: key)
+            }
+            return intValue
+        }
+        
+        let localValue = localStore.integer(forKey: key)
+        if localValue != 0 || localStore.object(forKey: key) != nil {
+            cloudStore.set(Int64(localValue), forKey: key)
+            scheduleSyncIfNeeded()
+            return localValue
+        }
+        
+        return 0
+    }
+    
+    /// Set an int value with reliable sync
+    private func setInt(_ value: Int, forKey key: String) {
+        syncQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.localStore.set(value, forKey: key)
+            self.cloudStore.set(Int64(value), forKey: key)
+            self.scheduleSyncIfNeeded()
+        }
+    }
+    
+    /// Check if a value has been explicitly set (exists in either store)
+    private func hasBeenSet(forKey key: String) -> Bool {
+        return cloudStore.object(forKey: key) != nil || localStore.object(forKey: key) != nil
+    }
+    
+    /// Schedule a sync operation with debouncing to avoid excessive syncing
+    private func scheduleSyncIfNeeded() {
+        // Cancel existing timer
+        syncTimer?.invalidate()
+        
+        // Schedule new sync after a brief delay to batch multiple changes
+        syncTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
+            self?.performSync()
+        }
+    }
+    
+    /// Perform actual synchronization
+    private func performSync() {
+        let now = Date()
+        
+        // Throttle syncs to once per second
+        guard now.timeIntervalSince(lastSyncTime) >= 1.0 else {
+            return
+        }
+        
+        lastSyncTime = now
+        
+        // Force cloud sync
+        let synced = cloudStore.synchronize()
+        
+        if synced {
+            print("✅ iCloud settings synced successfully")
+        } else {
+            print("⚠️ iCloud sync delayed or unavailable (offline?)")
+        }
     }
 
     /// Bit card frame color for shareable cards (background/border)
     var bitCardFrameColor: BitCardFrameColor {
         get {
             observeChanges()
-            guard let rawValue = UserDefaults.standard.string(forKey: "bitCardFrameColor"),
+            guard let rawValue = getString(forKey: "bitCardFrameColor"),
                   let color = BitCardFrameColor(rawValue: rawValue) else {
                 return .default
             }
             return color
         }
         set {
-            UserDefaults.standard.set(newValue.rawValue, forKey: "bitCardFrameColor")
+            setString(newValue.rawValue, forKey: "bitCardFrameColor")
             notifyChange()
         }
     }
@@ -45,14 +228,14 @@ class AppSettings {
     var bitCardBottomBarColor: BitCardFrameColor {
         get {
             observeChanges()
-            guard let rawValue = UserDefaults.standard.string(forKey: "bitCardBottomBarColor"),
+            guard let rawValue = getString(forKey: "bitCardBottomBarColor"),
                   let color = BitCardFrameColor(rawValue: rawValue) else {
                 return .default
             }
             return color
         }
         set {
-            UserDefaults.standard.set(newValue.rawValue, forKey: "bitCardBottomBarColor")
+            setString(newValue.rawValue, forKey: "bitCardBottomBarColor")
             notifyChange()
         }
     }
@@ -61,14 +244,14 @@ class AppSettings {
     var bitWindowTheme: BitWindowTheme {
         get {
             observeChanges()
-            guard let rawValue = UserDefaults.standard.string(forKey: "bitWindowTheme"),
+            guard let rawValue = getString(forKey: "bitWindowTheme"),
                   let theme = BitWindowTheme(rawValue: rawValue) else {
                 return .chalkboard
             }
             return theme
         }
         set {
-            UserDefaults.standard.set(newValue.rawValue, forKey: "bitWindowTheme")
+            setString(newValue.rawValue, forKey: "bitWindowTheme")
             notifyChange()
         }
     }
@@ -77,10 +260,10 @@ class AppSettings {
     var customFrameColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "customFrameColorHex") ?? "#3A3A3A"
+            return getString(forKey: "customFrameColorHex", default: "#3A3A3A") ?? "#3A3A3A"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "customFrameColorHex")
+            setString(newValue, forKey: "customFrameColorHex")
             notifyChange()
         }
     }
@@ -89,10 +272,10 @@ class AppSettings {
     var customBottomBarColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "customBottomBarColorHex") ?? "#3A3A3A"
+            return getString(forKey: "customBottomBarColorHex", default: "#3A3A3A") ?? "#3A3A3A"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "customBottomBarColorHex")
+            setString(newValue, forKey: "customBottomBarColorHex")
             notifyChange()
         }
     }
@@ -102,13 +285,13 @@ class AppSettings {
     var bitCardGritLevel: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "bitCardGritLevel")
+            let value = getDouble(forKey: "bitCardGritLevel")
             // If never set, default to 1.0 (maximum grit)
-            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardGritLevelHasBeenSet") ? 1.0 : value
+            return value == 0 && !hasBeenSet(forKey: "bitCardGritLevelHasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardGritLevel")
-            UserDefaults.standard.set(true, forKey: "bitCardGritLevelHasBeenSet")
+            setDouble(newValue, forKey: "bitCardGritLevel")
+            setBool(true, forKey: "bitCardGritLevelHasBeenSet")
             notifyChange()
         }
     }
@@ -119,12 +302,12 @@ class AppSettings {
     var bitCardWindowGritLayer1: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "bitCardWindowGritLayer1")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardWindowGritLayer1HasBeenSet") ? 1.0 : value
+            let value = getDouble(forKey: "bitCardWindowGritLayer1")
+            return value == 0 && !hasBeenSet(forKey: "bitCardWindowGritLayer1HasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer1")
-            UserDefaults.standard.set(true, forKey: "bitCardWindowGritLayer1HasBeenSet")
+            setDouble(newValue, forKey: "bitCardWindowGritLayer1")
+            setBool(true, forKey: "bitCardWindowGritLayer1HasBeenSet")
             notifyChange()
         }
     }
@@ -133,12 +316,12 @@ class AppSettings {
     var bitCardWindowGritLayer2: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "bitCardWindowGritLayer2")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardWindowGritLayer2HasBeenSet") ? 1.0 : value
+            let value = getDouble(forKey: "bitCardWindowGritLayer2")
+            return value == 0 && !hasBeenSet(forKey: "bitCardWindowGritLayer2HasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer2")
-            UserDefaults.standard.set(true, forKey: "bitCardWindowGritLayer2HasBeenSet")
+            setDouble(newValue, forKey: "bitCardWindowGritLayer2")
+            setBool(true, forKey: "bitCardWindowGritLayer2HasBeenSet")
             notifyChange()
         }
     }
@@ -147,12 +330,12 @@ class AppSettings {
     var bitCardWindowGritLayer3: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "bitCardWindowGritLayer3")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardWindowGritLayer3HasBeenSet") ? 1.0 : value
+            let value = getDouble(forKey: "bitCardWindowGritLayer3")
+            return value == 0 && !hasBeenSet(forKey: "bitCardWindowGritLayer3HasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer3")
-            UserDefaults.standard.set(true, forKey: "bitCardWindowGritLayer3HasBeenSet")
+            setDouble(newValue, forKey: "bitCardWindowGritLayer3")
+            setBool(true, forKey: "bitCardWindowGritLayer3HasBeenSet")
             notifyChange()
         }
     }
@@ -161,12 +344,12 @@ class AppSettings {
     var bitCardFrameGritLayer1Density: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "bitCardFrameGritLayer1Density")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardFrameGritLayer1DensityHasBeenSet") ? 1.0 : value
+            let value = getDouble(forKey: "bitCardFrameGritLayer1Density")
+            return value == 0 && !hasBeenSet(forKey: "bitCardFrameGritLayer1DensityHasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer1Density")
-            UserDefaults.standard.set(true, forKey: "bitCardFrameGritLayer1DensityHasBeenSet")
+            setDouble(newValue, forKey: "bitCardFrameGritLayer1Density")
+            setBool(true, forKey: "bitCardFrameGritLayer1DensityHasBeenSet")
             notifyChange()
         }
     }
@@ -175,12 +358,12 @@ class AppSettings {
     var bitCardFrameGritLayer2Density: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "bitCardFrameGritLayer2Density")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardFrameGritLayer2DensityHasBeenSet") ? 1.0 : value
+            let value = getDouble(forKey: "bitCardFrameGritLayer2Density")
+            return value == 0 && !hasBeenSet(forKey: "bitCardFrameGritLayer2DensityHasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer2Density")
-            UserDefaults.standard.set(true, forKey: "bitCardFrameGritLayer2DensityHasBeenSet")
+            setDouble(newValue, forKey: "bitCardFrameGritLayer2Density")
+            setBool(true, forKey: "bitCardFrameGritLayer2DensityHasBeenSet")
             notifyChange()
         }
     }
@@ -189,12 +372,12 @@ class AppSettings {
     var bitCardFrameGritLayer3Density: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "bitCardFrameGritLayer3Density")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardFrameGritLayer3DensityHasBeenSet") ? 1.0 : value
+            let value = getDouble(forKey: "bitCardFrameGritLayer3Density")
+            return value == 0 && !hasBeenSet(forKey: "bitCardFrameGritLayer3DensityHasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer3Density")
-            UserDefaults.standard.set(true, forKey: "bitCardFrameGritLayer3DensityHasBeenSet")
+            setDouble(newValue, forKey: "bitCardFrameGritLayer3Density")
+            setBool(true, forKey: "bitCardFrameGritLayer3DensityHasBeenSet")
             notifyChange()
         }
     }
@@ -203,12 +386,12 @@ class AppSettings {
     var bitCardBottomBarGritLayer1Density: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "bitCardBottomBarGritLayer1Density")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardBottomBarGritLayer1DensityHasBeenSet") ? 1.0 : value
+            let value = getDouble(forKey: "bitCardBottomBarGritLayer1Density")
+            return value == 0 && !hasBeenSet(forKey: "bitCardBottomBarGritLayer1DensityHasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer1Density")
-            UserDefaults.standard.set(true, forKey: "bitCardBottomBarGritLayer1DensityHasBeenSet")
+            setDouble(newValue, forKey: "bitCardBottomBarGritLayer1Density")
+            setBool(true, forKey: "bitCardBottomBarGritLayer1DensityHasBeenSet")
             notifyChange()
         }
     }
@@ -217,12 +400,12 @@ class AppSettings {
     var bitCardBottomBarGritLayer2Density: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "bitCardBottomBarGritLayer2Density")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardBottomBarGritLayer2DensityHasBeenSet") ? 1.0 : value
+            let value = getDouble(forKey: "bitCardBottomBarGritLayer2Density")
+            return value == 0 && !hasBeenSet(forKey: "bitCardBottomBarGritLayer2DensityHasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer2Density")
-            UserDefaults.standard.set(true, forKey: "bitCardBottomBarGritLayer2DensityHasBeenSet")
+            setDouble(newValue, forKey: "bitCardBottomBarGritLayer2Density")
+            setBool(true, forKey: "bitCardBottomBarGritLayer2DensityHasBeenSet")
             notifyChange()
         }
     }
@@ -231,12 +414,12 @@ class AppSettings {
     var bitCardBottomBarGritLayer3Density: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "bitCardBottomBarGritLayer3Density")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardBottomBarGritLayer3DensityHasBeenSet") ? 1.0 : value
+            let value = getDouble(forKey: "bitCardBottomBarGritLayer3Density")
+            return value == 0 && !hasBeenSet(forKey: "bitCardBottomBarGritLayer3DensityHasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer3Density")
-            UserDefaults.standard.set(true, forKey: "bitCardBottomBarGritLayer3DensityHasBeenSet")
+            setDouble(newValue, forKey: "bitCardBottomBarGritLayer3Density")
+            setBool(true, forKey: "bitCardBottomBarGritLayer3DensityHasBeenSet")
             notifyChange()
         }
     }
@@ -247,10 +430,10 @@ class AppSettings {
     var bitCardFrameGritEnabled: Bool {
         get {
             observeChanges()
-            return UserDefaults.standard.bool(forKey: "bitCardFrameGritEnabled")
+            return getBool(forKey: "bitCardFrameGritEnabled")
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritEnabled")
+            setBool(newValue, forKey: "bitCardFrameGritEnabled")
             notifyChange()
         }
     }
@@ -258,10 +441,10 @@ class AppSettings {
     var bitCardFrameGritLayer1ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "bitCardFrameGritLayer1ColorHex") ?? "#8B4513"
+            return getString(forKey: "bitCardFrameGritLayer1ColorHex", default: "#8B4513") ?? "#8B4513"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer1ColorHex")
+            setString(newValue, forKey: "bitCardFrameGritLayer1ColorHex")
             notifyChange()
         }
     }
@@ -269,10 +452,10 @@ class AppSettings {
     var bitCardFrameGritLayer2ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "bitCardFrameGritLayer2ColorHex") ?? "#000000"
+            return getString(forKey: "bitCardFrameGritLayer2ColorHex", default: "#000000") ?? "#000000"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer2ColorHex")
+            setString(newValue, forKey: "bitCardFrameGritLayer2ColorHex")
             notifyChange()
         }
     }
@@ -280,10 +463,10 @@ class AppSettings {
     var bitCardFrameGritLayer3ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "bitCardFrameGritLayer3ColorHex") ?? "#CC6600"
+            return getString(forKey: "bitCardFrameGritLayer3ColorHex", default: "#CC6600") ?? "#CC6600"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer3ColorHex")
+            setString(newValue, forKey: "bitCardFrameGritLayer3ColorHex")
             notifyChange()
         }
     }
@@ -292,10 +475,10 @@ class AppSettings {
     var bitCardBottomBarGritEnabled: Bool {
         get {
             observeChanges()
-            return UserDefaults.standard.bool(forKey: "bitCardBottomBarGritEnabled")
+            return getBool(forKey: "bitCardBottomBarGritEnabled")
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritEnabled")
+            setBool(newValue, forKey: "bitCardBottomBarGritEnabled")
             notifyChange()
         }
     }
@@ -303,10 +486,10 @@ class AppSettings {
     var bitCardBottomBarGritLayer1ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "bitCardBottomBarGritLayer1ColorHex") ?? "#8B4513"
+            return getString(forKey: "bitCardBottomBarGritLayer1ColorHex", default: "#8B4513") ?? "#8B4513"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer1ColorHex")
+            setString(newValue, forKey: "bitCardBottomBarGritLayer1ColorHex")
             notifyChange()
         }
     }
@@ -314,10 +497,10 @@ class AppSettings {
     var bitCardBottomBarGritLayer2ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "bitCardBottomBarGritLayer2ColorHex") ?? "#000000"
+            return getString(forKey: "bitCardBottomBarGritLayer2ColorHex", default: "#000000") ?? "#000000"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer2ColorHex")
+            setString(newValue, forKey: "bitCardBottomBarGritLayer2ColorHex")
             notifyChange()
         }
     }
@@ -325,10 +508,10 @@ class AppSettings {
     var bitCardBottomBarGritLayer3ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "bitCardBottomBarGritLayer3ColorHex") ?? "#CC6600"
+            return getString(forKey: "bitCardBottomBarGritLayer3ColorHex", default: "#CC6600") ?? "#CC6600"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer3ColorHex")
+            setString(newValue, forKey: "bitCardBottomBarGritLayer3ColorHex")
             notifyChange()
         }
     }
@@ -339,10 +522,10 @@ class AppSettings {
     var customWindowColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "customWindowColorHex") ?? "#3A3A3A"
+            return getString(forKey: "customWindowColorHex", default: "#3A3A3A") ?? "#3A3A3A"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "customWindowColorHex")
+            setString(newValue, forKey: "customWindowColorHex")
             notifyChange()
         }
     }
@@ -351,10 +534,10 @@ class AppSettings {
     var bitCardWindowGritEnabled: Bool {
         get {
             observeChanges()
-            return UserDefaults.standard.bool(forKey: "bitCardWindowGritEnabled")
+            return getBool(forKey: "bitCardWindowGritEnabled")
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritEnabled")
+            setBool(newValue, forKey: "bitCardWindowGritEnabled")
             notifyChange()
         }
     }
@@ -362,10 +545,10 @@ class AppSettings {
     var bitCardWindowGritLayer1ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "bitCardWindowGritLayer1ColorHex") ?? "#8B4513"
+            return getString(forKey: "bitCardWindowGritLayer1ColorHex", default: "#8B4513") ?? "#8B4513"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer1ColorHex")
+            setString(newValue, forKey: "bitCardWindowGritLayer1ColorHex")
             notifyChange()
         }
     }
@@ -373,10 +556,10 @@ class AppSettings {
     var bitCardWindowGritLayer2ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "bitCardWindowGritLayer2ColorHex") ?? "#000000"
+            return getString(forKey: "bitCardWindowGritLayer2ColorHex", default: "#000000") ?? "#000000"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer2ColorHex")
+            setString(newValue, forKey: "bitCardWindowGritLayer2ColorHex")
             notifyChange()
         }
     }
@@ -384,10 +567,10 @@ class AppSettings {
     var bitCardWindowGritLayer3ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "bitCardWindowGritLayer3ColorHex") ?? "#CC6600"
+            return getString(forKey: "bitCardWindowGritLayer3ColorHex", default: "#CC6600") ?? "#CC6600"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer3ColorHex")
+            setString(newValue, forKey: "bitCardWindowGritLayer3ColorHex")
             notifyChange()
         }
     }
@@ -398,12 +581,12 @@ class AppSettings {
     var bitCardFrameGritLevel: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "bitCardFrameGritLevel")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardFrameGritLevelHasBeenSet") ? 1.0 : value
+            let value = getDouble(forKey: "bitCardFrameGritLevel")
+            return value == 0 && !hasBeenSet(forKey: "bitCardFrameGritLevelHasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLevel")
-            UserDefaults.standard.set(true, forKey: "bitCardFrameGritLevelHasBeenSet")
+            setDouble(newValue, forKey: "bitCardFrameGritLevel")
+            setBool(true, forKey: "bitCardFrameGritLevelHasBeenSet")
             notifyChange()
         }
     }
@@ -412,12 +595,12 @@ class AppSettings {
     var bitCardBottomBarGritLevel: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "bitCardBottomBarGritLevel")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardBottomBarGritLevelHasBeenSet") ? 1.0 : value
+            let value = getDouble(forKey: "bitCardBottomBarGritLevel")
+            return value == 0 && !hasBeenSet(forKey: "bitCardBottomBarGritLevelHasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLevel")
-            UserDefaults.standard.set(true, forKey: "bitCardBottomBarGritLevelHasBeenSet")
+            setDouble(newValue, forKey: "bitCardBottomBarGritLevel")
+            setBool(true, forKey: "bitCardBottomBarGritLevelHasBeenSet")
             notifyChange()
         }
     }
@@ -426,12 +609,12 @@ class AppSettings {
     var bitCardWindowGritLevel: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "bitCardWindowGritLevel")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardWindowGritLevelHasBeenSet") ? 1.0 : value
+            let value = getDouble(forKey: "bitCardWindowGritLevel")
+            return value == 0 && !hasBeenSet(forKey: "bitCardWindowGritLevelHasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLevel")
-            UserDefaults.standard.set(true, forKey: "bitCardWindowGritLevelHasBeenSet")
+            setDouble(newValue, forKey: "bitCardWindowGritLevel")
+            setBool(true, forKey: "bitCardWindowGritLevelHasBeenSet")
             notifyChange()
         }
     }
@@ -440,13 +623,13 @@ class AppSettings {
     var appGritLevel: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "appGritLevel")
+            let value = getDouble(forKey: "appGritLevel")
             // If never set, default to 1.0 (maximum grit)
-            return value == 0 && !UserDefaults.standard.bool(forKey: "appGritLevelHasBeenSet") ? 1.0 : value
+            return value == 0 && !hasBeenSet(forKey: "appGritLevelHasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "appGritLevel")
-            UserDefaults.standard.set(true, forKey: "appGritLevelHasBeenSet")
+            setDouble(newValue, forKey: "appGritLevel")
+            setBool(true, forKey: "appGritLevelHasBeenSet")
             notifyChange()
         }
     }
@@ -455,14 +638,14 @@ class AppSettings {
     var appFont: AppFont {
         get {
             observeChanges()
-            guard let rawValue = UserDefaults.standard.string(forKey: "appFont"),
+            guard let rawValue = getString(forKey: "appFont"),
                   let font = AppFont(rawValue: rawValue) else {
                 return .systemDefault
             }
             return font
         }
         set {
-            UserDefaults.standard.set(newValue.rawValue, forKey: "appFont")
+            setString(newValue.rawValue, forKey: "appFont")
             notifyChange()
         }
     }
@@ -471,10 +654,10 @@ class AppSettings {
     var appFontColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "appFontColorHex") ?? "#FFFFFF" // Default white
+            return getString(forKey: "appFontColorHex", default: "#FFFFFF") ?? "#FFFFFF" // Default white
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "appFontColorHex")
+            setString(newValue, forKey: "appFontColorHex")
             notifyChange()
         }
     }
@@ -483,13 +666,13 @@ class AppSettings {
     var appFontSizeMultiplier: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "appFontSizeMultiplier")
+            let value = getDouble(forKey: "appFontSizeMultiplier")
             // If never set, default to 1.0 (normal size)
-            return value == 0 && !UserDefaults.standard.bool(forKey: "appFontSizeMultiplierHasBeenSet") ? 1.0 : value
+            return value == 0 && !hasBeenSet(forKey: "appFontSizeMultiplierHasBeenSet") ? 1.0 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "appFontSizeMultiplier")
-            UserDefaults.standard.set(true, forKey: "appFontSizeMultiplierHasBeenSet")
+            setDouble(newValue, forKey: "appFontSizeMultiplier")
+            setBool(true, forKey: "appFontSizeMultiplierHasBeenSet")
             notifyChange()
         }
     }
@@ -498,14 +681,14 @@ class AppSettings {
     var tileCardTheme: TileCardTheme {
         get {
             observeChanges()
-            guard let rawValue = UserDefaults.standard.string(forKey: "tileCardTheme"),
+            guard let rawValue = getString(forKey: "tileCardTheme"),
                   let theme = TileCardTheme(rawValue: rawValue) else {
                 return .darkGrit
             }
             return theme
         }
         set {
-            UserDefaults.standard.set(newValue.rawValue, forKey: "tileCardTheme")
+            setString(newValue.rawValue, forKey: "tileCardTheme")
             notifyChange()
         }
     }
@@ -514,14 +697,14 @@ class AppSettings {
     var quickBitTheme: TileCardTheme {
         get {
             observeChanges()
-            guard let rawValue = UserDefaults.standard.string(forKey: "quickBitTheme"),
+            guard let rawValue = getString(forKey: "quickBitTheme"),
                   let theme = TileCardTheme(rawValue: rawValue) else {
                 return .yellowGrit
             }
             return theme
         }
         set {
-            UserDefaults.standard.set(newValue.rawValue, forKey: "quickBitTheme")
+            setString(newValue.rawValue, forKey: "quickBitTheme")
             notifyChange()
         }
     }
@@ -530,10 +713,10 @@ class AppSettings {
     var quickBitCustomColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "quickBitCustomColorHex") ?? "#F4C430"
+            return getString(forKey: "quickBitCustomColorHex", default: "#F4C430") ?? "#F4C430"
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "quickBitCustomColorHex")
+            setString(newValue, forKey: "quickBitCustomColorHex")
             notifyChange()
         }
     }
@@ -543,13 +726,13 @@ class AppSettings {
         get {
             observeChanges()
             // Default to true if never set
-            guard UserDefaults.standard.object(forKey: "quickBitGritEnabled") != nil else {
+            guard hasBeenSet(forKey: "quickBitGritEnabled") else {
                 return true
             }
-            return UserDefaults.standard.bool(forKey: "quickBitGritEnabled")
+            return getBool(forKey: "quickBitGritEnabled")
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "quickBitGritEnabled")
+            setBool(newValue, forKey: "quickBitGritEnabled")
             notifyChange()
         }
     }
@@ -558,10 +741,10 @@ class AppSettings {
     var quickBitGritLayer1ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "quickBitGritLayer1ColorHex") ?? "#8B4513" // Brown
+            return getString(forKey: "quickBitGritLayer1ColorHex", default: "#8B4513") ?? "#8B4513" // Brown
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "quickBitGritLayer1ColorHex")
+            setString(newValue, forKey: "quickBitGritLayer1ColorHex")
             notifyChange()
         }
     }
@@ -570,10 +753,10 @@ class AppSettings {
     var quickBitGritLayer2ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "quickBitGritLayer2ColorHex") ?? "#000000" // Black
+            return getString(forKey: "quickBitGritLayer2ColorHex", default: "#000000") ?? "#000000" // Black
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "quickBitGritLayer2ColorHex")
+            setString(newValue, forKey: "quickBitGritLayer2ColorHex")
             notifyChange()
         }
     }
@@ -582,10 +765,10 @@ class AppSettings {
     var quickBitGritLayer3ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "quickBitGritLayer3ColorHex") ?? "#CC6600" // Orange
+            return getString(forKey: "quickBitGritLayer3ColorHex", default: "#CC6600") ?? "#CC6600" // Orange
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "quickBitGritLayer3ColorHex")
+            setString(newValue, forKey: "quickBitGritLayer3ColorHex")
             notifyChange()
         }
     }
@@ -596,10 +779,10 @@ class AppSettings {
     var tileCardCustomColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "tileCardCustomColorHex") ?? "#3A3A3A" // TFCard color
+            return getString(forKey: "tileCardCustomColorHex", default: "#3A3A3A") ?? "#3A3A3A" // TFCard color
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "tileCardCustomColorHex")
+            setString(newValue, forKey: "tileCardCustomColorHex")
             notifyChange()
         }
     }
@@ -609,13 +792,13 @@ class AppSettings {
         get {
             observeChanges()
             // Default to true if never set
-            guard UserDefaults.standard.object(forKey: "tileCardGritEnabled") != nil else {
+            guard hasBeenSet(forKey: "tileCardGritEnabled") else {
                 return true
             }
-            return UserDefaults.standard.bool(forKey: "tileCardGritEnabled")
+            return getBool(forKey: "tileCardGritEnabled")
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "tileCardGritEnabled")
+            setBool(newValue, forKey: "tileCardGritEnabled")
             notifyChange()
         }
     }
@@ -624,10 +807,10 @@ class AppSettings {
     var tileCardGritLayer1ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "tileCardGritLayer1ColorHex") ?? "#F4C430" // Yellow
+            return getString(forKey: "tileCardGritLayer1ColorHex", default: "#F4C430") ?? "#F4C430" // Yellow
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "tileCardGritLayer1ColorHex")
+            setString(newValue, forKey: "tileCardGritLayer1ColorHex")
             notifyChange()
         }
     }
@@ -636,10 +819,10 @@ class AppSettings {
     var tileCardGritLayer2ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "tileCardGritLayer2ColorHex") ?? "#FFFFFF4D" // White with opacity
+            return getString(forKey: "tileCardGritLayer2ColorHex", default: "#FFFFFF4D") ?? "#FFFFFF4D" // White with opacity
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "tileCardGritLayer2ColorHex")
+            setString(newValue, forKey: "tileCardGritLayer2ColorHex")
             notifyChange()
         }
     }
@@ -648,10 +831,10 @@ class AppSettings {
     var tileCardGritLayer3ColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "tileCardGritLayer3ColorHex") ?? "#FFFFFF1A" // White with lower opacity
+            return getString(forKey: "tileCardGritLayer3ColorHex", default: "#FFFFFF1A") ?? "#FFFFFF1A" // White with lower opacity
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "tileCardGritLayer3ColorHex")
+            setString(newValue, forKey: "tileCardGritLayer3ColorHex")
             notifyChange()
         }
     }
@@ -662,10 +845,10 @@ class AppSettings {
     var backgroundBaseColorHex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "backgroundBaseColorHex") ?? "#3A3A3A" // TFBackground default
+            return getString(forKey: "backgroundBaseColorHex", default: "#3A3A3A") ?? "#3A3A3A" // TFBackground default
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "backgroundBaseColorHex")
+            setString(newValue, forKey: "backgroundBaseColorHex")
             notifyChange()
         }
     }
@@ -674,12 +857,12 @@ class AppSettings {
     var backgroundCloudCount: Int {
         get {
             observeChanges()
-            let value = UserDefaults.standard.integer(forKey: "backgroundCloudCount")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "backgroundCloudCountHasBeenSet") ? 80 : value
+            let value = getInt(forKey: "backgroundCloudCount")
+            return value == 0 && !hasBeenSet(forKey: "backgroundCloudCountHasBeenSet") ? 80 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "backgroundCloudCount")
-            UserDefaults.standard.set(true, forKey: "backgroundCloudCountHasBeenSet")
+            setInt(newValue, forKey: "backgroundCloudCount")
+            setBool(true, forKey: "backgroundCloudCountHasBeenSet")
             notifyChange()
         }
     }
@@ -688,12 +871,12 @@ class AppSettings {
     var backgroundCloudOpacity: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "backgroundCloudOpacity")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "backgroundCloudOpacityHasBeenSet") ? 0.18 : value
+            let value = getDouble(forKey: "backgroundCloudOpacity")
+            return value == 0 && !hasBeenSet(forKey: "backgroundCloudOpacityHasBeenSet") ? 0.18 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "backgroundCloudOpacity")
-            UserDefaults.standard.set(true, forKey: "backgroundCloudOpacityHasBeenSet")
+            setDouble(newValue, forKey: "backgroundCloudOpacity")
+            setBool(true, forKey: "backgroundCloudOpacityHasBeenSet")
             notifyChange()
         }
     }
@@ -702,10 +885,10 @@ class AppSettings {
     var backgroundCloudColor1Hex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "backgroundCloudColor1Hex") ?? "#F4C430" // TFYellow
+            return getString(forKey: "backgroundCloudColor1Hex", default: "#F4C430") ?? "#F4C430" // TFYellow
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "backgroundCloudColor1Hex")
+            setString(newValue, forKey: "backgroundCloudColor1Hex")
             notifyChange()
         }
     }
@@ -714,10 +897,10 @@ class AppSettings {
     var backgroundCloudColor2Hex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "backgroundCloudColor2Hex") ?? "#0000FF" // Blue
+            return getString(forKey: "backgroundCloudColor2Hex", default: "#0000FF") ?? "#0000FF" // Blue
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "backgroundCloudColor2Hex")
+            setString(newValue, forKey: "backgroundCloudColor2Hex")
             notifyChange()
         }
     }
@@ -726,10 +909,10 @@ class AppSettings {
     var backgroundCloudColor3Hex: String {
         get {
             observeChanges()
-            return UserDefaults.standard.string(forKey: "backgroundCloudColor3Hex") ?? "#FFFFFF" // White
+            return getString(forKey: "backgroundCloudColor3Hex", default: "#FFFFFF") ?? "#FFFFFF" // White
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "backgroundCloudColor3Hex")
+            setString(newValue, forKey: "backgroundCloudColor3Hex")
             notifyChange()
         }
     }
@@ -738,10 +921,10 @@ class AppSettings {
     var backgroundCloudOffsetX: Double {
         get {
             observeChanges()
-            return UserDefaults.standard.double(forKey: "backgroundCloudOffsetX")
+            return getDouble(forKey: "backgroundCloudOffsetX")
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "backgroundCloudOffsetX")
+            setDouble(newValue, forKey: "backgroundCloudOffsetX")
             notifyChange()
         }
     }
@@ -750,10 +933,10 @@ class AppSettings {
     var backgroundCloudOffsetY: Double {
         get {
             observeChanges()
-            return UserDefaults.standard.double(forKey: "backgroundCloudOffsetY")
+            return getDouble(forKey: "backgroundCloudOffsetY")
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "backgroundCloudOffsetY")
+            setDouble(newValue, forKey: "backgroundCloudOffsetY")
             notifyChange()
         }
     }
@@ -762,12 +945,12 @@ class AppSettings {
     var backgroundDustCount: Int {
         get {
             observeChanges()
-            let value = UserDefaults.standard.integer(forKey: "backgroundDustCount")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "backgroundDustCountHasBeenSet") ? 800 : value
+            let value = getInt(forKey: "backgroundDustCount")
+            return value == 0 && !hasBeenSet(forKey: "backgroundDustCountHasBeenSet") ? 800 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "backgroundDustCount")
-            UserDefaults.standard.set(true, forKey: "backgroundDustCountHasBeenSet")
+            setInt(newValue, forKey: "backgroundDustCount")
+            setBool(true, forKey: "backgroundDustCountHasBeenSet")
             notifyChange()
         }
     }
@@ -776,12 +959,12 @@ class AppSettings {
     var backgroundDustOpacity: Double {
         get {
             observeChanges()
-            let value = UserDefaults.standard.double(forKey: "backgroundDustOpacity")
-            return value == 0 && !UserDefaults.standard.bool(forKey: "backgroundDustOpacityHasBeenSet") ? 0.24 : value
+            let value = getDouble(forKey: "backgroundDustOpacity")
+            return value == 0 && !hasBeenSet(forKey: "backgroundDustOpacityHasBeenSet") ? 0.24 : value
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "backgroundDustOpacity")
-            UserDefaults.standard.set(true, forKey: "backgroundDustOpacityHasBeenSet")
+            setDouble(newValue, forKey: "backgroundDustOpacity")
+            setBool(true, forKey: "backgroundDustOpacityHasBeenSet")
             notifyChange()
         }
     }
@@ -821,10 +1004,10 @@ class AppSettings {
     var reduceMotion: Bool {
         get {
             observeChanges()
-            return UserDefaults.standard.bool(forKey: "accessibilityReduceMotion")
+            return getBool(forKey: "accessibilityReduceMotion")
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "accessibilityReduceMotion")
+            setBool(newValue, forKey: "accessibilityReduceMotion")
             notifyChange()
         }
     }
@@ -833,10 +1016,10 @@ class AppSettings {
     var highContrast: Bool {
         get {
             observeChanges()
-            return UserDefaults.standard.bool(forKey: "accessibilityHighContrast")
+            return getBool(forKey: "accessibilityHighContrast")
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "accessibilityHighContrast")
+            setBool(newValue, forKey: "accessibilityHighContrast")
             notifyChange()
         }
     }
@@ -845,13 +1028,13 @@ class AppSettings {
     var hapticsEnabled: Bool {
         get {
             observeChanges()
-            guard UserDefaults.standard.object(forKey: "accessibilityHapticsEnabled") != nil else {
+            guard hasBeenSet(forKey: "accessibilityHapticsEnabled") else {
                 return true // Default: on
             }
-            return UserDefaults.standard.bool(forKey: "accessibilityHapticsEnabled")
+            return getBool(forKey: "accessibilityHapticsEnabled")
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "accessibilityHapticsEnabled")
+            setBool(newValue, forKey: "accessibilityHapticsEnabled")
             notifyChange()
         }
     }
@@ -860,10 +1043,10 @@ class AppSettings {
     var boldText: Bool {
         get {
             observeChanges()
-            return UserDefaults.standard.bool(forKey: "accessibilityBoldText")
+            return getBool(forKey: "accessibilityBoldText")
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "accessibilityBoldText")
+            setBool(newValue, forKey: "accessibilityBoldText")
             notifyChange()
         }
     }
@@ -872,15 +1055,125 @@ class AppSettings {
     var largerTouchTargets: Bool {
         get {
             observeChanges()
-            return UserDefaults.standard.bool(forKey: "accessibilityLargerTouchTargets")
+            return getBool(forKey: "accessibilityLargerTouchTargets")
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "accessibilityLargerTouchTargets")
+            setBool(newValue, forKey: "accessibilityLargerTouchTargets")
             notifyChange()
         }
     }
 
-    private init() {}
+    private init() {
+        // Initial sync from iCloud on launch
+        cloudStore.synchronize()
+        
+        // Migrate any local-only settings to iCloud
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            self?.migrateLocalSettingsToCloud()
+        }
+        
+        // Observe iCloud KV Store changes to sync from other devices
+        NotificationCenter.default.addObserver(
+            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: cloudStore,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self else { return }
+            
+            // Get the reason for the change
+            let reason = notification.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
+            
+            // Log the change reason
+            switch reason {
+            case NSUbiquitousKeyValueStoreServerChange:
+                print("📱 iCloud settings changed from another device")
+            case NSUbiquitousKeyValueStoreInitialSyncChange:
+                print("📱 iCloud initial sync completed")
+            case NSUbiquitousKeyValueStoreQuotaViolationChange:
+                print("⚠️ iCloud KV storage quota exceeded")
+            case NSUbiquitousKeyValueStoreAccountChange:
+                print("📱 iCloud account changed")
+            default:
+                print("📱 iCloud settings changed (unknown reason)")
+            }
+            
+            // Extract changed keys from notification
+            if let changedKeys = notification.userInfo?[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String] {
+                print("  Updated keys: \(changedKeys.joined(separator: ", "))")
+                
+                // Copy all changed values from cloud to local store for immediate access
+                for key in changedKeys {
+                    self.syncQueue.async {
+                        if let stringValue = self.cloudStore.string(forKey: key) {
+                            self.localStore.set(stringValue, forKey: key)
+                        } else if let doubleValue = self.cloudStore.object(forKey: key) as? Double {
+                            self.localStore.set(doubleValue, forKey: key)
+                        } else if let boolValue = self.cloudStore.object(forKey: key) as? Bool {
+                            self.localStore.set(boolValue, forKey: key)
+                        } else if let intValue = self.cloudStore.object(forKey: key) as? Int64 {
+                            self.localStore.set(Int(intValue), forKey: key)
+                        }
+                    }
+                }
+                
+                // Notify SwiftUI views to update on main thread
+                DispatchQueue.main.async {
+                    self.notifyChange()
+                }
+            }
+        }
+        
+        // Periodic sync check (every 30 seconds while app is active)
+        Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
+            self?.cloudStore.synchronize()
+        }
+    }
+    
+    /// Migrate any local-only settings to iCloud
+    private func migrateLocalSettingsToCloud() {
+        let allKeys = [
+            "bitCardFrameColor", "bitCardBottomBarColor", "bitWindowTheme",
+            "customFrameColorHex", "customBottomBarColorHex", "customWindowColorHex",
+            "bitCardGritLevel", "bitCardFrameGritLevel", "bitCardBottomBarGritLevel", "bitCardWindowGritLevel",
+            "bitCardWindowGritLayer1", "bitCardWindowGritLayer2", "bitCardWindowGritLayer3",
+            "bitCardFrameGritLayer1Density", "bitCardFrameGritLayer2Density", "bitCardFrameGritLayer3Density",
+            "bitCardBottomBarGritLayer1Density", "bitCardBottomBarGritLayer2Density", "bitCardBottomBarGritLayer3Density",
+            "bitCardFrameGritEnabled", "bitCardBottomBarGritEnabled", "bitCardWindowGritEnabled",
+            "bitCardFrameGritLayer1ColorHex", "bitCardFrameGritLayer2ColorHex", "bitCardFrameGritLayer3ColorHex",
+            "bitCardBottomBarGritLayer1ColorHex", "bitCardBottomBarGritLayer2ColorHex", "bitCardBottomBarGritLayer3ColorHex",
+            "bitCardWindowGritLayer1ColorHex", "bitCardWindowGritLayer2ColorHex", "bitCardWindowGritLayer3ColorHex",
+            "appGritLevel", "appFont", "appFontColorHex", "appFontSizeMultiplier",
+            "tileCardTheme", "quickBitTheme", "quickBitCustomColorHex",
+            "quickBitGritEnabled", "quickBitGritLayer1ColorHex", "quickBitGritLayer2ColorHex", "quickBitGritLayer3ColorHex",
+            "tileCardCustomColorHex", "tileCardGritEnabled",
+            "tileCardGritLayer1ColorHex", "tileCardGritLayer2ColorHex", "tileCardGritLayer3ColorHex",
+            "backgroundBaseColorHex", "backgroundCloudCount", "backgroundCloudOpacity",
+            "backgroundCloudColor1Hex", "backgroundCloudColor2Hex", "backgroundCloudColor3Hex",
+            "backgroundCloudOffsetX", "backgroundCloudOffsetY",
+            "backgroundDustCount", "backgroundDustOpacity",
+            "accessibilityReduceMotion", "accessibilityHighContrast", "accessibilityHapticsEnabled",
+            "accessibilityBoldText", "accessibilityLargerTouchTargets"
+        ]
+        
+        for key in allKeys {
+            // If local has value but cloud doesn't, migrate to cloud
+            if localStore.object(forKey: key) != nil && cloudStore.object(forKey: key) == nil {
+                if let stringValue = localStore.string(forKey: key) {
+                    cloudStore.set(stringValue, forKey: key)
+                } else if let doubleValue = localStore.object(forKey: key) as? Double {
+                    cloudStore.set(doubleValue, forKey: key)
+                } else if let boolValue = localStore.object(forKey: key) as? Bool {
+                    cloudStore.set(boolValue, forKey: key)
+                } else if let intValue = localStore.object(forKey: key) as? Int {
+                    cloudStore.set(Int64(intValue), forKey: key)
+                }
+            }
+        }
+        
+        // Force sync after migration
+        cloudStore.synchronize()
+        print("✅ Migrated local settings to iCloud")
+    }
 }
 
 /// Available frame colors for shareable bit cards

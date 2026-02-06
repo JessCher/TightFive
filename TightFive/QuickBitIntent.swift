@@ -23,27 +23,10 @@ struct QuickBitWidgetConfigurationIntent: WidgetConfigurationIntent {
     var showLabel: Bool
 }
 
-// MARK: - App Shortcuts Provider
-
-/// Provides Siri shortcuts for Quick Bit capture.
-/// Allows users to say "Hey Siri, Quick Bit" to open the editor.
-struct QuickBitShortcuts: AppShortcutsProvider {
-    
-    static var appShortcuts: [AppShortcut] {
-        AppShortcut(
-            intent: OpenQuickBitEditorIntent(),
-            phrases: [
-                "Quick bit in \(.applicationName)",
-                "New comedy idea in \(.applicationName)",
-                "Capture a quick bit with \(.applicationName)"
-            ],
-            shortTitle: "Quick Bit",
-            systemImageName: "lightbulb.fill"
-        )
-    }
-}
-
 // MARK: - Open Quick Bit Editor Intent
+
+/// Note: App shortcuts for this intent are registered in TightFiveAppShortcuts.swift
+/// Only one AppShortcutsProvider is allowed per app, so all shortcuts are centralized there.
 
 /// Intent that opens the app directly to the Quick Bit editor.
 /// Used by Control Center widget and Siri shortcuts.

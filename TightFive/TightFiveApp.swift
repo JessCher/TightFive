@@ -73,9 +73,38 @@ struct TightFiveApp: App {
                     // This already applies efficiently without manual refresh
                     configureGlobalAppearance()
                 }
+                .onChange(of: scenePhase) { oldPhase, newPhase in
+                    handleScenePhaseChange(oldPhase: oldPhase, newPhase: newPhase)
+                }
                 .performanceOverlay()  // Add performance monitoring overlay
         }
         .modelContainer(Self.sharedModelContainer)
+    }
+    
+    private func handleScenePhaseChange(oldPhase: ScenePhase, newPhase: ScenePhase) {
+        switch newPhase {
+        case .active:
+            // App became active - sync settings from iCloud
+            print("📱 App became active - syncing settings from iCloud")
+            NSUbiquitousKeyValueStore.default.synchronize()
+            
+            // Trigger UI refresh to show any changes from other devices
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                appSettings.forceRefresh()
+            }
+            
+        case .background:
+            // App went to background - ensure latest changes are synced
+            print("📱 App going to background - ensuring settings are synced")
+            NSUbiquitousKeyValueStore.default.synchronize()
+            
+        case .inactive:
+            // App became inactive (e.g., during transition)
+            break
+            
+        @unknown default:
+            break
+        }
     }
     
     private func configureGlobalAppearance() {
