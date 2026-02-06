@@ -134,8 +134,14 @@ struct NotebookView: View {
     private func createNewNote() {
         let note = Note()
         modelContext.insert(note)
-        try? modelContext.save()
-        selectedNote = note
+        
+        // Explicitly save the new note
+        do {
+            try modelContext.save()
+            selectedNote = note
+        } catch {
+            print("❌ Failed to save new note: \(error)")
+        }
     }
 }
 
@@ -221,7 +227,7 @@ struct NoteEditorView: View {
                 .padding(.bottom, 8)
                 .onChange(of: note.title) { _, _ in
                     note.updatedAt = Date()
-                    try? modelContext.save()
+                    // No save here - let SwiftData autosave handle it
                 }
 
             Divider()
@@ -257,6 +263,7 @@ struct NoteEditorView: View {
             RichTextEditor(rtfData: $note.contentRTF, undoManager: undoManager)
                 .onChange(of: note.contentRTF) { _, _ in
                     note.updatedAt = Date()
+                    // No save here - let SwiftData autosave handle it
                 }
                 .padding(.horizontal, 8)
         }
@@ -273,6 +280,14 @@ struct NoteEditorView: View {
         }
         .sheet(isPresented: $showFolderPicker) {
             NoteFolderPickerView(note: note)
+        }
+        .onDisappear {
+            // Ensure any pending changes are saved when leaving the editor
+            do {
+                try modelContext.save()
+            } catch {
+                print("❌ Failed to save note on dismiss: \(error)")
+            }
         }
     }
 }
@@ -355,34 +370,79 @@ struct NoteFoldersView: View {
 
     @State private var showCreateFolder = false
     @State private var newFolderName = ""
+    @State private var isLoading = true
+    @State private var loadError: String?
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
-                if folders.isEmpty {
-                    emptyState
-                        .padding(.top, 60)
-                } else {
-                    ForEach(folders) { folder in
-                        NavigationLink(value: folder) {
-                            FolderCardView(folder: folder)
-                        }
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                withAnimation(.snappy) {
-                                    modelContext.delete(folder)
-                                    try? modelContext.save()
+        Group {
+            if isLoading {
+                ProgressView("Loading folders...")
+                    .padding()
+            } else if let loadError {
+                // Show error state with option to clear corrupted data
+                VStack(spacing: 20) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.orange)
+                    
+                    Text("Folders Error")
+                        .appFont(.title2, weight: .bold)
+                        .foregroundStyle(TFTheme.text)
+                    
+                    Text(loadError)
+                        .appFont(.subheadline)
+                        .foregroundStyle(TFTheme.text.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                    
+                    Button {
+                        clearCorruptedFolders()
+                    } label: {
+                        Text("Clear Corrupted Folders")
+                            .appFont(.headline, weight: .semibold)
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 12)
+                            .background(TFTheme.yellow)
+                            .clipShape(Capsule())
+                    }
+                    
+                    Text("This will only remove folder data, not your notes, bits, or setlists.")
+                        .appFont(.caption)
+                        .foregroundStyle(TFTheme.text.opacity(0.5))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
+                .padding()
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        if folders.isEmpty {
+                            emptyState
+                                .padding(.top, 60)
+                        } else {
+                            ForEach(folders) { folder in
+                                NavigationLink(value: folder) {
+                                    FolderCardView(folder: folder)
                                 }
-                            } label: {
-                                Label("Delete Folder", systemImage: "trash")
+                                .buttonStyle(.plain) // Prevent NavigationLink from interfering
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        withAnimation(.snappy) {
+                                            deleteFolder(folder)
+                                        }
+                                    } label: {
+                                        Label("Delete Folder", systemImage: "trash")
+                                    }
+                                }
                             }
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 28)
         }
         .tfBackground()
         .navigationTitle("Folders")
@@ -423,6 +483,61 @@ struct NoteFoldersView: View {
         } message: {
             Text("Enter a name for the new folder.")
         }
+        .task {
+            // Safely load folders with error handling
+            await loadFolders()
+        }
+    }
+    
+    private func loadFolders() async {
+        // Small delay to allow view to appear
+        try? await Task.sleep(for: .milliseconds(100))
+        
+        do {
+            // Try to access folders safely
+            let count = folders.count
+            print("✅ Folders view loaded with \(count) folders")
+            isLoading = false
+        } catch {
+            print("❌ Failed to load folders: \(error)")
+            loadError = "Unable to load folders. They may be corrupted from before the schema was fixed."
+            isLoading = false
+        }
+    }
+    
+    private func clearCorruptedFolders() {
+        Task {
+            do {
+                // Fetch all folders directly with FetchDescriptor for better control
+                let descriptor = FetchDescriptor<NoteFolder>()
+                let allFolders = try modelContext.fetch(descriptor)
+                
+                print("🧹 Clearing \(allFolders.count) potentially corrupted folders...")
+                
+                // Delete all folders
+                for folder in allFolders {
+                    modelContext.delete(folder)
+                }
+                
+                // Also fetch and preserve any orphaned notes (notes without folders)
+                let noteDescriptor = FetchDescriptor<Note>()
+                let allNotes = try modelContext.fetch(noteDescriptor)
+                print("📝 Found \(allNotes.count) notes (these will be preserved)")
+                
+                // Save the cleanup
+                try modelContext.save()
+                
+                print("✅ Corrupted folders cleared. Your notes, bits, and setlists are safe.")
+                
+                // Reset state
+                loadError = nil
+                isLoading = false
+                
+            } catch {
+                print("❌ Failed to clear folders: \(error)")
+                loadError = "Failed to clear: \(error.localizedDescription)"
+            }
+        }
     }
 
     private var emptyState: some View {
@@ -460,15 +575,35 @@ struct NoteFoldersView: View {
     private func createFolder() {
         let trimmed = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        
         let folder = NoteFolder(name: trimmed)
         modelContext.insert(folder)
-        try? modelContext.save()
+        
+        // Explicitly save the new folder
+        do {
+            try modelContext.save()
+            print("✅ Folder created successfully: \(trimmed)")
+        } catch {
+            print("❌ Failed to save new folder: \(error)")
+        }
+    }
+    
+    private func deleteFolder(_ folder: NoteFolder) {
+        do {
+            modelContext.delete(folder)
+            try modelContext.save()
+            print("✅ Folder deleted successfully")
+        } catch {
+            print("❌ Failed to delete folder: \(error)")
+        }
     }
 }
 
 // MARK: - Folder Card View
 
-/// Card showing a folder's name and note count. Used in the Folders list.
+/// Card showing a folder's name. Used in the Folders list.
+/// Note: We don't show the note count here to avoid expensive relationship queries that can freeze the UI.
+/// The count is visible in the folder detail view instead.
 private struct FolderCardView: View {
     let folder: NoteFolder
 
@@ -482,10 +617,10 @@ private struct FolderCardView: View {
                 Text(folder.displayName)
                     .appFont(.headline, weight: .semibold)
                     .foregroundStyle(TFTheme.text)
-
-                Text("\(folder.activeNoteCount) note\(folder.activeNoteCount == 1 ? "" : "s")")
-                    .appFont(.subheadline)
-                    .foregroundStyle(TFTheme.text.opacity(0.55))
+                
+                Text(folder.createdAt, style: .date)
+                    .appFont(.caption)
+                    .foregroundStyle(TFTheme.text.opacity(0.45))
             }
 
             Spacer()
@@ -656,7 +791,13 @@ struct FolderDetailView: View {
         let note = Note()
         note.folder = folder
         modelContext.insert(note)
-        try? modelContext.save()
-        selectedNote = note
+        
+        // Explicitly save the new note
+        do {
+            try modelContext.save()
+            selectedNote = note
+        } catch {
+            print("❌ Failed to save note in folder: \(error)")
+        }
     }
 }

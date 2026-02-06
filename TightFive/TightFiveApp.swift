@@ -19,7 +19,9 @@ struct TightFiveApp: App {
             BitVariation.self,
             SetlistAssignment.self,
             Performance.self,
-            UserProfile.self
+            UserProfile.self,
+            Note.self,
+            NoteFolder.self
         ])
         
         let modelConfiguration = ModelConfiguration(
