@@ -255,46 +255,13 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
         }
 
         // Register undo action BEFORE updating the binding
-        let um = externalUndoManager ?? textView?.undoManager
-        if let um, !isPerformingUndoRedo {
+        if !isPerformingUndoRedo {
             let capturedPrevious = previousText
             let capturedNew = newText
 
-            um.registerUndo(withTarget: self) { [weak self] coordinator in
-                guard self != nil else { return }
-                coordinator.isPerformingUndoRedo = true
-
-                // Register redo (inverse of undo) so redo works
-                um.registerUndo(withTarget: coordinator) { [weak coordinator] coord in
-                    guard coordinator != nil else { return }
-                    coord.isPerformingUndoRedo = true
-
-                    coord.parent.text = capturedNew
-                    coord.lastObservedText = capturedNew
-
-                    if let tv = coord.textView {
-                        let savedSelection = tv.selectedRange
-                        tv.text = capturedNew
-                        tv.selectedRange = coord.clampedSelection(savedSelection, toLength: capturedNew.count)
-                    }
-
-                    coord.isPerformingUndoRedo = false
-                }
-                um.setActionName("Edit")
-
-                // Restore to previous state
-                coordinator.parent.text = capturedPrevious
-                coordinator.lastObservedText = capturedPrevious
-
-                if let tv = coordinator.textView {
-                    let savedSelection = tv.selectedRange
-                    tv.text = capturedPrevious
-                    tv.selectedRange = coordinator.clampedSelection(savedSelection, toLength: capturedPrevious.count)
-                }
-
-                coordinator.isPerformingUndoRedo = false
+            for um in activeUndoManagers() {
+                registerUndo(in: um, previousText: capturedPrevious, newText: capturedNew)
             }
-            um.setActionName("Edit")
         }
 
         // PERFORMANCE FIX: State was already updated in textViewDidChange for responsive typing
@@ -307,6 +274,55 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
 
         // Reset burst tracker
         undoBurstStartText = nil
+    }
+
+    private func activeUndoManagers() -> [UndoManager] {
+        var managers: [UndoManager] = []
+        if let externalUndoManager {
+            managers.append(externalUndoManager)
+        }
+        if let tvManager = textView?.undoManager, !managers.contains(where: { $0 === tvManager }) {
+            managers.append(tvManager)
+        }
+        return managers
+    }
+
+    private func registerUndo(in undoManager: UndoManager, previousText: String, newText: String) {
+        undoManager.registerUndo(withTarget: self) { [weak self] coordinator in
+            guard self != nil else { return }
+            coordinator.isPerformingUndoRedo = true
+
+            // Register redo (inverse of undo) so redo works
+            undoManager.registerUndo(withTarget: coordinator) { [weak coordinator] coord in
+                guard coordinator != nil else { return }
+                coord.isPerformingUndoRedo = true
+
+                coord.parent.text = newText
+                coord.lastObservedText = newText
+
+                if let tv = coord.textView {
+                    let savedSelection = tv.selectedRange
+                    tv.text = newText
+                    tv.selectedRange = coord.clampedSelection(savedSelection, toLength: newText.count)
+                }
+
+                coord.isPerformingUndoRedo = false
+            }
+            undoManager.setActionName("Edit")
+
+            // Restore to previous state
+            coordinator.parent.text = previousText
+            coordinator.lastObservedText = previousText
+
+            if let tv = coordinator.textView {
+                let savedSelection = tv.selectedRange
+                tv.text = previousText
+                tv.selectedRange = coordinator.clampedSelection(savedSelection, toLength: previousText.count)
+            }
+
+            coordinator.isPerformingUndoRedo = false
+        }
+        undoManager.setActionName("Edit")
     }
 }
 

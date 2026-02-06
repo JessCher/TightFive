@@ -1,12 +1,13 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 /// Main Notebook page displaying all notes as collapsed cards sorted by creation date.
 ///
 /// **Architecture:**
 /// - Notes display as collapsed cards showing title + content preview
 /// - Tapping a card opens the full note editor (pushed via NavigationStack)
-/// - Swipe-to-delete matches existing Bits pattern
+/// - Swipe gestures match Setlist swipe style (delete + add to folder)
 /// - "Folders" button slides in the folders navigation stack from the right
 /// - "Create New Note" button in the header
 struct NotebookView: View {
@@ -17,7 +18,7 @@ struct NotebookView: View {
     }, sort: \Note.createdAt, order: .reverse) private var allNotes: [Note]
 
     @State private var selectedNote: Note?
-    @State private var showFolders = false
+    @State private var noteForFolderPicker: Note?
 
     var body: some View {
         ScrollView {
@@ -27,26 +28,40 @@ struct NotebookView: View {
                         .padding(.top, 60)
                 } else {
                     ForEach(allNotes) { note in
-                        NoteCardView(note: note)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedNote = note
-                            }
-                            .contextMenu {
-                                if let folder = note.folder {
-                                    Label("In: \(folder.displayName)", systemImage: "folder")
-                                        .disabled(true)
+                        CardSwipeView(
+                            swipeRightEnabled: true,
+                            swipeRightIcon: "folder.fill",
+                            swipeRightColor: TFTheme.yellow,
+                            swipeRightLabel: "Add to Folder",
+                            swipeLeftIcon: "trash.fill",
+                            swipeLeftColor: .red,
+                            swipeLeftLabel: "Delete",
+                            onSwipeRight: { noteForFolderPicker = note },
+                            onSwipeLeft: {
+                                withAnimation(.snappy) {
+                                    note.softDelete()
+                                    try? modelContext.save()
                                 }
+                            },
+                            onTap: { selectedNote = note }
+                        ) {
+                            NoteCardView(note: note)
+                        }
+                        .contextMenu {
+                            if let folder = note.folder {
+                                Label("In: \(folder.displayName)", systemImage: "folder")
+                                    .disabled(true)
+                            }
 
-                                Button(role: .destructive) {
-                                    withAnimation(.snappy) {
-                                        note.softDelete()
-                                        try? modelContext.save()
-                                    }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+                            Button(role: .destructive) {
+                                withAnimation(.snappy) {
+                                    note.softDelete()
+                                    try? modelContext.save()
                                 }
+                            } label: {
+                                Label("Delete", systemImage: "trash")
                             }
+                        }
                     }
                 }
             }
@@ -60,8 +75,8 @@ struct NotebookView: View {
         .navigationDestination(item: $selectedNote) { note in
             NoteEditorView(note: note)
         }
-        .navigationDestination(isPresented: $showFolders) {
-            NoteFoldersView()
+        .sheet(item: $noteForFolderPicker) { note in
+            NoteFolderPickerView(note: note)
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -70,8 +85,8 @@ struct NotebookView: View {
             }
 
             ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    showFolders = true
+                NavigationLink {
+                    NoteFoldersView()
                 } label: {
                     Image(systemName: "folder")
                         .font(.system(size: 16, weight: .semibold))
@@ -79,6 +94,7 @@ struct NotebookView: View {
                         .frame(width: 40, height: 40)
                 }
                 .accessibilityLabel("Folders")
+                .accessibilityHint("View and manage notebook folders.")
             }
 
             ToolbarItem(placement: .topBarTrailing) {
@@ -188,6 +204,20 @@ private struct NoteCardView: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 18)
         .tfDynamicCard(cornerRadius: 18)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityTitle)
+        .accessibilityHint("Swipe right to add to a folder or swipe left to delete.")
+    }
+
+    private var accessibilityTitle: String {
+        var components: [String] = [note.displayTitle]
+        if note.hasContent {
+            components.append(note.contentPreview)
+        }
+        if let folder = note.folder {
+            components.append("Folder \(folder.displayName)")
+        }
+        return components.joined(separator: ", ")
     }
 }
 
@@ -207,8 +237,11 @@ struct NoteEditorView: View {
     @Environment(\.undoManager) private var undoManager
     @ObservedObject private var keyboard = TFKeyboardState.shared
 
-    @Query(sort: \NoteFolder.name) private var allFolders: [NoteFolder]
     @State private var showFolderPicker = false
+    @State private var showCopyChoice = false
+    @State private var showExportChoice = false
+    @State private var showExportFormatChoice = false
+    @State private var exportURL: URL?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -248,6 +281,8 @@ struct NoteEditorView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 10)
             }
+            .accessibilityLabel("Folder")
+            .accessibilityHint("Choose a folder for this note.")
 
             Divider()
                 .background(.white.opacity(0.15))
@@ -270,10 +305,120 @@ struct NoteEditorView: View {
                     .foregroundStyle(TFTheme.text)
                     .lineLimit(1)
             }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        showExportChoice = true
+                    } label: {
+                        Label("Export", systemImage: "square.and.arrow.up")
+                    }
+
+                    Button {
+                        duplicateNote()
+                    } label: {
+                        Label("Duplicate", systemImage: "plus.square.on.square")
+                    }
+
+                    Button {
+                        showCopyChoice = true
+                    } label: {
+                        Label("Copy", systemImage: "doc.on.doc")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(TFTheme.yellow)
+                }
+            }
         }
         .sheet(isPresented: $showFolderPicker) {
             NoteFolderPickerView(note: note)
         }
+        .confirmationDialog("Copy", isPresented: $showCopyChoice, titleVisibility: .visible) {
+            Button("Copy Title") { copyTitleToClipboard() }
+            Button("Copy Note") { copyNoteToClipboard() }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog("Export", isPresented: $showExportChoice, titleVisibility: .visible) {
+            Button("Export Note") { showExportFormatChoice = true }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog("Choose Format", isPresented: $showExportFormatChoice, titleVisibility: .visible) {
+            Button("Plain Text (.txt)") { exportNote(format: .txt) }
+            Button("PDF (.pdf)") { exportNote(format: .pdf) }
+            Button("Rich Text (.rtf)") { exportNote(format: .rtf) }
+            Button("Markdown (.md)") { exportNote(format: .markdown) }
+            Button("Cancel", role: .cancel) {}
+        }
+        .sheet(item: $exportURL) { url in
+            ShareSheet(items: [url]) { _ in }
+        }
+    }
+
+    private enum ExportFormat: String { case txt, pdf, rtf, markdown }
+
+    private func duplicateNote() {
+        let copy = Note(title: "\(note.displayTitle) Copy", contentRTF: note.contentRTF)
+        copy.folder = note.folder
+        copy.updatedAt = Date()
+        modelContext.insert(copy)
+        try? modelContext.save()
+    }
+
+    private func copyTitleToClipboard() {
+        UIPasteboard.general.string = note.displayTitle
+    }
+
+    private func copyNoteToClipboard() {
+        let content = NSAttributedString.fromRTF(note.contentRTF)?.string ?? ""
+        let title = note.displayTitle
+        let combined = content.isEmpty ? title : "\(title)\n\n\(content)"
+        UIPasteboard.general.string = combined
+    }
+
+    private func exportNote(format: ExportFormat) {
+        let title = note.displayTitle
+        let content = NSAttributedString.fromRTF(note.contentRTF)?.string ?? ""
+        let plainText = content.isEmpty ? title : "\(title)\n\n\(content)"
+        let safe = title.replacingOccurrences(of: "/", with: "-")
+
+        do {
+            let url: URL
+            switch format {
+            case .txt:
+                url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).txt")
+                try plainText.data(using: .utf8)?.write(to: url, options: .atomic)
+            case .pdf:
+                url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).pdf")
+                let pdfData = ExportHelpers.generatePDF(title: title, body: content)
+                try pdfData.write(to: url, options: .atomic)
+            case .rtf:
+                url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).rtf")
+                let rtf = noteExportRTF(title: title, content: note.contentRTF) ?? Data()
+                try rtf.write(to: url, options: .atomic)
+            case .markdown:
+                url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safe).md")
+                let md = "# \(title)\n\n\(content)"
+                try md.data(using: .utf8)?.write(to: url, options: .atomic)
+            }
+            exportURL = url
+        } catch {
+            exportURL = nil
+        }
+    }
+
+    private func noteExportRTF(title: String, content: Data) -> Data? {
+        let combined = NSMutableAttributedString()
+        if !title.isEmpty {
+            combined.append(NSAttributedString(string: "\(title)\n\n", attributes: [
+                .font: UIFont.boldSystemFont(ofSize: 18),
+                .foregroundColor: UIColor.black
+            ]))
+        }
+        if let contentAttr = NSAttributedString.fromRTF(content) {
+            combined.append(contentAttr)
+        }
+        return ExportHelpers.normalizeRTFColors(combined)
     }
 }
 
@@ -364,7 +509,9 @@ struct NoteFoldersView: View {
                         .padding(.top, 60)
                 } else {
                     ForEach(folders) { folder in
-                        NavigationLink(value: folder) {
+                        NavigationLink {
+                            FolderDetailView(folder: folder)
+                        } label: {
                             FolderCardView(folder: folder)
                         }
                         .contextMenu {
@@ -387,9 +534,6 @@ struct NoteFoldersView: View {
         .tfBackground()
         .navigationTitle("Folders")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: NoteFolder.self) { folder in
-            FolderDetailView(folder: folder)
-        }
         .toolbar {
             ToolbarItem(placement: .principal) {
                 TFWordmarkTitle(title: "Folders", size: 22)
@@ -497,6 +641,9 @@ private struct FolderCardView: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 18)
         .tfDynamicCard(cornerRadius: 18)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(folder.displayName), \(folder.activeNoteCount) note\(folder.activeNoteCount == 1 ? "" : "s")")
+        .accessibilityHint("Tap to view notes in this folder.")
     }
 }
 
@@ -509,6 +656,7 @@ struct FolderDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedNote: Note?
+    @State private var noteForFolderPicker: Note?
     @State private var showEditName = false
     @State private var editedName = ""
     @State private var showDeleteConfirmation = false
@@ -528,30 +676,44 @@ struct FolderDetailView: View {
                         .padding(.top, 60)
                 } else {
                     ForEach(folderNotes) { note in
-                        NoteCardView(note: note)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedNote = note
-                            }
-                            .contextMenu {
-                                Button {
-                                    // Remove from folder (move to All Notes)
-                                    note.folder = nil
-                                    note.updatedAt = Date()
+                        CardSwipeView(
+                            swipeRightEnabled: true,
+                            swipeRightIcon: "folder.fill",
+                            swipeRightColor: TFTheme.yellow,
+                            swipeRightLabel: "Add to Folder",
+                            swipeLeftIcon: "trash.fill",
+                            swipeLeftColor: .red,
+                            swipeLeftLabel: "Delete",
+                            onSwipeRight: { noteForFolderPicker = note },
+                            onSwipeLeft: {
+                                withAnimation(.snappy) {
+                                    note.softDelete()
                                     try? modelContext.save()
-                                } label: {
-                                    Label("Remove from Folder", systemImage: "folder.badge.minus")
                                 }
-
-                                Button(role: .destructive) {
-                                    withAnimation(.snappy) {
-                                        note.softDelete()
-                                        try? modelContext.save()
-                                    }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
+                            },
+                            onTap: { selectedNote = note }
+                        ) {
+                            NoteCardView(note: note)
+                        }
+                        .contextMenu {
+                            Button {
+                                // Remove from folder (move to All Notes)
+                                note.folder = nil
+                                note.updatedAt = Date()
+                                try? modelContext.save()
+                            } label: {
+                                Label("Remove from Folder", systemImage: "folder.badge.minus")
                             }
+
+                            Button(role: .destructive) {
+                                withAnimation(.snappy) {
+                                    note.softDelete()
+                                    try? modelContext.save()
+                                }
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                     }
                 }
             }
@@ -564,6 +726,9 @@ struct FolderDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(item: $selectedNote) { note in
             NoteEditorView(note: note)
+        }
+        .sheet(item: $noteForFolderPicker) { note in
+            NoteFolderPickerView(note: note)
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
