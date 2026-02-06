@@ -7,18 +7,28 @@ import Combine
 class AppSettings {
     /// Shared singleton instance
     static let shared = AppSettings()
-    
+
     /// Internal trigger to force UI updates - read this in views to observe changes
     var updateTrigger: Int = 0
-    
+
     /// Force a UI update
     private func notifyChange() {
         updateTrigger += 1
     }
-    
+
+    /// Registers observation dependency for computed properties.
+    /// The @Observable macro only tracks stored properties. Since all settings are
+    /// computed (backed by UserDefaults), reading updateTrigger here ties the
+    /// computed property access to a tracked stored property so SwiftUI views
+    /// properly invalidate when settings change.
+    private func observeChanges() {
+        _ = updateTrigger
+    }
+
     /// Bit card frame color for shareable cards (background/border)
     var bitCardFrameColor: BitCardFrameColor {
         get {
+            observeChanges()
             guard let rawValue = UserDefaults.standard.string(forKey: "bitCardFrameColor"),
                   let color = BitCardFrameColor(rawValue: rawValue) else {
                 return .default
@@ -27,12 +37,14 @@ class AppSettings {
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: "bitCardFrameColor")
+            notifyChange()
         }
     }
-    
+
     /// Bit card bottom bar color for shareable cards
     var bitCardBottomBarColor: BitCardFrameColor {
         get {
+            observeChanges()
             guard let rawValue = UserDefaults.standard.string(forKey: "bitCardBottomBarColor"),
                   let color = BitCardFrameColor(rawValue: rawValue) else {
                 return .default
@@ -41,12 +53,14 @@ class AppSettings {
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: "bitCardBottomBarColor")
+            notifyChange()
         }
     }
-    
+
     /// Bit window theme for the text area of shareable cards
     var bitWindowTheme: BitWindowTheme {
         get {
+            observeChanges()
             guard let rawValue = UserDefaults.standard.string(forKey: "bitWindowTheme"),
                   let theme = BitWindowTheme(rawValue: rawValue) else {
                 return .chalkboard
@@ -55,33 +69,39 @@ class AppSettings {
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: "bitWindowTheme")
+            notifyChange()
         }
     }
-    
+
     /// Custom hex color for frame (when .custom is selected)
     var customFrameColorHex: String {
         get {
-            UserDefaults.standard.string(forKey: "customFrameColorHex") ?? "#3A3A3A"
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "customFrameColorHex") ?? "#3A3A3A"
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "customFrameColorHex")
+            notifyChange()
         }
     }
-    
+
     /// Custom hex color for bottom bar (when .custom is selected)
     var customBottomBarColorHex: String {
         get {
-            UserDefaults.standard.string(forKey: "customBottomBarColorHex") ?? "#3A3A3A"
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "customBottomBarColorHex") ?? "#3A3A3A"
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "customBottomBarColorHex")
+            notifyChange()
         }
     }
-    
+
     /// Grit level for shareable bit cards (0.0 = no grit, 1.0 = maximum grit)
     /// DEPRECATED: Use individual grit levels instead
     var bitCardGritLevel: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "bitCardGritLevel")
             // If never set, default to 1.0 (maximum grit)
             return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardGritLevelHasBeenSet") ? 1.0 : value
@@ -89,233 +109,337 @@ class AppSettings {
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardGritLevel")
             UserDefaults.standard.set(true, forKey: "bitCardGritLevelHasBeenSet")
+            notifyChange()
         }
     }
-    
+
     // MARK: - Individual Grit Levels for Each Section
-    
+
     /// Grit level for bit window (text area) - Layer 1
     var bitCardWindowGritLayer1: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "bitCardWindowGritLayer1")
             return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardWindowGritLayer1HasBeenSet") ? 1.0 : value
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer1")
             UserDefaults.standard.set(true, forKey: "bitCardWindowGritLayer1HasBeenSet")
+            notifyChange()
         }
     }
-    
+
     /// Grit level for bit window (text area) - Layer 2
     var bitCardWindowGritLayer2: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "bitCardWindowGritLayer2")
             return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardWindowGritLayer2HasBeenSet") ? 1.0 : value
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer2")
             UserDefaults.standard.set(true, forKey: "bitCardWindowGritLayer2HasBeenSet")
+            notifyChange()
         }
     }
-    
+
     /// Grit level for bit window (text area) - Layer 3
     var bitCardWindowGritLayer3: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "bitCardWindowGritLayer3")
             return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardWindowGritLayer3HasBeenSet") ? 1.0 : value
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer3")
             UserDefaults.standard.set(true, forKey: "bitCardWindowGritLayer3HasBeenSet")
+            notifyChange()
         }
     }
-    
+
     /// Grit level for frame - Layer 1
     var bitCardFrameGritLayer1Density: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "bitCardFrameGritLayer1Density")
             return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardFrameGritLayer1DensityHasBeenSet") ? 1.0 : value
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer1Density")
             UserDefaults.standard.set(true, forKey: "bitCardFrameGritLayer1DensityHasBeenSet")
+            notifyChange()
         }
     }
-    
+
     /// Grit level for frame - Layer 2
     var bitCardFrameGritLayer2Density: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "bitCardFrameGritLayer2Density")
             return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardFrameGritLayer2DensityHasBeenSet") ? 1.0 : value
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer2Density")
             UserDefaults.standard.set(true, forKey: "bitCardFrameGritLayer2DensityHasBeenSet")
+            notifyChange()
         }
     }
-    
+
     /// Grit level for frame - Layer 3
     var bitCardFrameGritLayer3Density: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "bitCardFrameGritLayer3Density")
             return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardFrameGritLayer3DensityHasBeenSet") ? 1.0 : value
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer3Density")
             UserDefaults.standard.set(true, forKey: "bitCardFrameGritLayer3DensityHasBeenSet")
+            notifyChange()
         }
     }
-    
+
     /// Grit level for bottom bar - Layer 1
     var bitCardBottomBarGritLayer1Density: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "bitCardBottomBarGritLayer1Density")
             return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardBottomBarGritLayer1DensityHasBeenSet") ? 1.0 : value
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer1Density")
             UserDefaults.standard.set(true, forKey: "bitCardBottomBarGritLayer1DensityHasBeenSet")
+            notifyChange()
         }
     }
-    
+
     /// Grit level for bottom bar - Layer 2
     var bitCardBottomBarGritLayer2Density: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "bitCardBottomBarGritLayer2Density")
             return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardBottomBarGritLayer2DensityHasBeenSet") ? 1.0 : value
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer2Density")
             UserDefaults.standard.set(true, forKey: "bitCardBottomBarGritLayer2DensityHasBeenSet")
+            notifyChange()
         }
     }
-    
+
     /// Grit level for bottom bar - Layer 3
     var bitCardBottomBarGritLayer3Density: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "bitCardBottomBarGritLayer3Density")
             return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardBottomBarGritLayer3DensityHasBeenSet") ? 1.0 : value
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer3Density")
             UserDefaults.standard.set(true, forKey: "bitCardBottomBarGritLayer3DensityHasBeenSet")
+            notifyChange()
         }
     }
-    
+
     // MARK: - Bit Card Custom Grit Colors
-    
+
     /// Enable custom grit for frame when using custom color
     var bitCardFrameGritEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: "bitCardFrameGritEnabled") }
-        set { UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritEnabled") }
+        get {
+            observeChanges()
+            return UserDefaults.standard.bool(forKey: "bitCardFrameGritEnabled")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritEnabled")
+            notifyChange()
+        }
     }
-    
+
     var bitCardFrameGritLayer1ColorHex: String {
-        get { UserDefaults.standard.string(forKey: "bitCardFrameGritLayer1ColorHex") ?? "#8B4513" }
-        set { UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer1ColorHex") }
+        get {
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "bitCardFrameGritLayer1ColorHex") ?? "#8B4513"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer1ColorHex")
+            notifyChange()
+        }
     }
-    
+
     var bitCardFrameGritLayer2ColorHex: String {
-        get { UserDefaults.standard.string(forKey: "bitCardFrameGritLayer2ColorHex") ?? "#000000" }
-        set { UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer2ColorHex") }
+        get {
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "bitCardFrameGritLayer2ColorHex") ?? "#000000"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer2ColorHex")
+            notifyChange()
+        }
     }
-    
+
     var bitCardFrameGritLayer3ColorHex: String {
-        get { UserDefaults.standard.string(forKey: "bitCardFrameGritLayer3ColorHex") ?? "#CC6600" }
-        set { UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer3ColorHex") }
+        get {
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "bitCardFrameGritLayer3ColorHex") ?? "#CC6600"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLayer3ColorHex")
+            notifyChange()
+        }
     }
-    
+
     /// Enable custom grit for bottom bar when using custom color
     var bitCardBottomBarGritEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: "bitCardBottomBarGritEnabled") }
-        set { UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritEnabled") }
+        get {
+            observeChanges()
+            return UserDefaults.standard.bool(forKey: "bitCardBottomBarGritEnabled")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritEnabled")
+            notifyChange()
+        }
     }
-    
+
     var bitCardBottomBarGritLayer1ColorHex: String {
-        get { UserDefaults.standard.string(forKey: "bitCardBottomBarGritLayer1ColorHex") ?? "#8B4513" }
-        set { UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer1ColorHex") }
+        get {
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "bitCardBottomBarGritLayer1ColorHex") ?? "#8B4513"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer1ColorHex")
+            notifyChange()
+        }
     }
-    
+
     var bitCardBottomBarGritLayer2ColorHex: String {
-        get { UserDefaults.standard.string(forKey: "bitCardBottomBarGritLayer2ColorHex") ?? "#000000" }
-        set { UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer2ColorHex") }
+        get {
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "bitCardBottomBarGritLayer2ColorHex") ?? "#000000"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer2ColorHex")
+            notifyChange()
+        }
     }
-    
+
     var bitCardBottomBarGritLayer3ColorHex: String {
-        get { UserDefaults.standard.string(forKey: "bitCardBottomBarGritLayer3ColorHex") ?? "#CC6600" }
-        set { UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer3ColorHex") }
+        get {
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "bitCardBottomBarGritLayer3ColorHex") ?? "#CC6600"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLayer3ColorHex")
+            notifyChange()
+        }
     }
-    
+
     // MARK: - Bit Card Window (Text Area) Custom Settings
-    
+
     /// Custom hex color for window (when using custom color)
     var customWindowColorHex: String {
-        get { UserDefaults.standard.string(forKey: "customWindowColorHex") ?? "#3A3A3A" }
-        set { UserDefaults.standard.set(newValue, forKey: "customWindowColorHex") }
+        get {
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "customWindowColorHex") ?? "#3A3A3A"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "customWindowColorHex")
+            notifyChange()
+        }
     }
-    
+
     /// Enable custom grit for window when using custom color
     var bitCardWindowGritEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: "bitCardWindowGritEnabled") }
-        set { UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritEnabled") }
+        get {
+            observeChanges()
+            return UserDefaults.standard.bool(forKey: "bitCardWindowGritEnabled")
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritEnabled")
+            notifyChange()
+        }
     }
-    
+
     var bitCardWindowGritLayer1ColorHex: String {
-        get { UserDefaults.standard.string(forKey: "bitCardWindowGritLayer1ColorHex") ?? "#8B4513" }
-        set { UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer1ColorHex") }
+        get {
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "bitCardWindowGritLayer1ColorHex") ?? "#8B4513"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer1ColorHex")
+            notifyChange()
+        }
     }
-    
+
     var bitCardWindowGritLayer2ColorHex: String {
-        get { UserDefaults.standard.string(forKey: "bitCardWindowGritLayer2ColorHex") ?? "#000000" }
-        set { UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer2ColorHex") }
+        get {
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "bitCardWindowGritLayer2ColorHex") ?? "#000000"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer2ColorHex")
+            notifyChange()
+        }
     }
-    
+
     var bitCardWindowGritLayer3ColorHex: String {
-        get { UserDefaults.standard.string(forKey: "bitCardWindowGritLayer3ColorHex") ?? "#CC6600" }
-        set { UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer3ColorHex") }
+        get {
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "bitCardWindowGritLayer3ColorHex") ?? "#CC6600"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLayer3ColorHex")
+            notifyChange()
+        }
     }
-    
+
     // MARK: - Individual Grit Level Sliders for Each Section
-    
+
     /// Frame grit level (0.0 = no grit, 1.0 = maximum grit)
     var bitCardFrameGritLevel: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "bitCardFrameGritLevel")
             return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardFrameGritLevelHasBeenSet") ? 1.0 : value
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardFrameGritLevel")
             UserDefaults.standard.set(true, forKey: "bitCardFrameGritLevelHasBeenSet")
+            notifyChange()
         }
     }
-    
+
     /// Bottom bar grit level (0.0 = no grit, 1.0 = maximum grit)
     var bitCardBottomBarGritLevel: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "bitCardBottomBarGritLevel")
             return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardBottomBarGritLevelHasBeenSet") ? 1.0 : value
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardBottomBarGritLevel")
             UserDefaults.standard.set(true, forKey: "bitCardBottomBarGritLevelHasBeenSet")
+            notifyChange()
         }
     }
-    
+
     /// Window grit level (0.0 = no grit, 1.0 = maximum grit)
     var bitCardWindowGritLevel: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "bitCardWindowGritLevel")
             return value == 0 && !UserDefaults.standard.bool(forKey: "bitCardWindowGritLevelHasBeenSet") ? 1.0 : value
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "bitCardWindowGritLevel")
             UserDefaults.standard.set(true, forKey: "bitCardWindowGritLevelHasBeenSet")
+            notifyChange()
         }
     }
-    
+
     /// Grit level for app UI elements (tile cards, Quick Bit button, etc.)
     var appGritLevel: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "appGritLevel")
             // If never set, default to 1.0 (maximum grit)
             return value == 0 && !UserDefaults.standard.bool(forKey: "appGritLevelHasBeenSet") ? 1.0 : value
@@ -326,10 +450,11 @@ class AppSettings {
             notifyChange()
         }
     }
-    
+
     /// Selected app font theme
     var appFont: AppFont {
         get {
+            observeChanges()
             guard let rawValue = UserDefaults.standard.string(forKey: "appFont"),
                   let font = AppFont(rawValue: rawValue) else {
                 return .systemDefault
@@ -341,21 +466,23 @@ class AppSettings {
             notifyChange()
         }
     }
-    
+
     /// App font color (hex)
     var appFontColorHex: String {
         get {
-            UserDefaults.standard.string(forKey: "appFontColorHex") ?? "#FFFFFF" // Default white
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "appFontColorHex") ?? "#FFFFFF" // Default white
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "appFontColorHex")
             notifyChange()
         }
     }
-    
+
     /// App font size multiplier (1.0 = default, 0.8 = small, 1.2 = large)
     var appFontSizeMultiplier: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "appFontSizeMultiplier")
             // If never set, default to 1.0 (normal size)
             return value == 0 && !UserDefaults.standard.bool(forKey: "appFontSizeMultiplierHasBeenSet") ? 1.0 : value
@@ -366,10 +493,11 @@ class AppSettings {
             notifyChange()
         }
     }
-    
+
     /// Global tile card theme (affects all tile cards in the app)
     var tileCardTheme: TileCardTheme {
         get {
+            observeChanges()
             guard let rawValue = UserDefaults.standard.string(forKey: "tileCardTheme"),
                   let theme = TileCardTheme(rawValue: rawValue) else {
                 return .darkGrit
@@ -381,10 +509,11 @@ class AppSettings {
             notifyChange()
         }
     }
-    
+
     /// Quick Bit button theme
     var quickBitTheme: TileCardTheme {
         get {
+            observeChanges()
             guard let rawValue = UserDefaults.standard.string(forKey: "quickBitTheme"),
                   let theme = TileCardTheme(rawValue: rawValue) else {
                 return .yellowGrit
@@ -396,21 +525,23 @@ class AppSettings {
             notifyChange()
         }
     }
-    
+
     /// Custom Quick Bit button background color (hex)
     var quickBitCustomColorHex: String {
         get {
-            UserDefaults.standard.string(forKey: "quickBitCustomColorHex") ?? "#F4C430"
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "quickBitCustomColorHex") ?? "#F4C430"
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "quickBitCustomColorHex")
             notifyChange()
         }
     }
-    
+
     /// Quick Bit grit enabled
     var quickBitGritEnabled: Bool {
         get {
+            observeChanges()
             // Default to true if never set
             guard UserDefaults.standard.object(forKey: "quickBitGritEnabled") != nil else {
                 return true
@@ -422,56 +553,61 @@ class AppSettings {
             notifyChange()
         }
     }
-    
+
     /// Quick Bit grit layer 1 color (hex)
     var quickBitGritLayer1ColorHex: String {
         get {
-            UserDefaults.standard.string(forKey: "quickBitGritLayer1ColorHex") ?? "#8B4513" // Brown
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "quickBitGritLayer1ColorHex") ?? "#8B4513" // Brown
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "quickBitGritLayer1ColorHex")
             notifyChange()
         }
     }
-    
+
     /// Quick Bit grit layer 2 color (hex)
     var quickBitGritLayer2ColorHex: String {
         get {
-            UserDefaults.standard.string(forKey: "quickBitGritLayer2ColorHex") ?? "#000000" // Black
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "quickBitGritLayer2ColorHex") ?? "#000000" // Black
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "quickBitGritLayer2ColorHex")
             notifyChange()
         }
     }
-    
+
     /// Quick Bit grit layer 3 color (hex)
     var quickBitGritLayer3ColorHex: String {
         get {
-            UserDefaults.standard.string(forKey: "quickBitGritLayer3ColorHex") ?? "#CC6600" // Orange
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "quickBitGritLayer3ColorHex") ?? "#CC6600" // Orange
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "quickBitGritLayer3ColorHex")
             notifyChange()
         }
     }
-    
+
     // MARK: - Tile Card Customization
-    
+
     /// Custom Tile Card background color (hex)
     var tileCardCustomColorHex: String {
         get {
-            UserDefaults.standard.string(forKey: "tileCardCustomColorHex") ?? "#3A3A3A" // TFCard color
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "tileCardCustomColorHex") ?? "#3A3A3A" // TFCard color
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "tileCardCustomColorHex")
             notifyChange()
         }
     }
-    
+
     /// Tile Card grit enabled
     var tileCardGritEnabled: Bool {
         get {
+            observeChanges()
             // Default to true if never set
             guard UserDefaults.standard.object(forKey: "tileCardGritEnabled") != nil else {
                 return true
@@ -483,56 +619,61 @@ class AppSettings {
             notifyChange()
         }
     }
-    
+
     /// Tile Card grit layer 1 color (hex)
     var tileCardGritLayer1ColorHex: String {
         get {
-            UserDefaults.standard.string(forKey: "tileCardGritLayer1ColorHex") ?? "#F4C430" // Yellow
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "tileCardGritLayer1ColorHex") ?? "#F4C430" // Yellow
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "tileCardGritLayer1ColorHex")
             notifyChange()
         }
     }
-    
+
     /// Tile Card grit layer 2 color (hex)
     var tileCardGritLayer2ColorHex: String {
         get {
-            UserDefaults.standard.string(forKey: "tileCardGritLayer2ColorHex") ?? "#FFFFFF4D" // White with opacity
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "tileCardGritLayer2ColorHex") ?? "#FFFFFF4D" // White with opacity
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "tileCardGritLayer2ColorHex")
             notifyChange()
         }
     }
-    
+
     /// Tile Card grit layer 3 color (hex)
     var tileCardGritLayer3ColorHex: String {
         get {
-            UserDefaults.standard.string(forKey: "tileCardGritLayer3ColorHex") ?? "#FFFFFF1A" // White with lower opacity
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "tileCardGritLayer3ColorHex") ?? "#FFFFFF1A" // White with lower opacity
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "tileCardGritLayer3ColorHex")
             notifyChange()
         }
     }
-    
+
     // MARK: - Background Customization
-    
+
     /// Base background color (hex)
     var backgroundBaseColorHex: String {
         get {
-            UserDefaults.standard.string(forKey: "backgroundBaseColorHex") ?? "#3A3A3A" // TFBackground default
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "backgroundBaseColorHex") ?? "#3A3A3A" // TFBackground default
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "backgroundBaseColorHex")
             notifyChange()
         }
     }
-    
+
     /// Cloud count (renamed from clumps)
     var backgroundCloudCount: Int {
         get {
+            observeChanges()
             let value = UserDefaults.standard.integer(forKey: "backgroundCloudCount")
             return value == 0 && !UserDefaults.standard.bool(forKey: "backgroundCloudCountHasBeenSet") ? 80 : value
         }
@@ -542,10 +683,11 @@ class AppSettings {
             notifyChange()
         }
     }
-    
+
     /// Cloud opacity
     var backgroundCloudOpacity: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "backgroundCloudOpacity")
             return value == 0 && !UserDefaults.standard.bool(forKey: "backgroundCloudOpacityHasBeenSet") ? 0.18 : value
         }
@@ -555,65 +697,71 @@ class AppSettings {
             notifyChange()
         }
     }
-    
+
     /// Cloud color 1 (yellow) - hex
     var backgroundCloudColor1Hex: String {
         get {
-            UserDefaults.standard.string(forKey: "backgroundCloudColor1Hex") ?? "#F4C430" // TFYellow
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "backgroundCloudColor1Hex") ?? "#F4C430" // TFYellow
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "backgroundCloudColor1Hex")
             notifyChange()
         }
     }
-    
+
     /// Cloud color 2 (blue) - hex
     var backgroundCloudColor2Hex: String {
         get {
-            UserDefaults.standard.string(forKey: "backgroundCloudColor2Hex") ?? "#0000FF" // Blue
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "backgroundCloudColor2Hex") ?? "#0000FF" // Blue
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "backgroundCloudColor2Hex")
             notifyChange()
         }
     }
-    
+
     /// Cloud color 3 (white) - hex
     var backgroundCloudColor3Hex: String {
         get {
-            UserDefaults.standard.string(forKey: "backgroundCloudColor3Hex") ?? "#FFFFFF" // White
+            observeChanges()
+            return UserDefaults.standard.string(forKey: "backgroundCloudColor3Hex") ?? "#FFFFFF" // White
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "backgroundCloudColor3Hex")
             notifyChange()
         }
     }
-    
+
     /// Cloud horizontal offset (-1.0 to 1.0, representing left to right)
     var backgroundCloudOffsetX: Double {
         get {
-            UserDefaults.standard.double(forKey: "backgroundCloudOffsetX")
+            observeChanges()
+            return UserDefaults.standard.double(forKey: "backgroundCloudOffsetX")
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "backgroundCloudOffsetX")
             notifyChange()
         }
     }
-    
+
     /// Cloud vertical offset (-1.0 to 1.0, representing top to bottom)
     var backgroundCloudOffsetY: Double {
         get {
-            UserDefaults.standard.double(forKey: "backgroundCloudOffsetY")
+            observeChanges()
+            return UserDefaults.standard.double(forKey: "backgroundCloudOffsetY")
         }
         set {
             UserDefaults.standard.set(newValue, forKey: "backgroundCloudOffsetY")
             notifyChange()
         }
     }
-    
+
     /// Dust particle count
     var backgroundDustCount: Int {
         get {
+            observeChanges()
             let value = UserDefaults.standard.integer(forKey: "backgroundDustCount")
             return value == 0 && !UserDefaults.standard.bool(forKey: "backgroundDustCountHasBeenSet") ? 800 : value
         }
@@ -623,10 +771,11 @@ class AppSettings {
             notifyChange()
         }
     }
-    
+
     /// Dust opacity
     var backgroundDustOpacity: Double {
         get {
+            observeChanges()
             let value = UserDefaults.standard.double(forKey: "backgroundDustOpacity")
             return value == 0 && !UserDefaults.standard.bool(forKey: "backgroundDustOpacityHasBeenSet") ? 0.24 : value
         }
@@ -636,36 +785,36 @@ class AppSettings {
             notifyChange()
         }
     }
-    
+
     /// Returns true if any of the card elements are using a textured theme
     var hasAnyTexturedTheme: Bool {
-        return bitCardFrameColor.hasTexture || 
-               bitCardBottomBarColor.hasTexture || 
+        return bitCardFrameColor.hasTexture ||
+               bitCardBottomBarColor.hasTexture ||
                bitWindowTheme.hasTexture ||
                (bitCardFrameColor == .custom && bitCardFrameGritEnabled) ||
                (bitCardBottomBarColor == .custom && bitCardBottomBarGritEnabled) ||
                (bitWindowTheme == .custom && bitCardWindowGritEnabled)
     }
-    
+
     /// Calculates the adjusted grit density for shareable bit cards
     /// - Parameter baseDensity: The maximum density value (at gritLevel = 1.0)
     /// - Returns: The scaled density value
     func adjustedBitCardGritDensity(_ baseDensity: Int) -> Int {
         return Int(Double(baseDensity) * bitCardGritLevel)
     }
-    
+
     /// Calculates the adjusted grit density for app UI elements
     /// - Parameter baseDensity: The maximum density value (at gritLevel = 1.0)
     /// - Returns: The scaled density value
     func adjustedAppGritDensity(_ baseDensity: Int) -> Int {
         return Int(Double(baseDensity) * appGritLevel)
     }
-    
+
     /// Returns the app's custom font color
     var fontColor: Color {
         return Color(hex: appFontColorHex) ?? .white
     }
-    
+
     private init() {}
 }
 
@@ -677,9 +826,9 @@ enum BitCardFrameColor: String, CaseIterable, Identifiable {
     case chalkboard = "chalkboard"
     case yellowGrit = "yellowGrit"
     case custom = "custom"
-    
+
     var id: String { rawValue }
-    
+
     var displayName: String {
         switch self {
         case .default: return "Default"
@@ -690,7 +839,7 @@ enum BitCardFrameColor: String, CaseIterable, Identifiable {
         case .custom: return "Custom Color"
         }
     }
-    
+
     var description: String {
         switch self {
         case .default: return "Standard card background"
@@ -701,7 +850,7 @@ enum BitCardFrameColor: String, CaseIterable, Identifiable {
         case .custom: return "Choose your own color"
         }
     }
-    
+
     func color(customHex: String? = nil) -> Color {
         switch self {
         case .default: return Color("TFCard")
@@ -709,14 +858,14 @@ enum BitCardFrameColor: String, CaseIterable, Identifiable {
         case .white: return Color.white
         case .chalkboard: return Color("TFCard")
         case .yellowGrit: return Color("TFYellow")
-        case .custom: 
+        case .custom:
             if let hex = customHex {
                 return Color(hex: hex) ?? Color("TFCard")
             }
             return Color("TFCard")
         }
     }
-    
+
     /// Returns true if this color option should render with textured layers
     var hasTexture: Bool {
         switch self {
@@ -724,7 +873,7 @@ enum BitCardFrameColor: String, CaseIterable, Identifiable {
         default: return false
         }
     }
-    
+
     /// Returns the appropriate texture theme for rendering
     var textureTheme: BitWindowTheme? {
         switch self {
@@ -739,9 +888,9 @@ enum BitWindowTheme: String, CaseIterable, Identifiable {
     case chalkboard = "chalkboard"
     case yellowGrit = "yellowGrit"
     case custom = "custom"
-    
+
     var id: String { rawValue }
-    
+
     var displayName: String {
         switch self {
         case .chalkboard: return "Dark Grit"
@@ -749,7 +898,7 @@ enum BitWindowTheme: String, CaseIterable, Identifiable {
         case .custom: return "Custom Color"
         }
     }
-    
+
     var description: String {
         switch self {
         case .chalkboard: return "Dark with subtle texture"
@@ -757,7 +906,7 @@ enum BitWindowTheme: String, CaseIterable, Identifiable {
         case .custom: return "Choose your own color"
         }
     }
-    
+
     func color(customHex: String? = nil) -> Color {
         switch self {
         case .chalkboard: return Color("TFCard")
@@ -769,7 +918,7 @@ enum BitWindowTheme: String, CaseIterable, Identifiable {
             return Color("TFCard")
         }
     }
-    
+
     /// Returns true if this theme should render with textured layers
     var hasTexture: Bool {
         switch self {
@@ -784,9 +933,9 @@ enum TileCardTheme: String, CaseIterable, Identifiable {
     case darkGrit = "darkGrit"
     case yellowGrit = "yellowGrit"
     case custom = "custom"
-    
+
     var id: String { rawValue }
-    
+
     var displayName: String {
         switch self {
         case .darkGrit: return "Dark Grit"
@@ -794,7 +943,7 @@ enum TileCardTheme: String, CaseIterable, Identifiable {
         case .custom: return "Custom"
         }
     }
-    
+
     var description: String {
         switch self {
         case .darkGrit: return "Dark with subtle texture"
@@ -802,7 +951,7 @@ enum TileCardTheme: String, CaseIterable, Identifiable {
         case .custom: return "Customize colors and texture"
         }
     }
-    
+
     var baseColor: Color {
         switch self {
         case .darkGrit: return Color("TFCard")
@@ -826,9 +975,9 @@ enum AppFont: String, CaseIterable, Identifiable {
     case avenir = "Avenir"
     case baskerville = "Baskerville"
     case americanTypewriter = "American Typewriter"
-    
+
     var id: String { rawValue }
-    
+
     var displayName: String {
         switch self {
         case .systemDefault: return "System Default"
@@ -845,7 +994,7 @@ enum AppFont: String, CaseIterable, Identifiable {
         case .americanTypewriter: return "American Typewriter"
         }
     }
-    
+
     var description: String {
         switch self {
         case .systemDefault: return "iOS system font (San Francisco)"
@@ -862,7 +1011,7 @@ enum AppFont: String, CaseIterable, Identifiable {
         case .americanTypewriter: return "Classic typewriter style"
         }
     }
-    
+
     var category: String {
         switch self {
         case .systemDefault, .helveticaNeue, .trebuchet, .verdana, .avenir:
@@ -873,7 +1022,7 @@ enum AppFont: String, CaseIterable, Identifiable {
             return "Monospaced"
         }
     }
-    
+
     /// Returns a Font for the given size
     func font(size: CGFloat) -> Font {
         if self == .systemDefault {
@@ -890,9 +1039,9 @@ extension Color {
     init?(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         var int: UInt64 = 0
-        
+
         guard Scanner(string: hex).scanHexInt64(&int) else { return nil }
-        
+
         let r, g, b: UInt64
         switch hex.count {
         case 6: // RGB (24-bit)
@@ -900,7 +1049,7 @@ extension Color {
         default:
             return nil
         }
-        
+
         self.init(
             .sRGB,
             red: Double(r) / 255,
@@ -909,22 +1058,21 @@ extension Color {
             opacity: 1
         )
     }
-    
+
     /// Convert a Color to hex string (approximate, works for simple colors)
     func toHex() -> String? {
         guard let components = UIColor(self).cgColor.components,
               components.count >= 3 else {
             return nil
         }
-        
+
         let r = Float(components[0])
         let g = Float(components[1])
         let b = Float(components[2])
-        
+
         return String(format: "#%02lX%02lX%02lX",
                      lroundf(r * 255),
                      lroundf(g * 255),
                      lroundf(b * 255))
     }
 }
-

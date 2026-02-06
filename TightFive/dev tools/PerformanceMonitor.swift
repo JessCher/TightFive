@@ -10,13 +10,10 @@ class PerformanceMonitor {
     // MARK: - Published Properties
     
     /// Whether the performance overlay is enabled
-    var isOverlayEnabled: Bool {
-        get {
-            UserDefaults.standard.bool(forKey: "performanceOverlayEnabled")
-        }
-        set {
-            UserDefaults.standard.set(newValue, forKey: "performanceOverlayEnabled")
-            if newValue {
+    var isOverlayEnabled: Bool = UserDefaults.standard.bool(forKey: "performanceOverlayEnabled") {
+        didSet {
+            UserDefaults.standard.set(isOverlayEnabled, forKey: "performanceOverlayEnabled")
+            if isOverlayEnabled {
                 startMonitoring()
             } else {
                 stopMonitoring()

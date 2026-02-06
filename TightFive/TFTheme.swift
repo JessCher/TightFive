@@ -63,10 +63,9 @@ extension View {
 // MARK: - UIKit appearance (Nav + Tab bars)
 extension TFTheme {
     static func applySystemAppearance() {
-        // Navigation bar
+        // Navigation bar - transparent background (content shows through)
         let nav = UINavigationBarAppearance()
-        nav.configureWithOpaqueBackground()
-        nav.backgroundColor = UIColor(TFTheme.background)
+        nav.configureWithTransparentBackground()
         nav.shadowColor = UIColor.clear
         nav.titleTextAttributes = [
             .foregroundColor: UIColor.white
