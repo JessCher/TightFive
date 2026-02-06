@@ -43,6 +43,25 @@ struct SettingsView: View {
             
             Section {
                 NavigationLink {
+                    DataExportView()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "arrow.down.doc.fill")
+                            .foregroundStyle(TFTheme.yellow)
+                            .frame(width: 24)
+
+                        Text("Export All Data")
+                            .foregroundStyle(.white)
+                    }
+                }
+            } header: {
+                Text("DATA")
+            } footer: {
+                Text("Download a .zip archive with all your bits, setlists, show notes, and recordings.")
+            }
+
+            Section {
+                NavigationLink {
                     ThemeAndCustomizationView()
                 } label: {
                     Text("Theme and Customization")
@@ -80,13 +99,32 @@ struct SettingsView: View {
             
             Section {
                 NavigationLink {
+                    AccessibilitySettingsView()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "accessibility")
+                            .foregroundStyle(TFTheme.yellow)
+                            .frame(width: 24)
+
+                        Text("Accessibility")
+                            .foregroundStyle(.white)
+                    }
+                }
+            } header: {
+                Text("ACCESSIBILITY")
+            } footer: {
+                Text("Adjust the app for your comfort and needs.")
+            }
+
+            Section {
+                NavigationLink {
                     DeveloperToolsSettingsView()
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "hammer.fill")
                             .foregroundStyle(TFTheme.yellow)
                             .frame(width: 24)
-                        
+
                         Text("Developer Tools")
                             .foregroundStyle(.white)
                     }

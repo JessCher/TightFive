@@ -99,7 +99,7 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
     private var undoObservationTokens: [NSObjectProtocol] = []
 
     private var commitTimer: Timer?
-    private let commitDelay: TimeInterval = 0.75  // Increased to 750ms to further reduce RTF serialization frequency
+    private let commitDelay: TimeInterval = 0.35  // Reduced to 350ms for more responsive undo grouping
 
     // Undo grouping
     private var undoBurstStartData: Data?
@@ -324,7 +324,8 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
         commitTimer?.invalidate()
         let timer = Timer(timeInterval: commitDelay, target: self, selector: #selector(commitTimerFired(_:)), userInfo: nil, repeats: false)
         commitTimer = timer
-        RunLoop.main.add(timer, forMode: .common)
+        // Use .default instead of .common to avoid interfering with scrolling/animations
+        RunLoop.main.add(timer, forMode: .default)
     }
 
     @objc private func commitTimerFired(_ timer: Timer) {
@@ -356,19 +357,36 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
         // Register undo action BEFORE updating the binding
         let um = externalUndoManager ?? textView?.undoManager
         if let um, !isPerformingUndoRedo {
-            // Capture current values for the undo closure
             let capturedPrevious = previousData
+            let capturedNew = newData
 
             um.registerUndo(withTarget: self) { [weak self] coordinator in
-                guard let self = self else { return }
-                // Prevent redo registration during undo
+                guard self != nil else { return }
                 coordinator.isPerformingUndoRedo = true
 
-                // Update SwiftUI binding
+                // Register redo (inverse of undo) so redo works
+                um.registerUndo(withTarget: coordinator) { [weak coordinator] coord in
+                    guard coordinator != nil else { return }
+                    coord.isPerformingUndoRedo = true
+
+                    coord.parent.rtfData = capturedNew
+                    coord.lastObservedData = capturedNew
+
+                    if let attributed = NSAttributedString.fromRTF(capturedNew),
+                       let tv = coord.textView {
+                        let savedSelection = tv.selectedRange
+                        tv.attributedText = attributed
+                        tv.selectedRange = coord.clampedSelection(savedSelection, toLength: attributed.length)
+                    }
+
+                    coord.isPerformingUndoRedo = false
+                }
+                um.setActionName("Edit")
+
+                // Restore to previous state
                 coordinator.parent.rtfData = capturedPrevious
                 coordinator.lastObservedData = capturedPrevious
 
-                // Update text view content
                 if let attributed = NSAttributedString.fromRTF(capturedPrevious),
                    let tv = coordinator.textView {
                     let savedSelection = tv.selectedRange
@@ -376,7 +394,6 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
                     tv.selectedRange = coordinator.clampedSelection(savedSelection, toLength: attributed.length)
                 }
 
-                // Reset flag synchronously - the notification observers handle the timing
                 coordinator.isPerformingUndoRedo = false
             }
             um.setActionName("Edit")

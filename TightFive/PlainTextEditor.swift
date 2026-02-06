@@ -86,7 +86,7 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
     private var undoObservationTokens: [NSObjectProtocol] = []
     
     private var commitTimer: Timer?
-    private let commitDelay: TimeInterval = 0.75  // Increased to 750ms to reduce commit frequency
+    private let commitDelay: TimeInterval = 0.35  // Reduced to 350ms for more responsive undo grouping
     
     // Undo grouping
     private var undoBurstStartText: String?
@@ -238,26 +238,41 @@ final class PlainTextEditorCoordinator: NSObject, UITextViewDelegate {
         // Register undo action BEFORE updating the binding
         let um = externalUndoManager ?? textView?.undoManager
         if let um, !isPerformingUndoRedo {
-            // Capture current values for the undo closure
             let capturedPrevious = previousText
+            let capturedNew = newText
 
             um.registerUndo(withTarget: self) { [weak self] coordinator in
                 guard self != nil else { return }
-                // Prevent redo registration during undo
                 coordinator.isPerformingUndoRedo = true
 
-                // Update SwiftUI binding
+                // Register redo (inverse of undo) so redo works
+                um.registerUndo(withTarget: coordinator) { [weak coordinator] coord in
+                    guard coordinator != nil else { return }
+                    coord.isPerformingUndoRedo = true
+
+                    coord.parent.text = capturedNew
+                    coord.lastObservedText = capturedNew
+
+                    if let tv = coord.textView {
+                        let savedSelection = tv.selectedRange
+                        tv.text = capturedNew
+                        tv.selectedRange = coord.clampedSelection(savedSelection, toLength: capturedNew.count)
+                    }
+
+                    coord.isPerformingUndoRedo = false
+                }
+                um.setActionName("Edit")
+
+                // Restore to previous state
                 coordinator.parent.text = capturedPrevious
                 coordinator.lastObservedText = capturedPrevious
 
-                // Update text view content
                 if let tv = coordinator.textView {
                     let savedSelection = tv.selectedRange
                     tv.text = capturedPrevious
                     tv.selectedRange = coordinator.clampedSelection(savedSelection, toLength: capturedPrevious.count)
                 }
 
-                // Reset flag synchronously - the notification observers handle the timing
                 coordinator.isPerformingUndoRedo = false
             }
             um.setActionName("Edit")
