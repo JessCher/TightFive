@@ -234,7 +234,6 @@ struct NoteEditorView: View {
                 .padding(.horizontal, 8)
         }
         .tfBackground()
-        .tfUndoRedoToolbar(isVisible: keyboard.isVisible)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {

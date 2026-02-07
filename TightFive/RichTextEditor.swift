@@ -304,6 +304,14 @@ extension EditorCoordinator: EditorToolbarDelegate {
         guard let tv = textView else { return }
         
         switch action {
+        case .undo:
+            tv.undoManager?.undo()
+            return  // No commit or toolbar update needed for undo
+            
+        case .redo:
+            tv.undoManager?.redo()
+            return  // No commit or toolbar update needed for redo
+            
         case .dismissKeyboard:
             tv.resignFirstResponder()
             return  // No commit or toolbar update needed for dismiss
@@ -339,6 +347,8 @@ protocol EditorToolbarDelegate: AnyObject {
 }
 
 enum EditorToolbarAction {
+    case undo
+    case redo
     case dismissKeyboard
     case adjustFontSize(CGFloat)
     case toggleTrait(UIFontDescriptor.SymbolicTraits)
@@ -434,6 +444,14 @@ final class EditorToolbar: UIView {
     }
 
     private func populate() {
+        // Undo/Redo
+        stackView.addArrangedSubview(iconPill(systemName: "arrow.uturn.backward", a11y: "Undo") { [weak self] in
+            self?.delegate?.executeAction(.undo)
+        })
+        stackView.addArrangedSubview(iconPill(systemName: "arrow.uturn.forward", a11y: "Redo") { [weak self] in
+            self?.delegate?.executeAction(.redo)
+        })
+        
         // Typography
         stackView.addArrangedSubview(pill("A−", a11y: "Decrease font size") { [weak self] in
             self?.delegate?.executeAction(.adjustFontSize(-1))
@@ -525,6 +543,25 @@ final class EditorToolbar: UIView {
             out.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
             return out
         }
+
+        let btn = UIButton(configuration: config, primaryAction: UIAction { _ in action() })
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        btn.accessibilityLabel = a11y
+        NSLayoutConstraint.activate([
+            btn.widthAnchor.constraint(equalToConstant: 44),
+            btn.heightAnchor.constraint(equalToConstant: 36)
+        ])
+        return btn
+    }
+    
+    private func iconPill(systemName: String, a11y: String, action: @escaping () -> Void) -> UIButton {
+        var config = UIButton.Configuration.filled()
+        config.image = UIImage(systemName: systemName)
+        config.baseBackgroundColor = UIColor.white.withAlphaComponent(0.08)
+        config.baseForegroundColor = .white
+        config.cornerStyle = .capsule
+        config.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0)
+        config.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
 
         let btn = UIButton(configuration: config, primaryAction: UIAction { _ in action() })
         btn.translatesAutoresizingMaskIntoConstraints = false

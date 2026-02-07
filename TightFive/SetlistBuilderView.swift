@@ -391,14 +391,6 @@ struct SetlistBuilderView: View {
             }
             .foregroundStyle(TFTheme.yellow)
         }
-        
-        ToolbarItem(placement: .topBarTrailing) {
-            if keyboard.isVisible {
-                TFUndoRedoControls()
-            } else {
-                EmptyView()
-            }
-        }
 
         ToolbarItem(placement: .topBarTrailing) {
             if setlist.hasScriptContent {

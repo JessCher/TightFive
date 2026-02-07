@@ -455,7 +455,6 @@ struct FinishedBitDetailView: View {
             .padding(.bottom, 28)
         }
         .tfBackground()
-        .tfUndoRedoToolbar(isVisible: keyboard.isVisible)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

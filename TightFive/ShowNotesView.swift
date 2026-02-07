@@ -310,12 +310,6 @@ struct PerformanceDetailView: View {
                     }
                     .foregroundStyle(TFTheme.yellow)
                 }
-                
-                ToolbarItem(placement: .topBarTrailing) {
-                    if keyboard.isVisible {
-                        TFUndoRedoControls()
-                    }
-                }
             }
             .tfBackground()
             .confirmationDialog("Delete Performance?", isPresented: $showDeleteConfirmation, titleVisibility: .visible) {

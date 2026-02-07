@@ -62,7 +62,6 @@ struct QuickBitEditor: View {
                 }
             }
             .hideKeyboardInteractively() // Use combined tap + swipe-down dismissal
-            .tfUndoRedoToolbar(isVisible: keyboard.isVisible)
         }
         .onDisappear {
             speech.stopTranscribing()
