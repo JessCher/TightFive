@@ -31,16 +31,22 @@ struct TrashcanView: View {
         order: .reverse
     ) private var deletedPerformances: [Performance]
     
+    @Query(
+        filter: #Predicate<Note> { $0.isDeleted },
+        sort: \Note.deletedAt,
+        order: .reverse
+    ) private var deletedNotes: [Note]
+    
     @State private var itemToHardDelete: TrashItem?
     @State private var showHardDeleteConfirmation = false
     @State private var showEmptyTrashConfirmation = false
     
     private var isEmpty: Bool {
-        deletedBits.isEmpty && deletedSetlists.isEmpty && deletedPerformances.isEmpty
+        deletedBits.isEmpty && deletedSetlists.isEmpty && deletedPerformances.isEmpty && deletedNotes.isEmpty
     }
     
     private var totalItemCount: Int {
-        deletedBits.count + deletedSetlists.count + deletedPerformances.count
+        deletedBits.count + deletedSetlists.count + deletedPerformances.count + deletedNotes.count
     }
     
     var body: some View {
@@ -188,6 +194,37 @@ struct TrashcanView: View {
                         .foregroundStyle(.white.opacity(0.5))
                 }
             }
+            
+            // Deleted Notes Section
+            if !deletedNotes.isEmpty {
+                Section {
+                    ForEach(deletedNotes) { note in
+                        TrashItemRow(
+                            title: note.displayTitle,
+                            subtitle: deletedDateString(note.deletedAt),
+                            type: .note,
+                            onRestore: {
+                                withAnimation {
+                                    note.restore()
+                                    try? modelContext.save()
+                                }
+                            },
+                            onDelete: {
+                                itemToHardDelete = TrashItem(
+                                    id: note.id,
+                                    title: note.displayTitle,
+                                    type: .note
+                                )
+                                showHardDeleteConfirmation = true
+                            }
+                        )
+                    }
+                } header: {
+                    Text("NOTEBOOK NOTES (\(deletedNotes.count))")
+                        .appFont(.caption, weight: .bold)
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+            }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -241,6 +278,12 @@ struct TrashcanView: View {
                 if let performance = deletedPerformances.first(where: { $0.id == item.id }) {
                     performance.hardDelete(context: modelContext)
                 }
+                
+            case .note:
+                if let note = deletedNotes.first(where: { $0.id == item.id }) {
+                    // Hard delete: remove from context completely
+                    modelContext.delete(note)
+                }
             }
             
             try? modelContext.save()
@@ -263,6 +306,11 @@ struct TrashcanView: View {
             // Hard delete all performances
             for performance in deletedPerformances {
                 performance.hardDelete(context: modelContext)
+            }
+            
+            // Hard delete all notes
+            for note in deletedNotes {
+                modelContext.delete(note)
             }
             
             try? modelContext.save()
@@ -343,6 +391,7 @@ private struct TrashItemRow: View {
         case .bit: return "doc.text"
         case .setlist: return "list.bullet.clipboard"
         case .performance: return "waveform"
+        case .note: return "book.closed"
         }
     }
     
@@ -351,6 +400,7 @@ private struct TrashItemRow: View {
         case .bit: return TFTheme.yellow
         case .setlist: return .blue
         case .performance: return .purple
+        case .note: return .orange
         }
     }
 }
@@ -367,11 +417,12 @@ private enum TrashItemType {
     case bit
     case setlist
     case performance
+    case note
 }
 
 // MARK: - Preview
 
 #Preview {
     TrashcanView()
-        .modelContainer(for: [Bit.self, Setlist.self, Performance.self])
+        .modelContainer(for: [Bit.self, Setlist.self, Performance.self, Note.self])
 }

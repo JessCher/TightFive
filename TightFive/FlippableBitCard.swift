@@ -419,7 +419,139 @@ struct FinishedFlippableBitCard: View {
     }
 }
 
-// MARK: - Detail View Flippable Card
+// MARK: - Detail View Flippable Cards
+
+/// Flippable card for the Loose Bit Detail View - editable text on front, notes on back
+struct LooseDetailFlippableCard: View {
+    @Bindable var bit: Bit
+    @Binding var isFlipped: Bool
+    var undoManager: UndoManager?
+    @Environment(\.modelContext) private var modelContext
+    @State private var notesText: String = ""
+    @FocusState private var isNotesFocused: Bool
+
+    var body: some View {
+        FlippableBitCard(isFlipped: $isFlipped) {
+            frontCard
+        } back: {
+            backCard
+        }
+        .onAppear {
+            notesText = bit.notes
+        }
+    }
+
+    private var frontCard: some View {
+        ZStack(alignment: .bottomTrailing) {
+            VStack(alignment: .leading, spacing: 16) {
+                TextField("Title", text: Binding(
+                    get: { bit.title },
+                    set: { newValue in
+                        bit.title = newValue
+                        bit.updatedAt = Date()
+                        try? modelContext.save()
+                    }
+                ))
+                .appFont(.title2, weight: .bold)
+                .foregroundStyle(TFTheme.yellow)
+                .multilineTextAlignment(.center)
+                .submitLabel(.done)
+                .textInputAutocapitalization(.words)
+                .disableAutocorrection(true)
+
+                Divider()
+                    .background(.white.opacity(0.2))
+
+                ZStack(alignment: .topLeading) {
+                    if bit.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("Body")
+                            .appFont(.body)
+                            .foregroundStyle(TFTheme.text.opacity(0.35))
+                            .padding(.top, 8)
+                    }
+                    
+                    // Use UITextView wrapper with undo support for better editing experience
+                    LooseDetailTextEditor(
+                        text: Binding(
+                            get: { bit.text },
+                            set: { newValue in
+                                bit.text = newValue
+                                bit.updatedAt = Date()
+                                try? modelContext.save()
+                            }
+                        ),
+                        undoManager: undoManager
+                    )
+                    .frame(minHeight: 140)
+                }
+            }
+            .padding(20)
+            .tfDynamicCard(cornerRadius: 20)
+
+            BitFlipButton(isFlipped: false, hasNotes: !bit.notes.isEmpty) {
+                withAnimation { isFlipped = true }
+            }
+            .padding(.trailing, 16)
+            .padding(.bottom, 16)
+        }
+    }
+
+    private var backCard: some View {
+        ZStack(alignment: .bottomTrailing) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Image(systemName: "note.text")
+                        .appFont(.headline)
+                        .foregroundStyle(TFTheme.yellow)
+                    Text("Notes")
+                        .appFont(.headline, weight: .semibold)
+                        .foregroundStyle(TFTheme.text)
+                    Spacer()
+                }
+
+                Text("Variant punchlines, alternate wording, delivery ideas...")
+                    .appFont(.caption)
+                    .foregroundStyle(TFTheme.text.opacity(0.5))
+
+                ZStack(alignment: .topLeading) {
+                    if notesText.isEmpty && !isNotesFocused {
+                        Text("Tap to add notes...")
+                            .appFont(.body)
+                            .foregroundStyle(TFTheme.text.opacity(0.35))
+                            .padding(.top, 8)
+                            .padding(.leading, 4)
+                    }
+
+                    TextEditor(text: $notesText)
+                        .scrollContentBackground(.hidden)
+                        .background(Color.clear)
+                        .appFont(.body)
+                        .foregroundStyle(TFTheme.text)
+                        .focused($isNotesFocused)
+                        .onChange(of: notesText) { _, newValue in
+                            bit.notes = newValue
+                            bit.updatedAt = Date()
+                            try? modelContext.save()
+                        }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(8)
+                .background(Color.black.opacity(0.2))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .padding(20)
+            .tfDynamicCard(cornerRadius: 20)
+
+            BitFlipButton(isFlipped: true, hasNotes: !bit.notes.isEmpty) {
+                isNotesFocused = false
+                withAnimation { isFlipped = false }
+            }
+            .padding(.trailing, 16)
+            .padding(.bottom, 16)
+        }
+    }
+}
 
 /// Flippable card for the Finished Bit Detail View - editable text on front, notes on back
 struct FinishedDetailFlippableCard: View {
@@ -560,3 +692,60 @@ struct FinishedDetailFlippableCard: View {
         }
     }
 }
+
+// MARK: - Supporting Components
+
+/// UITextView wrapper with built-in undo support for detail view text editing
+private struct LooseDetailTextEditor: UIViewRepresentable {
+    @Binding var text: String
+    var undoManager: UndoManager?
+
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.font = .systemFont(ofSize: 17)
+        textView.backgroundColor = .clear
+        textView.textColor = .white
+        textView.delegate = context.coordinator
+        textView.allowsEditingTextAttributes = false
+        textView.isScrollEnabled = true
+        textView.autocapitalizationType = .sentences
+        textView.autocorrectionType = .yes
+        textView.spellCheckingType = .yes
+        textView.text = text
+        
+        // Enable performance optimizations
+        textView.layoutManager.allowsNonContiguousLayout = true
+        textView.layoutManager.showsInvisibleCharacters = false
+        textView.layoutManager.showsControlCharacters = false
+        textView.layoutManager.usesDefaultHyphenation = false
+        
+        return textView
+    }
+
+    func updateUIView(_ textView: UITextView, context: Context) {
+        if !context.coordinator.isInternalUpdate && textView.text != text {
+            textView.text = text
+        }
+        context.coordinator.isInternalUpdate = false
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    class Coordinator: NSObject, UITextViewDelegate {
+        @Binding var text: String
+        var isInternalUpdate = false
+
+        init(text: Binding<String>) {
+            self._text = text
+        }
+
+        func textViewDidChange(_ textView: UITextView) {
+            isInternalUpdate = true
+            text = textView.text ?? ""
+        }
+    }
+}
+
+

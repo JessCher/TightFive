@@ -34,6 +34,9 @@ struct AccessibilitySettingsView: View {
                             .tint(TFTheme.yellow)
                             .accessibilityLabel("Reduce motion")
                             .accessibilityHint("Minimizes animations and transitions throughout the app")
+                            .onChange(of: settings.reduceMotion) { oldValue, newValue in
+                                HapticManager.selection()
+                            }
                     }
                     .padding(16)
                     .tfDynamicCard(cornerRadius: 16)
@@ -67,6 +70,9 @@ struct AccessibilitySettingsView: View {
                             .tint(TFTheme.yellow)
                             .accessibilityLabel("High contrast")
                             .accessibilityHint("Increases contrast for text and UI elements")
+                            .onChange(of: settings.highContrast) { oldValue, newValue in
+                                HapticManager.selection()
+                            }
                     }
                     .padding(16)
                     .tfDynamicCard(cornerRadius: 16)
@@ -91,6 +97,9 @@ struct AccessibilitySettingsView: View {
                             .tint(TFTheme.yellow)
                             .accessibilityLabel("Bold text")
                             .accessibilityHint("Uses heavier font weight for all text")
+                            .onChange(of: settings.boldText) { oldValue, newValue in
+                                HapticManager.selection()
+                            }
                     }
                     .padding(16)
                     .tfDynamicCard(cornerRadius: 16)
@@ -117,6 +126,10 @@ struct AccessibilitySettingsView: View {
                             .accessibilityLabel("Text size")
                             .accessibilityValue("\(Int(settings.appFontSizeMultiplier * 100)) percent")
                             .accessibilityHint("Adjusts text size across the entire app")
+                            .onChange(of: settings.appFontSizeMultiplier) { oldValue, newValue in
+                                // Light haptic feedback when adjusting slider
+                                HapticManager.selection()
+                            }
 
                         HStack {
                             Text("A")
@@ -162,6 +175,12 @@ struct AccessibilitySettingsView: View {
                             .tint(TFTheme.yellow)
                             .accessibilityLabel("Haptic feedback")
                             .accessibilityHint("Vibration feedback for taps and gestures")
+                            .onChange(of: settings.hapticsEnabled) { oldValue, newValue in
+                                // Provide haptic feedback when enabling (meta!)
+                                if newValue {
+                                    HapticManager.impact(.medium)
+                                }
+                            }
                     }
                     .padding(16)
                     .tfDynamicCard(cornerRadius: 16)
@@ -186,10 +205,65 @@ struct AccessibilitySettingsView: View {
                             .tint(TFTheme.yellow)
                             .accessibilityLabel("Larger touch targets")
                             .accessibilityHint("Increases button and control sizes for easier tapping")
+                            .onChange(of: settings.largerTouchTargets) { oldValue, newValue in
+                                HapticManager.selection()
+                            }
                     }
                     .padding(16)
                     .tfDynamicCard(cornerRadius: 16)
                     .accessibilityElement(children: .contain)
+                    
+                    // Demo buttons to test settings
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Test these settings:")
+                            .appFont(.caption, weight: .semibold)
+                            .foregroundStyle(.white.opacity(0.7))
+                        
+                        HStack(spacing: 12) {
+                            Button {
+                                HapticManager.impact(.light)
+                            } label: {
+                                Text("Light")
+                                    .appFont(.subheadline)
+                                    .foregroundStyle(.white)
+                            }
+                            .buttonStyle(AccessibleStyledButtonStyle(
+                                baseColor: Color("TFCard"),
+                                accentColor: TFTheme.yellow
+                            ))
+                            
+                            Button {
+                                HapticManager.impact(.medium)
+                            } label: {
+                                Text("Medium")
+                                    .appFont(.subheadline)
+                                    .foregroundStyle(.white)
+                            }
+                            .buttonStyle(AccessibleStyledButtonStyle(
+                                baseColor: Color("TFCard"),
+                                accentColor: TFTheme.yellow
+                            ))
+                            
+                            Button {
+                                HapticManager.impact(.heavy)
+                            } label: {
+                                Text("Heavy")
+                                    .appFont(.subheadline)
+                                    .foregroundStyle(.white)
+                            }
+                            .buttonStyle(AccessibleStyledButtonStyle(
+                                baseColor: Color("TFCard"),
+                                accentColor: TFTheme.yellow
+                            ))
+                        }
+                        
+                        Text("Tap buttons above to test haptic feedback and touch target sizes")
+                            .appFont(.caption)
+                            .foregroundStyle(.white.opacity(0.5))
+                            .padding(.top, 4)
+                    }
+                    .padding(16)
+                    .tfDynamicCard(cornerRadius: 16)
                 }
 
                 // Footer

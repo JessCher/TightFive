@@ -227,17 +227,12 @@ struct LooseBitsView: View {
         }
         .dismissKeyboardOnTap()
         .tfBackground()
-        .navigationTitle("Loose Ideas")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query, prompt: "Search bits")
         .navigationDestination(item: $selectedBit) { bit in
             LooseBitDetailView(bit: bit)
         }
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                TFWordmarkTitle(title: "Loose Ideas", size: 22)
-                    .offset(x: -6)
-            }
 
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -332,16 +327,6 @@ private struct LooseBitCardRow: View {
                     .appFont(.subheadline)
                     .foregroundStyle(TFTheme.text.opacity(0.55))
 
-                if bit.variationCount > 0 {
-                    Text("•")
-                        .appFont(.subheadline)
-                        .foregroundStyle(TFTheme.text.opacity(0.4))
-
-                    Text("\(bit.variationCount) variation\(bit.variationCount == 1 ? "" : "s")")
-                        .appFont(.subheadline)
-                        .foregroundStyle(TFTheme.text.opacity(0.55))
-                }
-
                 if bit.isFavorite {
                     Text("•")
                         .appFont(.subheadline)
@@ -388,117 +373,57 @@ private struct LooseBitCardRow: View {
 struct LooseBitDetailView: View {
     @Bindable var bit: Bit
     @State private var showVariationComparison = false
+    @State private var isCardFlipped = false
     @ObservedObject private var keyboard = TFKeyboardState.shared
     @Environment(\.undoManager) private var undoManager
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
-        Form {
-            Section("Title") {
-                TextField("Enter a title", text: $bit.title)
-                    .onChange(of: bit.title) { _, _ in
+        ScrollView {
+            VStack(spacing: 16) {
+                // Main Bit Card with flip for notes
+                LooseDetailFlippableCard(bit: bit, isFlipped: $isCardFlipped, undoManager: undoManager)
+
+                // Status Card
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Status")
+                        .appFont(.headline)
+                        .foregroundStyle(TFTheme.text)
+
+                    Picker("Status", selection: $bit.status) {
+                        Text("Loose").tag(BitStatus.loose)
+                        Text("Finished").tag(BitStatus.finished)
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: bit.status) { oldValue, newValue in
                         bit.updatedAt = Date()
                         try? modelContext.save()
                     }
-            }
-
-            Section("Text") {
-                LooseUndoableTextEditor(
-                    text: $bit.text,
-                    modelContext: modelContext,
-                    bit: bit,
-                    undoManager: undoManager
-                )
-                .frame(minHeight: 240)
-            }
-
-            Section("Status") {
-                Picker("Status", selection: $bit.status) {
-                    Text("Loose").tag(BitStatus.loose)
-                    Text("Finished").tag(BitStatus.finished)
                 }
-                .pickerStyle(.segmented)
-                .onChange(of: bit.status) { oldValue, newValue in
-                    bit.updatedAt = Date()
-                    try? modelContext.save()
-                }
-            }
+                .padding(20)
+                .tfDynamicCard(cornerRadius: 20)
 
-            Section("Tags") {
-                LooseTagEditor(tags: $bit.tags) { updated in
-                    bit.tags = updated
-                    bit.updatedAt = Date()
-                    try? modelContext.save()
-                }
-            }
+                // Tags Card
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Tags")
+                        .appFont(.headline)
+                        .foregroundStyle(TFTheme.text)
 
-            Section {
-                ZStack(alignment: .topLeading) {
-                    if bit.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("Tap to add notes...")
-                            .appFont(.body)
-                            .foregroundStyle(TFTheme.text.opacity(0.35))
-                            .padding(.top, 8)
+                    LooseTagEditor(tags: $bit.tags) { updated in
+                        bit.tags = updated
+                        bit.updatedAt = Date()
+                        try? modelContext.save()
                     }
-                    TextEditor(text: Binding(
-                        get: { bit.notes },
-                        set: { newValue in
-                            bit.notes = newValue
-                            bit.updatedAt = Date()
-                            try? modelContext.save()
-                        }
-                    ))
-                    .scrollContentBackground(.hidden)
-                    .background(Color.clear)
-                    .appFont(.body)
-                    .foregroundStyle(TFTheme.text)
-                    .frame(minHeight: 100)
                 }
-            } header: {
-                HStack {
-                    Image(systemName: "note.text")
-                        .foregroundStyle(TFTheme.yellow)
-                    Text("Notes")
-                }
-            } footer: {
-                Text("Variant punchlines, alternate wording, delivery ideas, etc.")
+                .padding(20)
+                .tfDynamicCard(cornerRadius: 20)
             }
-
-            // Show variations section if any exist
-            if !(bit.variations?.isEmpty ?? true) {
-                Section {
-                    Button {
-                        showVariationComparison = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "doc.on.doc")
-                                .foregroundStyle(TFTheme.yellow)
-
-                            Text("Compare Variations")
-                                .foregroundStyle(TFTheme.text)
-
-                            Spacer()
-
-                            Text("\(bit.variationCount)")
-                                .appFont(.subheadline, weight: .semibold)
-                                .foregroundStyle(.black)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(TFTheme.yellow)
-                                .clipShape(Capsule())
-                        }
-                    }
-                } header: {
-                    Text("Variations")
-                } footer: {
-                    Text("See how this bit evolved across different setlists.")
-                }
-            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 28)
         }
-        .scrollContentBackground(.hidden)
         .tfBackground()
         .tfUndoRedoToolbar(isVisible: keyboard.isVisible)
-        .navigationTitle("Bit")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -519,103 +444,6 @@ struct LooseBitDetailView: View {
 }
 
 // MARK: - Supporting Components
-
-/// UITextView wrapper with built-in undo support
-private struct LooseUndoableTextEditor: UIViewRepresentable {
-    @Binding var text: String
-    let modelContext: ModelContext
-    let bit: Bit
-    var undoManager: UndoManager?
-    var isNotesField: Bool = false
-
-    func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
-        textView.font = .systemFont(ofSize: 17)
-        textView.backgroundColor = .clear
-        textView.textColor = .white
-        textView.delegate = context.coordinator
-        textView.allowsEditingTextAttributes = false
-        textView.isScrollEnabled = true
-        textView.autocapitalizationType = .sentences
-        textView.autocorrectionType = .yes
-        textView.spellCheckingType = .yes
-        textView.text = text
-        
-        // PERFORMANCE FIX: Enable performance optimizations
-        textView.layoutManager.allowsNonContiguousLayout = true
-        textView.layoutManager.showsInvisibleCharacters = false
-        textView.layoutManager.showsControlCharacters = false
-        textView.layoutManager.usesDefaultHyphenation = false
-        
-        return textView
-    }
-
-    func updateUIView(_ textView: UITextView, context: Context) {
-        if !context.coordinator.isInternalUpdate && textView.text != text {
-            textView.text = text
-        }
-        context.coordinator.isInternalUpdate = false
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, modelContext: modelContext, bit: bit, isNotesField: isNotesField)
-    }
-
-    class Coordinator: NSObject, UITextViewDelegate {
-        @Binding var text: String
-        let modelContext: ModelContext
-        let bit: Bit
-        let isNotesField: Bool
-        var isInternalUpdate = false
-        private var saveTimer: Timer?
-
-        init(text: Binding<String>, modelContext: ModelContext, bit: Bit, isNotesField: Bool) {
-            self._text = text
-            self.modelContext = modelContext
-            self.bit = bit
-            self.isNotesField = isNotesField
-        }
-        
-        deinit {
-            // Save on cleanup
-            saveTimer?.invalidate()
-            try? modelContext.save()
-        }
-
-        func textViewDidChange(_ textView: UITextView) {
-            // PERFORMANCE FIX: Update immediately for responsive typing
-            isInternalUpdate = true
-            let newText = textView.text ?? ""
-            text = newText
-            
-            // Update model efficiently
-            if isNotesField {
-                bit.notes = newText
-            } else {
-                bit.text = newText
-            }
-            bit.updatedAt = Date()
-            
-            // PERFORMANCE FIX: Batch save instead of saving on every keystroke
-            // Save will happen when editor loses focus or after a delay
-            // This reduces I/O operations significantly
-            scheduleSave()
-        }
-        
-        func textViewDidEndEditing(_ textView: UITextView) {
-            // Save immediately when done editing
-            saveTimer?.invalidate()
-            try? modelContext.save()
-        }
-        
-        private func scheduleSave() {
-            saveTimer?.invalidate()
-            saveTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
-                try? self?.modelContext.save()
-            }
-        }
-    }
-}
 
 /// Tag editor for loose bits
 private struct LooseTagEditor: View {
