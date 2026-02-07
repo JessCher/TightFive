@@ -298,7 +298,7 @@ final class CueCardEngine: ObservableObject {
         try session.setCategory(
             .playAndRecord,
             mode: .spokenAudio,
-            options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP, .mixWithOthers]
+            options: [.defaultToSpeaker, AVAudioSession.CategoryOptions.allowBluetoothHFP, .allowBluetoothA2DP, .mixWithOthers]
         )
         
         try session.setPreferredIOBufferDuration(0.005)

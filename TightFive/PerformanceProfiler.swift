@@ -101,7 +101,8 @@ final class PerformanceProfiler: ObservableObject {
         
         // CPU/Memory monitoring - every 0.5 seconds
         monitoringTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            self?.updateSystemMetrics()
+            guard let self else { return }
+            self.updateSystemMetrics()
         }
     }
     

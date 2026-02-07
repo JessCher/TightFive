@@ -178,7 +178,7 @@ struct PerformanceAnalytics {
         var sections: [ConfidenceAnalysis.ConfidenceSection] = []
         var currentSection: (start: Int, end: Int, sum: Double, count: Int, startTime: TimeInterval)? = nil
         
-        for (i, entry) in data.enumerated() {
+        for (_, entry) in data.enumerated() {
             if entry.confidence < threshold {
                 if var section = currentSection {
                     // Continue section

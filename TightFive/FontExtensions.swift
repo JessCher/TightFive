@@ -167,12 +167,6 @@ extension View {
         return self.animation(shouldAnimate ? animation : nil, value: value)
     }
     
-    /// Applies animation with accessibility support (no binding value)
-    func accessibleAnimation(_ animation: Animation?) -> some View {
-        let shouldAnimate = !AppSettings.shared.reduceMotion
-        return self.animation(shouldAnimate ? animation : nil)
-    }
-    
     /// Applies high contrast styling when enabled
     func accessibleContrast() -> some View {
         let highContrast = AppSettings.shared.highContrast

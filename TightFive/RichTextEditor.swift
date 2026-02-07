@@ -13,8 +13,7 @@
 //  - Lists: bullets, numbered, checkbox; continuation + exit behavior
 //  - Indent-safe list toggling (does not destroy leading tabs/spaces)
 //
-//  NOTE: If your project already defines NSAttributedString.fromRTF / rtfData in exactly one place,
-//  remove the "RTF Helpers" section at the bottom to avoid duplicate symbol errors.
+//  NOTE: RTF conversion helpers are defined in RTFHelpers.swift
 //
 
 import SwiftUI
@@ -414,48 +413,39 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
 extension EditorCoordinator: EditorToolbarDelegate {
     func executeAction(_ action: EditorToolbarAction) {
         guard let tv = textView else { return }
-
+        
         // Formatting actions start a burst if needed.
         captureUndoBurstStartIfNeeded()
-
+        
         switch action {
         case .dismissKeyboard:
             tv.resignFirstResponder()
             return  // No commit or toolbar update needed for dismiss
-
+            
         case .adjustFontSize(let delta):
             attributesEngine.adjustFontSize(in: tv, by: delta)
-
+            
         case .toggleTrait(let trait):
             attributesEngine.toggleTrait(trait, in: tv)
-
+            
         case .toggleAttribute(let key):
             attributesEngine.toggleToggleAttribute(key, in: tv)
-
+            
         case .setColor(let color):
             attributesEngine.setColor(color, in: tv)
-
+            
         case .toggleList(let mode):
             listEngine.toggleListMode(mode, in: tv, using: attributesEngine)
-
+            
         case .indent(let direction):
             if direction == .forward { listEngine.indent(in: tv) }
             else { listEngine.outdent(in: tv) }
         }
-
+        
         scheduleCommit()
         scheduleToolbarUpdate(for: tv)
     }
-
-    // Local helper to keep the action extension clean
-    private func beginUndoBurstIfNeeded() {
-        // Call through to coordinator’s method
-        // (Swift doesn't allow direct access to the private method name from extension in some styles,
-        // so we keep this tiny wrapper.)
-        (self as EditorCoordinator).captureUndoBurstStartIfNeeded()
-    }
 }
-
 // MARK: - Toolbar Types
 
 protocol EditorToolbarDelegate: AnyObject {
@@ -1131,6 +1121,4 @@ extension NSParagraphStyle {
         return ps
     }
 }
-
-
 
