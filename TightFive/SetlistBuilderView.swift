@@ -289,10 +289,13 @@ struct SetlistBuilderView: View {
     }
     
     private var scriptBlockList: some View {
+        // Cache the blocks array to prevent repeated access to SwiftData relationship
+        let blocks = setlist.scriptBlocks
         // Pre-compute assignment lookup for O(1) access instead of O(n) per block
         let lookup = setlist.assignmentLookup
+        
         return List {
-            ForEach(Array(setlist.scriptBlocks.enumerated()), id: \.element.id) { index, block in
+            ForEach(Array(blocks.enumerated()), id: \.element.id) { index, block in
                 ScriptBlockRowView(
                     block: block,
                     assignment: block.assignmentId.flatMap { lookup[$0] },
@@ -576,123 +579,6 @@ struct SetlistBuilderView: View {
             print("Export failed: \(error)")
             exportURL = nil
         }
-    }
-    
-            while textIndex < attributedBody.length {
-                let availableHeight = pageHeight - currentY - margin
-                
-                // Get remaining text
-                let remainingText = attributedBody.attributedSubstring(
-                    from: NSRange(location: textIndex, length: attributedBody.length - textIndex)
-                )
-                
-                // Find how many characters fit without cutting lines
-                let charsFit = findCharactersFittingCompleteLinesOnly(
-                    attributedString: remainingText,
-                    maxWidth: drawableWidth,
-                    maxHeight: availableHeight
-                )
-                
-                // Draw only the text that fits completely
-                if charsFit > 0 {
-                    let textToDraw = attributedBody.attributedSubstring(
-                        from: NSRange(location: textIndex, length: charsFit)
-                    )
-                    
-                    let drawHeight = textToDraw.boundingRect(
-                        with: CGSize(width: drawableWidth, height: .greatestFiniteMagnitude),
-                        options: [.usesLineFragmentOrigin, .usesFontLeading],
-                        context: nil
-                    ).height
-                    
-                    let drawRect = CGRect(x: margin, y: currentY, width: drawableWidth, height: drawHeight)
-                    textToDraw.draw(in: drawRect)
-                    
-                    textIndex += charsFit
-                } else {
-                    // Edge case: even a single character doesn't fit, force draw something
-                    let forcedLength = min(1, remainingText.length)
-                    let textToDraw = attributedBody.attributedSubstring(
-                        from: NSRange(location: textIndex, length: forcedLength)
-                    )
-                    
-                    let drawRect = CGRect(x: margin, y: currentY, width: drawableWidth, height: availableHeight)
-                    textToDraw.draw(in: drawRect)
-                    textIndex += forcedLength
-                }
-                
-                // Move to next page if needed
-                if textIndex < attributedBody.length {
-                    context.beginPage()
-                    currentY = margin
-                }
-            }
-        }
-    }
-    
-    /// Find characters that fit without cutting lines in half
-    private func findCharactersFittingCompleteLinesOnly(attributedString: NSAttributedString, maxWidth: CGFloat, maxHeight: CGFloat) -> Int {
-        let length = attributedString.length
-        guard length > 0 else { return 0 }
-        
-        // Binary search for complete lines that fit
-        var low = 0
-        var high = length
-        var bestFit = 0
-        
-        while low <= high {
-            let mid = (low + high) / 2
-            if mid == 0 {
-                low = 1
-                continue
-            }
-            
-            let substring = attributedString.attributedSubstring(from: NSRange(location: 0, length: mid))
-            let size = substring.boundingRect(
-                with: CGSize(width: maxWidth, height: .greatestFiniteMagnitude),
-                options: [.usesLineFragmentOrigin, .usesFontLeading],
-                context: nil
-            )
-            
-            if size.height <= maxHeight {
-                bestFit = mid
-                low = mid + 1
-            } else {
-                high = mid - 1
-            }
-        }
-        
-        // Now find the last complete line break before or at bestFit
-        if bestFit > 0 && bestFit < length {
-            let string = attributedString.string as NSString
-            
-            // Look backwards from bestFit to find a line break or space
-            var adjustedFit = bestFit
-            
-            // First try to find a paragraph break
-            for i in stride(from: bestFit - 1, through: max(0, bestFit - 100), by: -1) {
-                let char = string.character(at: i)
-                if char == 0x0A || char == 0x0D {  // Line feed or carriage return
-                    adjustedFit = i + 1
-                    break
-                }
-            }
-            
-            // If no paragraph break found nearby, try to break at a space to avoid mid-word breaks
-            if adjustedFit == bestFit {
-                for i in stride(from: bestFit - 1, through: max(0, bestFit - 50), by: -1) {
-                    let char = string.character(at: i)
-                    if char == 0x20 {  // Space
-                        adjustedFit = i + 1
-                        break
-                    }
-                }
-            }
-            
-            return adjustedFit
-        }
-        
-        return bestFit
     }
     
     private func duplicateSetlist() {

@@ -3,13 +3,11 @@ import SwiftData
 
 /// A general-purpose note in the Notebook section.
 ///
-/// Notes store rich text content and can optionally be organized into folders.
-/// Uses the same SwiftData persistence patterns as Bit and Setlist models.
+/// Notes store rich text content using the same SwiftData persistence patterns as Bit and Setlist models.
 ///
 /// **Storage:**
 /// - `contentRTF` stores rich text as RTF Data (same pattern as Setlist.notesRTF)
 /// - `title` is user-provided for easy identification
-/// - `folderId` links to an optional parent NoteFolder
 @Model
 final class Note {
 
@@ -26,9 +24,9 @@ final class Note {
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
 
-    // MARK: - Folder Organization
+    // MARK: - Relationships
 
-    /// Optional reference to parent folder. Nil means the note is unassigned (visible in "All Notes").
+    /// The folder this note belongs to (nil if not in any folder)
     var folder: NoteFolder?
 
     // MARK: - Soft Delete
