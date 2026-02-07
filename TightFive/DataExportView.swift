@@ -48,7 +48,7 @@ struct DataExportView: View {
                         Divider().opacity(0.2)
                         exportItemRow(icon: "list.bullet.rectangle.fill", title: "Setlists", description: "All setlists with script content and notes")
                         Divider().opacity(0.2)
-                        exportItemRow(icon: "book.closed.fill", title: "Notebook", description: "All notebook pages with titles, folders, and content")
+                        exportItemRow(icon: "book.closed.fill", title: "Notebook", description: "All notebook pages with titles, and content")
                         Divider().opacity(0.2)
                         exportItemRow(icon: "star.fill", title: "Show Notes", description: "Performance notes, ratings, and insights")
                         Divider().opacity(0.2)
@@ -241,9 +241,6 @@ struct DataExportView: View {
             var content = "Title: \(note.displayTitle)\n"
             content += "Created: \(note.createdAt)\n"
             content += "Updated: \(note.updatedAt)\n"
-            if let folder = note.folder?.displayName {
-                content += "Folder: \(folder)\n"
-            }
             let noteText = NSAttributedString.fromRTF(note.contentRTF)?.string ?? ""
             if !noteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 content += "\n--- Content ---\n\(noteText)\n"

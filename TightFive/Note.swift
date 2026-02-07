@@ -24,11 +24,6 @@ final class Note {
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
 
-    // MARK: - Relationships
-
-    /// The folder this note belongs to (nil if not in any folder)
-    var folder: NoteFolder?
-
     // MARK: - Soft Delete
 
     /// When true, note is hidden from views but data is preserved

@@ -22,19 +22,6 @@ struct SettingsView: View {
                     }
                 }
                 
-                // EMERGENCY DATA RECOVERY
-                NavigationLink {
-                    DataRecoveryView()
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "arrow.counterclockwise.circle.fill")
-                            .foregroundStyle(.orange)
-                            .frame(width: 24)
-                        
-                        Text("🚨 Data Recovery")
-                            .foregroundStyle(.orange)
-                    }
-                }
             } header: {
                 Text("BACKUP")
             } footer: {
