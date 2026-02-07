@@ -265,7 +265,6 @@ private struct PerformanceRowView: View {
 struct PerformanceDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.undoManager) private var undoManager
     
     @Bindable var performance: Performance
     var onDelete: (() -> Void)?

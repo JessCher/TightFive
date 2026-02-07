@@ -425,7 +425,6 @@ struct FinishedFlippableBitCard: View {
 struct LooseDetailFlippableCard: View {
     @Bindable var bit: Bit
     @Binding var isFlipped: Bool
-    var undoManager: UndoManager?
     @Environment(\.modelContext) private var modelContext
     @State private var notesText: String = ""
     @FocusState private var isNotesFocused: Bool
@@ -479,8 +478,7 @@ struct LooseDetailFlippableCard: View {
                                 bit.updatedAt = Date()
                                 try? modelContext.save()
                             }
-                        ),
-                        undoManager: undoManager
+                        )
                     )
                     .frame(minHeight: 140)
                 }
@@ -698,7 +696,6 @@ struct FinishedDetailFlippableCard: View {
 /// UITextView wrapper with built-in undo support for detail view text editing
 private struct LooseDetailTextEditor: UIViewRepresentable {
     @Binding var text: String
-    var undoManager: UndoManager?
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()

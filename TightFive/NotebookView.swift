@@ -199,7 +199,6 @@ struct NoteEditorView: View {
     @Bindable var note: Note
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.undoManager) private var undoManager
     @ObservedObject private var keyboard = TFKeyboardState.shared
 
     // Export state
@@ -228,7 +227,7 @@ struct NoteEditorView: View {
                 .padding(.horizontal, 16)
 
             // Rich text editor (reuses existing component from Setlist Builder)
-            RichTextEditor(rtfData: $note.contentRTF, undoManager: undoManager)
+            RichTextEditor(rtfData: $note.contentRTF)
                 .onChange(of: note.contentRTF) { _, _ in
                     note.updatedAt = Date()
                 }

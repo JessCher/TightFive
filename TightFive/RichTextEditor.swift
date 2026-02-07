@@ -8,7 +8,7 @@
 //  - Cursor stability: internal-update guard + Data equality gate (no RTF byte compare loops)
 //  - Performance: debounced RTF persistence (500ms), debounced toolbar updates (100ms)
 //  - Performance: list mode detection cached to avoid regex on every keystroke
-//  - Undo: burst-grouped (captures state at burst start, registers undo on commit)
+//  - Undo: Uses UITextView's built-in undo/redo
 //  - Smart text: -- → — , ... → … (both include trailing space)
 //  - Lists: bullets, numbered, checkbox; continuation + exit behavior
 //  - Indent-safe list toggling (does not destroy leading tabs/spaces)
@@ -23,8 +23,6 @@ import UIKit
 
 struct RichTextEditor: UIViewRepresentable {
     @Binding var rtfData: Data
-    var undoManager: UndoManager?
-    @Environment(\.undoManager) private var envUndo
 
     func makeCoordinator() -> EditorCoordinator {
         EditorCoordinator(parent: self)
@@ -33,12 +31,11 @@ struct RichTextEditor: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let tv = UITextView()
         configure(textView: tv)
-        context.coordinator.attach(to: tv, undoManager: undoManager ?? envUndo)
+        context.coordinator.attach(to: tv)
         return tv
     }
 
     func updateUIView(_ uiView: UITextView, context: Context) {
-        context.coordinator.externalUndoManager = undoManager ?? envUndo
         context.coordinator.updateFromSwiftUI(newRTFData: rtfData, in: uiView)
     }
 
@@ -80,7 +77,6 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
     // Wiring
     private var parent: RichTextEditor
     weak var textView: UITextView?
-    var externalUndoManager: UndoManager? { didSet { observeUndoManager(externalUndoManager) } }
 
     // Engines (SRP)
     private let attributesEngine = TextAttributesEngine()
@@ -93,19 +89,13 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
     // Sync + persistence
     private var internalUpdateFlag = false
     private var lastObservedData: Data = Data()
-    
-    private var isPerformingUndoRedo = false
-    private var undoObservationTokens: [NSObjectProtocol] = []
 
     private var commitTimer: Timer?
-    private let commitDelay: TimeInterval = 0.35  // Reduced to 350ms for more responsive undo grouping
-
-    // Undo grouping
-    private var undoBurstStartData: Data?
+    private let commitDelay: TimeInterval = 0.5  // 500ms for RTF persistence
 
     // Toolbar throttling - use time-based debounce to reduce expensive list mode detection
     private var toolbarDebounceTimer: Timer?
-    private let toolbarDebounceDelay: TimeInterval = 0.20  // Increased to 200ms debounce to reduce updates
+    private let toolbarDebounceDelay: TimeInterval = 0.20  // 200ms debounce to reduce updates
 
     // Cache list mode to avoid regex on every keystroke
     private var cachedListMode: ListFormattingEngine.ListMode?
@@ -122,17 +112,10 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
         commitTimer = nil
         toolbarDebounceTimer?.invalidate()
         toolbarDebounceTimer = nil
-        // Remove notification observers
-        for token in undoObservationTokens {
-            NotificationCenter.default.removeObserver(token)
-        }
-        undoObservationTokens.removeAll()
     }
 
-    func attach(to textView: UITextView, undoManager: UndoManager?) {
+    func attach(to textView: UITextView) {
         self.textView = textView
-        self.externalUndoManager = undoManager
-        observeUndoManager(self.externalUndoManager)
 
         textView.delegate = self
         textView.inputAccessoryView = toolbar
@@ -213,35 +196,7 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
 
     // MARK: UITextViewDelegate
 
-    private func observeUndoManager(_ undoManager: UndoManager?) {
-        // Remove previous observers
-        for token in undoObservationTokens { NotificationCenter.default.removeObserver(token) }
-        undoObservationTokens.removeAll()
-
-        guard let um = undoManager else { return }
-        let center = NotificationCenter.default
-
-        // Note: queue: .main ensures we're on main thread, no Task wrapper needed
-        let willUndo = center.addObserver(forName: .NSUndoManagerWillUndoChange, object: um, queue: .main) { [weak self] _ in
-            self?.isPerformingUndoRedo = true
-            self?.commitTimer?.invalidate()
-        }
-        let didUndo = center.addObserver(forName: .NSUndoManagerDidUndoChange, object: um, queue: .main) { [weak self] _ in
-            self?.isPerformingUndoRedo = false
-        }
-        let willRedo = center.addObserver(forName: .NSUndoManagerWillRedoChange, object: um, queue: .main) { [weak self] _ in
-            self?.isPerformingUndoRedo = true
-            self?.commitTimer?.invalidate()
-        }
-        let didRedo = center.addObserver(forName: .NSUndoManagerDidRedoChange, object: um, queue: .main) { [weak self] _ in
-            self?.isPerformingUndoRedo = false
-        }
-
-        undoObservationTokens = [willUndo, didUndo, willRedo, didRedo]
-    }
-
     func textViewDidChange(_ textView: UITextView) {
-        captureUndoBurstStartIfNeeded()
         scheduleCommit()
         scheduleToolbarUpdate(for: textView)
     }
@@ -291,7 +246,6 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
 
         // Smart replacements (space-triggered)
         if smartTextEngine.handleSpaceTriggeredReplacements(in: textView, range: range, replacementText: text) {
-            captureUndoBurstStartIfNeeded()
             scheduleCommit()
             scheduleToolbarUpdate(for: textView)
             return false
@@ -299,7 +253,6 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
 
         // Lists (return continuation / exit)
         if listEngine.handleReturnKeyIfNeeded(in: textView, range: range, replacementText: text) {
-            captureUndoBurstStartIfNeeded()
             scheduleCommit()
             scheduleToolbarUpdate(for: textView)
             return false
@@ -308,103 +261,39 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
         return true
     }
 
-    // MARK: Commit + Undo
-
-    private func captureUndoBurstStartIfNeeded() {
-        if undoBurstStartData == nil {
-            undoBurstStartData = parent.rtfData
-        }
-    }
+    // MARK: Commit (RTF Persistence)
 
     private func scheduleCommit() {
-        // Don't schedule commits during undo/redo operations
-        guard !isPerformingUndoRedo else { return }
-        
         commitTimer?.invalidate()
         let timer = Timer(timeInterval: commitDelay, target: self, selector: #selector(commitTimerFired(_:)), userInfo: nil, repeats: false)
         commitTimer = timer
-        // Use .default instead of .common to avoid interfering with scrolling/animations
         RunLoop.main.add(timer, forMode: .default)
     }
 
     @objc private func commitTimerFired(_ timer: Timer) {
-        // Timer scheduled on main run loop already runs on main thread - no Task needed
         commitNow()
     }
 
     private func commitNow() {
         guard let tv = textView else { return }
 
-        // Capture the previous state for undo (from burst start or current)
-        let previousData = undoBurstStartData ?? parent.rtfData
-
         // Serialize safely (never overwrite with empty due to failure)
         guard let newData = tv.attributedText.rtfData() else {
             #if DEBUG
             print("RichTextEditor: RTF serialization failed; preserving previous data.")
             #endif
-            undoBurstStartData = nil
             return
         }
 
         // Skip if nothing changed
-        guard newData != previousData else {
-            undoBurstStartData = nil
+        guard newData != lastObservedData else {
             return
         }
 
-        // Register undo action BEFORE updating the binding
-        let um = externalUndoManager ?? textView?.undoManager
-        if let um, !isPerformingUndoRedo {
-            let capturedPrevious = previousData
-            let capturedNew = newData
-
-            um.registerUndo(withTarget: self) { [weak self] coordinator in
-                guard self != nil else { return }
-                coordinator.isPerformingUndoRedo = true
-
-                // Register redo (inverse of undo) so redo works
-                um.registerUndo(withTarget: coordinator) { [weak coordinator] coord in
-                    guard coordinator != nil else { return }
-                    coord.isPerformingUndoRedo = true
-
-                    coord.parent.rtfData = capturedNew
-                    coord.lastObservedData = capturedNew
-
-                    if let attributed = NSAttributedString.fromRTF(capturedNew),
-                       let tv = coord.textView {
-                        let savedSelection = tv.selectedRange
-                        tv.attributedText = attributed
-                        tv.selectedRange = coord.clampedSelection(savedSelection, toLength: attributed.length)
-                    }
-
-                    coord.isPerformingUndoRedo = false
-                }
-                um.setActionName("Edit")
-
-                // Restore to previous state
-                coordinator.parent.rtfData = capturedPrevious
-                coordinator.lastObservedData = capturedPrevious
-
-                if let attributed = NSAttributedString.fromRTF(capturedPrevious),
-                   let tv = coordinator.textView {
-                    let savedSelection = tv.selectedRange
-                    tv.attributedText = attributed
-                    tv.selectedRange = coordinator.clampedSelection(savedSelection, toLength: attributed.length)
-                }
-
-                coordinator.isPerformingUndoRedo = false
-            }
-            um.setActionName("Edit")
-        }
-
-        // Now update the current state
+        // Update the binding
         markInternalUpdate()
         parent.rtfData = newData
         lastObservedData = newData
-
-        // Reset burst tracker
-        undoBurstStartData = nil
     }
 }
 
@@ -413,9 +302,6 @@ final class EditorCoordinator: NSObject, UITextViewDelegate {
 extension EditorCoordinator: EditorToolbarDelegate {
     func executeAction(_ action: EditorToolbarAction) {
         guard let tv = textView else { return }
-        
-        // Formatting actions start a burst if needed.
-        captureUndoBurstStartIfNeeded()
         
         switch action {
         case .dismissKeyboard:

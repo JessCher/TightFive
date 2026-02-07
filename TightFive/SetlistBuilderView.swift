@@ -19,7 +19,6 @@ import UIKit
 struct SetlistBuilderView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.undoManager) private var undoManager
 
     @Bindable var setlist: Setlist
     
@@ -223,7 +222,7 @@ struct SetlistBuilderView: View {
             .padding(.horizontal, 16)
             .padding(.top, 8)
             
-            RichTextEditor(rtfData: $setlist.traditionalScriptRTF, undoManager: undoManager)
+            RichTextEditor(rtfData: $setlist.traditionalScriptRTF)
                 .onChange(of: setlist.traditionalScriptRTF) { _, _ in
                     setlist.updatedAt = Date()
                 }
@@ -374,7 +373,7 @@ struct SetlistBuilderView: View {
             .padding(.horizontal, 16)
             .padding(.top, 8)
             
-            RichTextEditor(rtfData: $setlist.notesRTF, undoManager: undoManager)
+            RichTextEditor(rtfData: $setlist.notesRTF)
                 .onChange(of: setlist.notesRTF) { _, _ in
                     setlist.updatedAt = Date()
                 }
@@ -620,7 +619,6 @@ private struct ScriptBlockRowView: View {
     @State private var showVariationNote = false
     @State private var variationNote = ""
     @FocusState private var isFocused: Bool
-    @Environment(\.undoManager) private var undoManager
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -654,7 +652,7 @@ private struct ScriptBlockRowView: View {
             }
             
             if isEditing {
-                PlainTextEditor(text: $editText, undoManager: undoManager)
+                PlainTextEditor(text: $editText)
                     .frame(minHeight: 140)
                     .padding(6)
                     .background(Color.black.opacity(0.3))
@@ -734,7 +732,7 @@ private struct ScriptBlockRowView: View {
                 
                 if isEditing {
                     VStack(alignment: .leading, spacing: 8) {
-                        PlainTextEditor(text: $editText, undoManager: undoManager)
+                        PlainTextEditor(text: $editText)
                             .frame(minHeight: 140)
                             .padding(6)
                             .background(Color.black.opacity(0.3))

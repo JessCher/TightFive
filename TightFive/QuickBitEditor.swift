@@ -18,14 +18,13 @@ struct QuickBitEditor: View {
     @State private var pulsePhase = false
 
     @ObservedObject private var keyboard = TFKeyboardState.shared
-    @Environment(\.undoManager) private var undoManager
     
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
                 // Main Content
                 VStack(spacing: 12) {
-                    PlainTextEditor(text: $text, undoManager: undoManager)
+                    PlainTextEditor(text: $text)
                         .ignoresSafeArea(.keyboard, edges: .bottom)
                         .padding(.horizontal, 12)
                         .padding(.top, 12)

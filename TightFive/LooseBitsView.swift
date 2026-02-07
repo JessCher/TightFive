@@ -375,14 +375,13 @@ struct LooseBitDetailView: View {
     @State private var showVariationComparison = false
     @State private var isCardFlipped = false
     @ObservedObject private var keyboard = TFKeyboardState.shared
-    @Environment(\.undoManager) private var undoManager
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
                 // Main Bit Card with flip for notes
-                LooseDetailFlippableCard(bit: bit, isFlipped: $isCardFlipped, undoManager: undoManager)
+                LooseDetailFlippableCard(bit: bit, isFlipped: $isCardFlipped)
 
                 // Status Card
                 VStack(alignment: .leading, spacing: 12) {

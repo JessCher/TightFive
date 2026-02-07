@@ -11,6 +11,7 @@
 		887A94822F2DCA0700EF4A2A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 887A94812F2DCA0700EF4A2A /* SwiftUI.framework */; };
 		887A948D2F2DCA0900EF4A2A /* QuickBitWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 887A947D2F2DCA0700EF4A2A /* QuickBitWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		88A55D7A2F371A4100FE8085 /* NOTEBOOK_TRASHCAN_FIX.md in Resources */ = {isa = PBXBuildFile; fileRef = 88A55D792F371A4100FE8085 /* NOTEBOOK_TRASHCAN_FIX.md */; };
+		88A55D822F3724DD00FE8085 /* UNDO_REDO_REMOVAL_SUMMARY.md in Resources */ = {isa = PBXBuildFile; fileRef = 88A55D812F3724DD00FE8085 /* UNDO_REDO_REMOVAL_SUMMARY.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,6 +61,7 @@
 		888E3FE72F20526B00678706 /* TightFiveTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TightFiveTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		888E3FF12F20526B00678706 /* TightFiveUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TightFiveUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		88A55D792F371A4100FE8085 /* NOTEBOOK_TRASHCAN_FIX.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = NOTEBOOK_TRASHCAN_FIX.md; sourceTree = "<group>"; };
+		88A55D812F3724DD00FE8085 /* UNDO_REDO_REMOVAL_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = UNDO_REDO_REMOVAL_SUMMARY.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -229,6 +231,7 @@
 				887A947E2F2DCA0700EF4A2A /* Frameworks */,
 				888E3FD92F20526900678706 /* Products */,
 				88A55D792F371A4100FE8085 /* NOTEBOOK_TRASHCAN_FIX.md */,
+				88A55D812F3724DD00FE8085 /* UNDO_REDO_REMOVAL_SUMMARY.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -392,6 +395,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				88A55D822F3724DD00FE8085 /* UNDO_REDO_REMOVAL_SUMMARY.md in Resources */,
 				88A55D7A2F371A4100FE8085 /* NOTEBOOK_TRASHCAN_FIX.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
