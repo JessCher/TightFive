@@ -92,16 +92,6 @@ extension Setlist {
             updatedAt = Date()
         }
     }
-
-    /// Backwards-compat convenience for older callsites.
-    func addFreeformBlock(text: String = "", at index: Int? = nil) {
-        addFreeformBlock(rtfData: TFRTFTheme.body(text), at: index)
-    }
-
-    /// Backwards-compat convenience for older callsites.
-    func updateFreeformBlock(id: UUID, text: String) {
-        updateFreeformBlock(id: id, rtfData: TFRTFTheme.body(text))
-    }
     
     // MARK: - Remove Content
     

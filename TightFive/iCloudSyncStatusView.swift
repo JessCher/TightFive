@@ -2,75 +2,67 @@ import SwiftUI
 import CloudKit
 import CoreData
 
+// MARK: - Shared Sync Status
+
+/// Single source of truth for iCloud sync state used by both
+/// `iCloudSyncStatusView` and `CompactiCloudSyncIndicator`.
+enum CloudSyncStatus: Equatable {
+    case checking
+    case synced
+    case syncing
+    case error(String)
+    case notSignedIn
+
+    var icon: String {
+        switch self {
+        case .checking:    return "icloud"
+        case .synced:      return "icloud.and.arrow.up"
+        case .syncing:     return "arrow.triangle.2.circlepath.icloud"
+        case .error:       return "exclamationmark.icloud"
+        case .notSignedIn: return "person.crop.circle.badge.xmark"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .checking, .synced, .syncing: return TFTheme.yellow
+        case .error:                       return .red
+        case .notSignedIn:                 return .orange
+        }
+    }
+
+    var text: String {
+        switch self {
+        case .checking:            return "Checking..."
+        case .synced:              return "Synced"
+        case .syncing:             return "Syncing..."
+        case .error(let message):  return message
+        case .notSignedIn:         return "iCloud Off"
+        }
+    }
+
+    var detailText: String? {
+        switch self {
+        case .synced:      return "All data backed up"
+        case .syncing:     return "Updating..."
+        case .notSignedIn: return "Sign in to iCloud to backup"
+        case .error:       return "Tap for details"
+        case .checking:    return nil
+        }
+    }
+}
+
+// MARK: - Full Status View
+
 /// Displays the current iCloud sync status for TightFive.
 /// Shows whether user is signed in, syncing, synced, or has errors.
 struct iCloudSyncStatusView: View {
-    @State private var syncStatus: SyncStatus = .checking
+    @State private var syncStatus: CloudSyncStatus = .checking
     @State private var lastSyncTime: Date?
-    
-    enum SyncStatus: Equatable {
-        case checking
-        case synced
-        case syncing
-        case error(String)
-        case notSignedIn
-        
-        var icon: String {
-            switch self {
-            case .checking:
-                return "icloud"
-            case .synced:
-                return "icloud.and.arrow.up"
-            case .syncing:
-                return "arrow.triangle.2.circlepath.icloud"
-            case .error:
-                return "exclamationmark.icloud"
-            case .notSignedIn:
-                return "person.crop.circle.badge.xmark"
-            }
-        }
-        
-        var color: Color {
-            switch self {
-            case .checking, .synced, .syncing:
-                return TFTheme.yellow
-            case .error:
-                return .red
-            case .notSignedIn:
-                return .orange
-            }
-        }
-        
-        var text: String {
-            switch self {
-            case .checking:
-                return "Checking..."
-            case .synced:
-                return "Synced"
-            case .syncing:
-                return "Syncing..."
-            case .error(let message):
-                return message
-            case .notSignedIn:
-                return "iCloud Off"
-            }
-        }
-        
-        var detailText: String? {
-            switch self {
-            case .synced:
-                return "All data backed up"
-            case .syncing:
-                return "Updating..."
-            case .notSignedIn:
-                return "Sign in to iCloud to backup"
-            case .error:
-                return "Tap for details"
-            case .checking:
-                return nil
-            }
-        }
-    }
+    /// Retained token for the NSPersistentStoreRemoteChange observer.
+    /// Storing it here ensures exactly one observer exists per view
+    /// instance and it is removed when the view disappears.
+    @State private var remoteChangeToken: (any NSObjectProtocol)?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -129,6 +121,12 @@ struct iCloudSyncStatusView: View {
             checkSyncStatus()
             startMonitoring()
         }
+        .onDisappear {
+            if let token = remoteChangeToken {
+                NotificationCenter.default.removeObserver(token)
+                remoteChangeToken = nil
+            }
+        }
     }
     
     private func checkSyncStatus() {
@@ -163,17 +161,19 @@ struct iCloudSyncStatusView: View {
     }
     
     private func startMonitoring() {
-        // Listen for CloudKit notifications
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name.NSPersistentStoreRemoteChange,
+        // Guard against duplicate observers if onAppear fires more than once.
+        guard remoteChangeToken == nil else { return }
+
+        remoteChangeToken = NotificationCenter.default.addObserver(
+            forName: .NSPersistentStoreRemoteChange,
             object: nil,
             queue: .main
         ) { _ in
-            // Sync activity detected
             syncStatus = .syncing
-            
-            // After a short delay, mark as synced
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+
+            // After a short delay, mark as synced if still in-progress.
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2))
                 if case .syncing = syncStatus {
                     syncStatus = .synced
                     lastSyncTime = Date()
@@ -193,42 +193,8 @@ struct iCloudSyncStatusView: View {
 
 /// Compact iCloud sync indicator for use in toolbars or status bars
 struct CompactiCloudSyncIndicator: View {
-    @State private var syncStatus: SyncStatus = .checking
-    
-    enum SyncStatus {
-        case checking
-        case synced
-        case syncing
-        case error
-        case notSignedIn
-        
-        var icon: String {
-            switch self {
-            case .checking:
-                return "icloud"
-            case .synced:
-                return "icloud.and.arrow.up"
-            case .syncing:
-                return "arrow.triangle.2.circlepath.icloud"
-            case .error:
-                return "exclamationmark.icloud"
-            case .notSignedIn:
-                return "person.crop.circle.badge.xmark"
-            }
-        }
-        
-        var color: Color {
-            switch self {
-            case .checking, .synced, .syncing:
-                return TFTheme.yellow
-            case .error:
-                return .red
-            case .notSignedIn:
-                return .orange
-            }
-        }
-    }
-    
+    @State private var syncStatus: CloudSyncStatus = .checking
+
     var body: some View {
         Image(systemName: syncStatus.icon)
             .font(.system(size: 14))
@@ -238,7 +204,7 @@ struct CompactiCloudSyncIndicator: View {
                 checkStatus()
             }
     }
-    
+
     private func checkStatus() {
         Task {
             do {
@@ -250,12 +216,12 @@ struct CompactiCloudSyncIndicator: View {
                     case .noAccount, .restricted:
                         syncStatus = .notSignedIn
                     default:
-                        syncStatus = .error
+                        syncStatus = .error("Unknown status")
                     }
                 }
             } catch {
                 await MainActor.run {
-                    syncStatus = .error
+                    syncStatus = .error("Check failed")
                 }
             }
         }

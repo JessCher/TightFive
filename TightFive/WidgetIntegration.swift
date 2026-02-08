@@ -58,9 +58,7 @@ final class WidgetIntegrationManager: ObservableObject {
     /// Throttled to prevent excessive reloads.
     func syncThemeToWidget() {
         #if DEBUG
-        // Performance profiling (only if PerformanceProfiler is available)
-        let profiler = PerformanceProfiler.shared
-        profiler.measureSync("Widget Theme Sync") {
+        PerformanceMonitor.shared.trackFunction("Widget Theme Sync") {
             performSync()
         }
         #else
@@ -106,9 +104,7 @@ final class WidgetIntegrationManager: ObservableObject {
     /// Call this on app launch and when returning from background.
     func processPendingBits(modelContext: ModelContext) {
         #if DEBUG
-        // Performance profiling (only if PerformanceProfiler is available)
-        let profiler = PerformanceProfiler.shared
-        profiler.measureSync("Process Pending Bits") {
+        PerformanceMonitor.shared.trackFunction("Process Pending Bits") {
             performProcessPendingBits(modelContext: modelContext)
         }
         #else

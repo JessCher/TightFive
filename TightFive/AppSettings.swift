@@ -1,6 +1,5 @@
 import Foundation
 import SwiftUI
-import Combine
 
 /// User preferences for the app
 @Observable
@@ -17,14 +16,11 @@ class AppSettings {
     /// Local UserDefaults for immediate local storage and fallback
     private let localStore = UserDefaults.standard
     
-    /// Queue for synchronizing access to storage operations
-    private let syncQueue = DispatchQueue(label: "com.tightfive.settings.sync", qos: .userInitiated)
-    
+    /// Pending sync task, used for debouncing
+    private var pendingSyncTask: Task<Void, Never>?
+
     /// Tracks last sync time for throttling
     private var lastSyncTime: Date = Date.distantPast
-    
-    /// Debounce timer for batching sync operations
-    private var syncTimer: Timer?
 
     /// Force a UI update
     private func notifyChange() {
@@ -71,16 +67,9 @@ class AppSettings {
     
     /// Set a string value with reliable sync
     private func setString(_ value: String, forKey key: String) {
-        syncQueue.async { [weak self] in
-            guard let self = self else { return }
-            
-            // Write to both stores atomically
-            self.localStore.set(value, forKey: key)
-            self.cloudStore.set(value, forKey: key)
-            
-            // Force immediate synchronization
-            self.scheduleSyncIfNeeded()
-        }
+        localStore.set(value, forKey: key)
+        cloudStore.set(value, forKey: key)
+        scheduleSyncIfNeeded()
     }
     
     /// Get a double value with proper cloud/local priority
@@ -104,12 +93,9 @@ class AppSettings {
     
     /// Set a double value with reliable sync
     private func setDouble(_ value: Double, forKey key: String) {
-        syncQueue.async { [weak self] in
-            guard let self = self else { return }
-            self.localStore.set(value, forKey: key)
-            self.cloudStore.set(value, forKey: key)
-            self.scheduleSyncIfNeeded()
-        }
+        localStore.set(value, forKey: key)
+        cloudStore.set(value, forKey: key)
+        scheduleSyncIfNeeded()
     }
     
     /// Get a bool value with proper cloud/local priority
@@ -133,12 +119,9 @@ class AppSettings {
     
     /// Set a bool value with reliable sync
     private func setBool(_ value: Bool, forKey key: String) {
-        syncQueue.async { [weak self] in
-            guard let self = self else { return }
-            self.localStore.set(value, forKey: key)
-            self.cloudStore.set(value, forKey: key)
-            self.scheduleSyncIfNeeded()
-        }
+        localStore.set(value, forKey: key)
+        cloudStore.set(value, forKey: key)
+        scheduleSyncIfNeeded()
     }
     
     /// Get an int value with proper cloud/local priority
@@ -163,12 +146,9 @@ class AppSettings {
     
     /// Set an int value with reliable sync
     private func setInt(_ value: Int, forKey key: String) {
-        syncQueue.async { [weak self] in
-            guard let self = self else { return }
-            self.localStore.set(value, forKey: key)
-            self.cloudStore.set(Int64(value), forKey: key)
-            self.scheduleSyncIfNeeded()
-        }
+        localStore.set(value, forKey: key)
+        cloudStore.set(Int64(value), forKey: key)
+        scheduleSyncIfNeeded()
     }
     
     /// Check if a value has been explicitly set (exists in either store)
@@ -176,35 +156,24 @@ class AppSettings {
         return cloudStore.object(forKey: key) != nil || localStore.object(forKey: key) != nil
     }
     
-    /// Schedule a sync operation with debouncing to avoid excessive syncing
+    /// Schedule a debounced sync. Safe to call from any context.
     private func scheduleSyncIfNeeded() {
-        // Cancel existing timer
-        syncTimer?.invalidate()
-        
-        // Schedule new sync after a brief delay to batch multiple changes
-        syncTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
-            self?.performSync()
-        }
-    }
-    
-    /// Perform actual synchronization
-    private func performSync() {
-        let now = Date()
-        
-        // Throttle syncs to once per second
-        guard now.timeIntervalSince(lastSyncTime) >= 1.0 else {
-            return
-        }
-        
-        lastSyncTime = now
-        
-        // Force cloud sync
-        let synced = cloudStore.synchronize()
-        
-        if synced {
-            print("✅ iCloud settings synced successfully")
-        } else {
-            print("⚠️ iCloud sync delayed or unavailable (offline?)")
+        // Cancel any in-flight debounce
+        pendingSyncTask?.cancel()
+
+        pendingSyncTask = Task { @MainActor in
+            // Debounce: wait for writes to settle before syncing
+            try? await Task.sleep(for: .milliseconds(500))
+
+            guard !Task.isCancelled else { return }
+
+            // Throttle: don't sync more than once per second
+            let now = Date()
+            guard now.timeIntervalSince(lastSyncTime) >= 1.0 else { return }
+            lastSyncTime = now
+
+            let synced = cloudStore.synchronize()
+            print(synced ? "✅ iCloud settings synced successfully" : "⚠️ iCloud sync delayed or unavailable (offline?)")
         }
     }
 
@@ -281,7 +250,6 @@ class AppSettings {
     }
 
     /// Grit level for shareable bit cards (0.0 = no grit, 1.0 = maximum grit)
-    /// DEPRECATED: Use individual grit levels instead
     var bitCardGritLevel: Double {
         get {
             observeChanges()
@@ -295,135 +263,6 @@ class AppSettings {
             notifyChange()
         }
     }
-
-    // MARK: - Individual Grit Levels for Each Section
-
-    /// Grit level for bit window (text area) - Layer 1
-    var bitCardWindowGritLayer1: Double {
-        get {
-            observeChanges()
-            let value = getDouble(forKey: "bitCardWindowGritLayer1")
-            return value == 0 && !hasBeenSet(forKey: "bitCardWindowGritLayer1HasBeenSet") ? 1.0 : value
-        }
-        set {
-            setDouble(newValue, forKey: "bitCardWindowGritLayer1")
-            setBool(true, forKey: "bitCardWindowGritLayer1HasBeenSet")
-            notifyChange()
-        }
-    }
-
-    /// Grit level for bit window (text area) - Layer 2
-    var bitCardWindowGritLayer2: Double {
-        get {
-            observeChanges()
-            let value = getDouble(forKey: "bitCardWindowGritLayer2")
-            return value == 0 && !hasBeenSet(forKey: "bitCardWindowGritLayer2HasBeenSet") ? 1.0 : value
-        }
-        set {
-            setDouble(newValue, forKey: "bitCardWindowGritLayer2")
-            setBool(true, forKey: "bitCardWindowGritLayer2HasBeenSet")
-            notifyChange()
-        }
-    }
-
-    /// Grit level for bit window (text area) - Layer 3
-    var bitCardWindowGritLayer3: Double {
-        get {
-            observeChanges()
-            let value = getDouble(forKey: "bitCardWindowGritLayer3")
-            return value == 0 && !hasBeenSet(forKey: "bitCardWindowGritLayer3HasBeenSet") ? 1.0 : value
-        }
-        set {
-            setDouble(newValue, forKey: "bitCardWindowGritLayer3")
-            setBool(true, forKey: "bitCardWindowGritLayer3HasBeenSet")
-            notifyChange()
-        }
-    }
-
-    /// Grit level for frame - Layer 1
-    var bitCardFrameGritLayer1Density: Double {
-        get {
-            observeChanges()
-            let value = getDouble(forKey: "bitCardFrameGritLayer1Density")
-            return value == 0 && !hasBeenSet(forKey: "bitCardFrameGritLayer1DensityHasBeenSet") ? 1.0 : value
-        }
-        set {
-            setDouble(newValue, forKey: "bitCardFrameGritLayer1Density")
-            setBool(true, forKey: "bitCardFrameGritLayer1DensityHasBeenSet")
-            notifyChange()
-        }
-    }
-
-    /// Grit level for frame - Layer 2
-    var bitCardFrameGritLayer2Density: Double {
-        get {
-            observeChanges()
-            let value = getDouble(forKey: "bitCardFrameGritLayer2Density")
-            return value == 0 && !hasBeenSet(forKey: "bitCardFrameGritLayer2DensityHasBeenSet") ? 1.0 : value
-        }
-        set {
-            setDouble(newValue, forKey: "bitCardFrameGritLayer2Density")
-            setBool(true, forKey: "bitCardFrameGritLayer2DensityHasBeenSet")
-            notifyChange()
-        }
-    }
-
-    /// Grit level for frame - Layer 3
-    var bitCardFrameGritLayer3Density: Double {
-        get {
-            observeChanges()
-            let value = getDouble(forKey: "bitCardFrameGritLayer3Density")
-            return value == 0 && !hasBeenSet(forKey: "bitCardFrameGritLayer3DensityHasBeenSet") ? 1.0 : value
-        }
-        set {
-            setDouble(newValue, forKey: "bitCardFrameGritLayer3Density")
-            setBool(true, forKey: "bitCardFrameGritLayer3DensityHasBeenSet")
-            notifyChange()
-        }
-    }
-
-    /// Grit level for bottom bar - Layer 1
-    var bitCardBottomBarGritLayer1Density: Double {
-        get {
-            observeChanges()
-            let value = getDouble(forKey: "bitCardBottomBarGritLayer1Density")
-            return value == 0 && !hasBeenSet(forKey: "bitCardBottomBarGritLayer1DensityHasBeenSet") ? 1.0 : value
-        }
-        set {
-            setDouble(newValue, forKey: "bitCardBottomBarGritLayer1Density")
-            setBool(true, forKey: "bitCardBottomBarGritLayer1DensityHasBeenSet")
-            notifyChange()
-        }
-    }
-
-    /// Grit level for bottom bar - Layer 2
-    var bitCardBottomBarGritLayer2Density: Double {
-        get {
-            observeChanges()
-            let value = getDouble(forKey: "bitCardBottomBarGritLayer2Density")
-            return value == 0 && !hasBeenSet(forKey: "bitCardBottomBarGritLayer2DensityHasBeenSet") ? 1.0 : value
-        }
-        set {
-            setDouble(newValue, forKey: "bitCardBottomBarGritLayer2Density")
-            setBool(true, forKey: "bitCardBottomBarGritLayer2DensityHasBeenSet")
-            notifyChange()
-        }
-    }
-
-    /// Grit level for bottom bar - Layer 3
-    var bitCardBottomBarGritLayer3Density: Double {
-        get {
-            observeChanges()
-            let value = getDouble(forKey: "bitCardBottomBarGritLayer3Density")
-            return value == 0 && !hasBeenSet(forKey: "bitCardBottomBarGritLayer3DensityHasBeenSet") ? 1.0 : value
-        }
-        set {
-            setDouble(newValue, forKey: "bitCardBottomBarGritLayer3Density")
-            setBool(true, forKey: "bitCardBottomBarGritLayer3DensityHasBeenSet")
-            notifyChange()
-        }
-    }
-
     // MARK: - Bit Card Custom Grit Colors
 
     /// Enable custom grit for frame when using custom color
@@ -1101,31 +940,22 @@ class AppSettings {
             if let changedKeys = notification.userInfo?[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String] {
                 print("  Updated keys: \(changedKeys.joined(separator: ", "))")
                 
-                // Copy all changed values from cloud to local store for immediate access
+                // Copy all changed values from cloud to local store for immediate access.
+                // Already on main queue (observer registered with queue: .main).
                 for key in changedKeys {
-                    self.syncQueue.async {
-                        if let stringValue = self.cloudStore.string(forKey: key) {
-                            self.localStore.set(stringValue, forKey: key)
-                        } else if let doubleValue = self.cloudStore.object(forKey: key) as? Double {
-                            self.localStore.set(doubleValue, forKey: key)
-                        } else if let boolValue = self.cloudStore.object(forKey: key) as? Bool {
-                            self.localStore.set(boolValue, forKey: key)
-                        } else if let intValue = self.cloudStore.object(forKey: key) as? Int64 {
-                            self.localStore.set(Int(intValue), forKey: key)
-                        }
+                    if let stringValue = self.cloudStore.string(forKey: key) {
+                        self.localStore.set(stringValue, forKey: key)
+                    } else if let doubleValue = self.cloudStore.object(forKey: key) as? Double {
+                        self.localStore.set(doubleValue, forKey: key)
+                    } else if let boolValue = self.cloudStore.object(forKey: key) as? Bool {
+                        self.localStore.set(boolValue, forKey: key)
+                    } else if let intValue = self.cloudStore.object(forKey: key) as? Int64 {
+                        self.localStore.set(Int(intValue), forKey: key)
                     }
                 }
                 
-                // Notify SwiftUI views to update on main thread
-                DispatchQueue.main.async {
-                    self.notifyChange()
-                }
+                self.notifyChange()
             }
-        }
-        
-        // Periodic sync check (every 30 seconds while app is active)
-        Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
-            self?.cloudStore.synchronize()
         }
     }
     

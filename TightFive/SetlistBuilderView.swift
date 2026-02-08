@@ -611,14 +611,28 @@ private struct ScriptBlockRowView: View {
     @State private var showVariationNote = false
     @State private var variationNote = ""
     @FocusState private var isFocused: Bool
-    
+
+    /// Cached plain-text representation of this block's RTF content.
+    /// Updated only when `block` identity/content changes, not on every render.
+    @State private var cachedPlainText: String = ""
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             switch block {
-            case .freeform(_, let rtfData):
-                freeformContent(rtfData: rtfData)
+            case .freeform:
+                freeformContent
             case .bit:
                 bitContent
+            }
+        }
+        .task(id: block) {
+            // Defer RTF parsing off the render cycle to avoid "publishing changes
+            // from within view updates" warnings. Re-runs only when block changes.
+            switch block {
+            case .freeform(_, let rtfData):
+                cachedPlainText = NSAttributedString.fromRTF(rtfData)?.string ?? ""
+            case .bit:
+                cachedPlainText = ""
             }
         }
         .contextMenu {
@@ -631,7 +645,7 @@ private struct ScriptBlockRowView: View {
         }
     }
     
-    private func freeformContent(rtfData: Data) -> some View {
+    private var freeformContent: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "pencil.circle.fill")
@@ -650,20 +664,8 @@ private struct ScriptBlockRowView: View {
                     .background(Color.black.opacity(0.3))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .onAppear {
-                        // Convert RTF to plain text for editing
-                        editText = NSAttributedString.fromRTF(rtfData)?.string ?? ""
-                    }
-                    .toolbar {
-                        ToolbarItemGroup(placement: .keyboard) {
-                            Spacer()
-                            Button("Done") {
-                                // Convert plain text back to RTF
-                                let rtf = TFRTFTheme.body(editText)
-                                onEndEdit(rtf)
-                                isFocused = false
-                            }
-                            .foregroundStyle(TFTheme.yellow)
-                        }
+                        // Seed editor from the already-parsed cache instead of re-parsing RTF.
+                        editText = cachedPlainText
                     }
                     .onChange(of: isFocused) { oldValue, newValue in
                         if oldValue == true && newValue == false {
@@ -677,11 +679,10 @@ private struct ScriptBlockRowView: View {
                         onEndEdit(rtf)
                     }
             } else {
-                let plain = NSAttributedString.fromRTF(rtfData)?.string ?? ""
-                Text(plain.isEmpty ? "Tap to write..." : plain)
+                Text(cachedPlainText.isEmpty ? "Tap to write..." : cachedPlainText)
                     .appFont(.body)
-                    .foregroundStyle(plain.isEmpty ? .white.opacity(0.4) : .white.opacity(0.9))
-                    .italic(plain.isEmpty)
+                    .foregroundStyle(cachedPlainText.isEmpty ? .white.opacity(0.4) : .white.opacity(0.9))
+                    .italic(cachedPlainText.isEmpty)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture { onStartEdit() }
@@ -749,15 +750,6 @@ private struct ScriptBlockRowView: View {
                             .padding(.vertical, 6)
                             .background(Color.black.opacity(0.3))
                             .clipShape(Capsule())
-                        }
-                    }
-                    .toolbar {
-                        ToolbarItemGroup(placement: .keyboard) {
-                            Spacer()
-                            Button("Done") {
-                                saveVariation()
-                            }
-                            .foregroundStyle(TFTheme.yellow)
                         }
                     }
                     .alert("Variation Note", isPresented: $showVariationNote) {
@@ -1127,39 +1119,7 @@ extension Setlist {
             }
         }
         guard result.length > 0 else { return nil }
-        
-        // Convert colors to be appropriate for light backgrounds (standard documents)
-        // Replace white/light text colors with black for better readability
-        let normalizedResult = NSMutableAttributedString(attributedString: result)
-        normalizedResult.enumerateAttribute(.foregroundColor, in: NSRange(location: 0, length: normalizedResult.length)) { value, range, _ in
-            if let color = value as? UIColor {
-                // Check if the color is light (likely designed for dark backgrounds)
-                var white: CGFloat = 0
-                var alpha: CGFloat = 0
-                
-                // Convert to grayscale to check brightness
-                if color.getWhite(&white, alpha: &alpha) {
-                    // If color is very light (white > 0.7), replace with black
-                    if white > 0.7 {
-                        normalizedResult.addAttribute(.foregroundColor, value: UIColor.black, range: range)
-                    }
-                } else {
-                    // For colors that can't be converted to grayscale, check RGB components
-                    var red: CGFloat = 0
-                    var green: CGFloat = 0
-                    var blue: CGFloat = 0
-                    if color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) {
-                        let brightness = (red + green + blue) / 3.0
-                        if brightness > 0.7 {
-                            normalizedResult.addAttribute(.foregroundColor, value: UIColor.black, range: range)
-                        }
-                    }
-                }
-            }
-        }
-        
-        return try? normalizedResult.data(from: NSRange(location: 0, length: normalizedResult.length),
-                                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
+        return ExportHelpers.normalizeRTFColors(result)
     }
 
     func duplicate() -> Setlist {

@@ -1,5 +1,5 @@
-/*
- 
+
+
  ╔═══════════════════════════════════════════════════════════════════════════════╗
  ║                    PERFORMANCE MONITORING ARCHITECTURE                        ║
  ╚═══════════════════════════════════════════════════════════════════════════════╝
@@ -150,7 +150,7 @@
           ├─► currentFPS: Double ───────┤
           ├─► batteryLevel: Double ─────┤  SwiftUI Auto-Updates
           ├─► activeFunction: String ───┤  Any Observing Views
-          ├─► performanceEvents: [Event]┤
+          ├─► performanceEvents: Event  ┤
           └─► isOverlayEnabled: Bool ───┘
  
  
@@ -304,7 +304,7 @@
           │
           ├─► Timer (weak self) ───────┐
           ├─► DisplayLink (weak self) ──┤  No Retention Cycles
-          └─► performanceEvents[100] ───┘  Auto-trimmed
+          └─► performanceEvents (100) ───┘  Auto-trimmed
  
    Memory Footprint:
    ├─ Monitor instance:       ~1 KB
@@ -335,8 +335,4 @@
  ║  overhead, seamless SwiftUI integration, and comprehensive tracking APIs.     ║
  ╚═══════════════════════════════════════════════════════════════════════════════╝
  
- */
 
-import Foundation
-
-// This file is for architectural reference and documentation only.

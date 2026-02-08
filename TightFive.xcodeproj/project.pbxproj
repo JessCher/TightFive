@@ -69,6 +69,8 @@
 				"MD docs/IMPLEMENTATION_SUMMARY.md",
 				"MD docs/NOTEBOOK_TRASHCAN_FIX.md",
 				"MD docs/PERFORMANCE_MONITORING_README.md",
+				"MD docs/PerformanceMonitoringExamples.MD",
+				"MD docs/PerformanceMonitoringQuickReference.md",
 				"MD docs/UNDO_REDO_REMOVAL_SUMMARY.md",
 			);
 			platformFiltersByRelativePath = {
@@ -146,6 +148,17 @@
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		88E63A402F384C0F003D4F0F /* Exceptions for "TightFive" folder in "Compile Sources" phase from "TightFive" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = 888E3FD42F20526900678706 /* Sources */;
+			membershipExceptions = (
+				"MD docs/PerformanceMonitoringExamples.MD",
+				"MD docs/PerformanceMonitoringQuickReference.md",
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		887A94832F2DCA0700EF4A2A /* QuickBitWidget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -159,6 +172,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				883A7BEA2F24A3B500FFA78E /* Exceptions for "TightFive" folder in "TightFive" target */,
+				88E63A402F384C0F003D4F0F /* Exceptions for "TightFive" folder in "Compile Sources" phase from "TightFive" target */,
 				887A94982F2DCAD600EF4A2A /* Exceptions for "TightFive" folder in "QuickBitWidgetExtension" target */,
 			);
 			path = TightFive;

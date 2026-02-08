@@ -132,12 +132,20 @@ final class TFKeyboardState: ObservableObject {
     }
 
     private func keyboardWillShow() {
-        // Already on main thread via queue: .main, safe to mutate @Published
-        isVisible = true
+        // Defer the @Published mutation to the next run loop to avoid publishing during view updates.
+        if !isVisible {
+            DispatchQueue.main.async { [weak self] in
+                self?.isVisible = true
+            }
+        }
     }
-
     private func keyboardWillHide() {
-        isVisible = false
+        // Defer the @Published mutation to the next run loop to avoid publishing during view updates.
+        if !isVisible {
+            DispatchQueue.main.async { [weak self] in
+                self?.isVisible = false
+            }
+        }
     }
 }
 

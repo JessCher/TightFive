@@ -246,6 +246,9 @@ final class PlainTextToolbar: UIView {
         let doneButton = pill("Done", a11y: "Done editing") { [weak self] in
             self?.textView?.resignFirstResponder()
         }
+        // Override the default 44pt width set by pill() for the wider "Done" label.
+        // Remove the existing width constraint first to avoid conflicts.
+        doneButton.constraints.first(where: { $0.firstAttribute == .width })?.isActive = false
         doneButton.widthAnchor.constraint(equalToConstant: 60).isActive = true
         var cfg = doneButton.configuration ?? UIButton.Configuration.filled()
         let tfYellow = UIColor(named: "TFYellow") ?? UIColor(red: 0.95, green: 0.76, blue: 0.09, alpha: 1.0)
