@@ -103,13 +103,9 @@
 				Setlist.swift = (ios, );
 				SetlistAssignment.swift = (ios, );
 				SetlistBuilderView.swift = (ios, );
-				"SetlistsView+StageMode.swift" = (ios, );
 				SetlistsView.swift = (ios, );
 				ShowNotesView.swift = (ios, );
 				SpeechRecognizer.swift = (ios, );
-				StageAnchor.swift = (ios, );
-				StageAnchorEditorView.swift = (ios, );
-				StageTeleprompterEngine.swift = (ios, );
 				TFBackground.swift = (ios, );
 				TFIcons.swift = (ios, );
 				TFTheme.swift = (ios, );

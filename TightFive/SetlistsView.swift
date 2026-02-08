@@ -205,12 +205,6 @@ struct InProgressSetlistsView: View {
                     .appFont(.headline)
                     .foregroundStyle(TFTheme.text)
                 
-                if s.hasConfiguredAnchors {
-                    Image(systemName: "waveform")
-                        .appFont(.caption)
-                        .foregroundStyle(TFTheme.yellow)
-                }
-                
                 Spacer()
             }
             
@@ -338,23 +332,6 @@ struct FinishedSetlistsView: View {
                 Text(s.title)
                     .appFont(.headline)
                     .foregroundStyle(TFTheme.text)
-                
-                if s.isStageReady {
-                    HStack(spacing: 4) {
-                        Image(systemName: "play.fill")
-                        Text("Stage Ready")
-                    }
-                    .appFont(.caption2, weight: .medium)
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(TFTheme.yellow)
-                    .clipShape(Capsule())
-                } else if s.hasConfiguredAnchors {
-                    Image(systemName: "waveform")
-                        .appFont(.caption)
-                        .foregroundStyle(TFTheme.yellow)
-                }
                 
                 Spacer()
             }
