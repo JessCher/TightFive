@@ -12,43 +12,38 @@ struct HomeView: View {
 
                 VStack(spacing: 14) {
                     NavigationLink {
-                        BitsTabView()
-                    } label: {
-                        HomeTile(title: "Bits",
-                                 subtitle: "All your material in one place.",
-                                 iconName: "IconFinishedBits")
-                    }
-
-                    NavigationLink {
                         NotebookView()
                     } label: {
                         HomeTile(title: "Notebook",
-                                 subtitle: "Jot down thoughts and ideas.",
-                                 iconName: "IconLooseBits")
+                                 subtitle: "Jot down thoughts and ideas.")
+                    }
+                    
+                    NavigationLink {
+                        BitsTabView()
+                    } label: {
+                        HomeTile(title: "Bits",
+                                 subtitle: "All your material in one place.")
                     }
 
                     NavigationLink {
                         SetlistsView()
                     } label: {
                         HomeTile(title: "Setlists",
-                                 subtitle: "Build and run tight sets.",
-                                 iconName: "IconSetlists")
+                                 subtitle: "Build and run tight sets.")
                     }
 
                     NavigationLink {
                         RunModeLauncherView()
                     } label: {
                         HomeTile(title: "Run Through",
-                                 subtitle: "Practice makes perfect.",
-                                 iconName: "IconRunMode")
+                                 subtitle: "Practice makes perfect.")
                     }
 
                     NavigationLink {
                         ShowNotesView()
                     } label: {
                         HomeTile(title: "Show Notes",
-                                 subtitle: "Reflect on how shows went.",
-                                 iconName: "IconShowNotes")
+                                 subtitle: "Reflect on how shows went.")
                     }
                 }
 
@@ -215,18 +210,9 @@ struct HomeView: View {
 private struct HomeTile: View {
     let title: String
     let subtitle: String
-    let iconName: String
     
     var body: some View {
         HStack(spacing: 14) {
-            // MARK: - HIDDEN: Custom Icons
-            // Hiding: IconLooseBits, IconFinishedBits, IconSetlists, IconRunMode, IconShowNotes
-            // Image(iconName)
-            //     .renderingMode(.original)
-            //     .resizable()
-            //     .scaledToFit()
-            //     .frame(width: 40, height: 40)
-            
             Spacer()
             
             VStack(alignment: .center, spacing: 4) {

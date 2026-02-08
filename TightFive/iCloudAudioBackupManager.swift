@@ -144,24 +144,29 @@ class iCloudAudioBackupManager: ObservableObject {
                 return
             }
             
-            // Backup each file
-            for (index, localFile) in localFiles.enumerated() {
-                backedUpFiles = index + 1
-                backupStatus = .backing(current: backedUpFiles, total: totalFiles)
-                backupProgress = Double(backedUpFiles) / Double(totalFiles)
-                
-                let filename = localFile.lastPathComponent
-                let iCloudFile = iCloudURL.appendingPathComponent(filename)
-                
-                // Check if file already exists in iCloud
-                if !FileManager.default.fileExists(atPath: iCloudFile.path) {
-                    // Copy to iCloud
-                    try FileManager.default.copyItem(at: localFile, to: iCloudFile)
+            // Perform file I/O on a background utility thread to avoid
+            // blocking the main actor, reporting progress back as we go.
+            try await Task.detached(priority: .utility) { [localFiles, iCloudURL] in
+                for (index, localFile) in localFiles.enumerated() {
+                    let current = index + 1
+                    let total = localFiles.count
+                    let progress = Double(current) / Double(total)
+                    
+                    await MainActor.run {
+                        self.backedUpFiles = current
+                        self.backupStatus = .backing(current: current, total: total)
+                        self.backupProgress = progress
+                    }
+                    
+                    let iCloudFile = iCloudURL.appendingPathComponent(localFile.lastPathComponent)
+                    if !FileManager.default.fileExists(atPath: iCloudFile.path) {
+                        try FileManager.default.copyItem(at: localFile, to: iCloudFile)
+                    }
+                    
+                    // Yield cooperatively between files so other tasks can run
+                    await Task.yield()
                 }
-                
-                // Small delay to prevent overwhelming the system
-                try await Task.sleep(for: .milliseconds(100))
-            }
+            }.value
             
             // Success
             backupStatus = .complete

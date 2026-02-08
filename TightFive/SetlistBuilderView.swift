@@ -39,6 +39,7 @@ struct SetlistBuilderView: View {
     @State private var showRunMode = false
     @State private var showScriptModeSettings = false
     @State private var showEditCueCardPhrases = false
+    @State private var showReorderMode = false
 
     @ObservedObject private var keyboard = TFKeyboardState.shared
     
@@ -49,7 +50,7 @@ struct SetlistBuilderView: View {
     @State private var showExportChoice = false
     @State private var showExportFormatChoice = false
     @State private var pendingExportKind: ExportKind = .script
-    @State private var exportURL: URL?
+    @State private var exportURL: IdentifiableURL?
     
     var body: some View {
         VStack(spacing: 0) {
@@ -74,6 +75,9 @@ struct SetlistBuilderView: View {
             BitDrawerSheet(setlist: setlist, insertionIndex: insertionIndex) { bit, index in
                 insertBit(bit, at: index)
             }
+        }
+        .sheet(isPresented: $showReorderMode) {
+            ScriptBlockReorderView(setlist: setlist)
         }
         .sheet(isPresented: $showCueCardSettings) {
             CueCardSettingsView(setlist: setlist)
@@ -121,8 +125,8 @@ struct SetlistBuilderView: View {
             Button("Markdown (.md)") { exportSetlist(as: pendingExportKind, format: .markdown) }
             Button("Cancel", role: .cancel) {}
         }
-        .sheet(item: $exportURL) { url in
-            ShareSheet(items: [url]) { _ in }
+        .sheet(item: $exportURL) { identifiable in
+            ShareSheet(items: [identifiable.url]) { _ in }
         }
     }
     
@@ -226,6 +230,10 @@ struct SetlistBuilderView: View {
                 .onChange(of: setlist.traditionalScriptRTF) { _, _ in
                     setlist.updatedAt = Date()
                 }
+                .padding(12)
+                .background(Color.black.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 16)
         }
     }
     
@@ -362,22 +370,34 @@ struct SetlistBuilderView: View {
     // MARK: - Notes Editor
     
     private var notesEditor: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: "lightbulb")
-                    .foregroundStyle(TFTheme.yellow)
-                Text("Any riff ideas? Any moments for crowd work? Any notes you want to leave about your delivery? Work it all out here, this is the space to plan your performance")
-                    .appFont(.caption)
-                    .foregroundStyle(.white.opacity(0.6))
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            
+        ZStack(alignment: .topLeading) {
             RichTextEditor(rtfData: $setlist.notesRTF)
                 .onChange(of: setlist.notesRTF) { _, _ in
                     setlist.updatedAt = Date()
                 }
+                .padding(12)
+                .background(Color.black.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 16)
+
+            if isNotesEmpty {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "lightbulb")
+                        .foregroundStyle(TFTheme.yellow.opacity(0.5))
+                    Text("This is your space for stage directions and other thoughts. All of your Bit notes will transfer here automatically as you add bits to your setlist.")
+                        .appFont(.caption)
+                        .foregroundStyle(.white.opacity(0.35))
+                }
+                .padding(.horizontal, 28)
+                .padding(.top, 20)
+                .allowsHitTesting(false)
+            }
         }
+    }
+
+    private var isNotesEmpty: Bool {
+        (NSAttributedString.fromRTF(setlist.notesRTF)?.string ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
     // MARK: - Toolbar
@@ -405,7 +425,7 @@ struct SetlistBuilderView: View {
         
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
-                if setlist.hasScriptContent && !setlist.isDraft {
+                if setlist.hasScriptContent {
                     // Configure/Edit Cue Cards - label changes based on script mode
                     Button {
                         showEditCueCardPhrases = true
@@ -443,6 +463,15 @@ struct SetlistBuilderView: View {
                     showScriptModeSettings = true
                 } label: {
                     Label("Script Mode", systemImage: "doc.text.magnifyingglass")
+                }
+                
+                // Reorder blocks (modular mode only)
+                if setlist.currentScriptMode == .modular && setlist.scriptBlocks.count > 1 {
+                    Button {
+                        showReorderMode = true
+                    } label: {
+                        Label("Reorder Blocks", systemImage: "arrow.up.arrow.down")
+                    }
                 }
                 
                 Divider()
@@ -565,7 +594,7 @@ struct SetlistBuilderView: View {
                 let md = "# \(setlist.title)\n\n\(plainText)"
                 try md.data(using: .utf8)?.write(to: url, options: .atomic)
             }
-            exportURL = url
+            exportURL = IdentifiableURL(url)
         } catch {
             print("Export failed: \(error)")
             exportURL = nil
@@ -587,6 +616,116 @@ struct SetlistBuilderView: View {
     private func copyNotesToClipboard() {
         let notes = NSAttributedString.fromRTF(setlist.notesRTF)?.string ?? ""
         UIPasteboard.general.string = notes
+    }
+}
+
+// MARK: - Script Block Reorder View
+
+/// A dedicated reorder sheet with large, comfortable grab handles.
+/// This is the ergonomic alternative to the standard List drag handles,
+/// which are small and hard to hit on iPhone.
+private struct ScriptBlockReorderView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var setlist: Setlist
+
+    /// Local working copy — we only write back to the model on Done.
+    @State private var blocks: [ScriptBlock] = []
+
+    private var assignmentLookup: [UUID: SetlistAssignment] {
+        setlist.assignmentLookup
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(blocks, id: \.id) { block in
+                    ReorderRowView(
+                        block: block,
+                        assignment: block.assignmentId.flatMap { assignmentLookup[$0] }
+                    )
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                }
+                .onMove { source, destination in
+                    blocks.move(fromOffsets: source, toOffset: destination)
+                }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("Reorder Blocks")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(TFTheme.yellow)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        setlist.scriptBlocks = blocks
+                        setlist.updatedAt = Date()
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .foregroundStyle(TFTheme.yellow)
+                }
+            }
+            .tfBackground()
+            .onAppear {
+                blocks = setlist.scriptBlocks
+            }
+        }
+    }
+}
+
+private struct ReorderRowView: View {
+    let block: ScriptBlock
+    let assignment: SetlistAssignment?
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: block.isBit ? "doc.text.fill" : "pencil.circle.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(block.isBit ? TFTheme.yellow.opacity(0.8) : .white.opacity(0.4))
+                .frame(width: 26)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(block.isBit ? "BIT" : "FREEFORM")
+                    .appFont(.caption2, weight: .bold)
+                    .foregroundStyle(block.isBit ? TFTheme.yellow.opacity(0.7) : .white.opacity(0.35))
+                    .kerning(1)
+
+                Text(rowLabel)
+                    .appFont(.subheadline)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 14)
+        .background(block.isBit ? Color("TFCard") : Color("TFCard").opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(
+                    block.isBit ? TFTheme.yellow.opacity(0.3) : Color("TFCardStroke").opacity(0.4),
+                    lineWidth: 1
+                )
+        )
+        .contentShape(Rectangle())
+    }
+
+    private var rowLabel: String {
+        if block.isBit {
+            return assignment?.bitTitleSnapshot ?? "Bit"
+        } else {
+            let plain = block.freeformPlainText ?? ""
+            let trimmed = plain.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? "Empty text block" : trimmed
+        }
     }
 }
 
@@ -1158,9 +1297,15 @@ struct ShareSheet: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
-// Allow using URL with .sheet(item:)
-extension URL: @retroactive Identifiable {
-    public var id: String { absoluteString }
+// Allow using URL with .sheet(item:) via a wrapper to avoid retroactive global conformance
+struct IdentifiableURL: Identifiable {
+    let id: String
+    let url: URL
+
+    init(_ url: URL) {
+        self.id = url.absoluteString
+        self.url = url
+    }
 }
 
 // MARK: - Script Mode Settings View

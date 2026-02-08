@@ -35,34 +35,12 @@ struct ShowNotesView: View {
             .navigationTitle("Show Notes")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    if !performances.isEmpty {
-                        Button(isSelecting ? "Done" : "Select") {
-                            isSelecting.toggle()
-                            if !isSelecting { selectedIDs.removeAll() }
-                        }
-                        .foregroundStyle(TFTheme.yellow)
-                    }
-                }
-                
                 ToolbarItem(placement: .principal) {
                     TFWordmarkTitle(title: "Show Notes", size: 22)
                 }
                 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showStorageInfo = true } label: {
-                        Image(systemName: "internaldrive")
-                            .foregroundStyle(TFTheme.text.opacity(0.7))
-                    }
-                }
-                
-                ToolbarItem(placement: .topBarTrailing) {
                     if isSelecting && !selectedIDs.isEmpty {
-                        Button(role: .destructive) {
-                            deleteSelectedPerformances()
-                        } label: {
-                            Text("Delete Selected")
-                        }
                     } else if !isSelecting {
                         Button {
                             showCreateNote = true
@@ -162,17 +140,6 @@ private struct PerformanceRowView: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 14) {
-                // MARK: - HIDDEN: Icon removed for consistency
-                // ZStack {
-                //     Circle()
-                //         .fill(performance.isReviewed ? TFTheme.yellow.opacity(0.2) : Color.white.opacity(0.1))
-                //         .frame(width: 50, height: 50)
-                //     
-                //     Image(systemName: performance.isReviewed ? "checkmark.seal.fill" : "waveform")
-                //         .font(.system(size: 20))
-                //         .foregroundStyle(performance.isReviewed ? TFTheme.yellow : .white.opacity(0.6))
-                // }
-                
                 Spacer()
                 
                 VStack(alignment: .center, spacing: 4) {
@@ -246,12 +213,6 @@ private struct PerformanceRowView: View {
                         .font(.system(size: 22))
                         .foregroundStyle(isSelected ? TFTheme.yellow : .white.opacity(0.4))
                 }
-                // MARK: - HIDDEN: Chevron removed for consistency with other tiles
-                // else {
-                //     Image(systemName: "chevron.right")
-                //         .font(.system(size: 14, weight: .medium))
-                //         .foregroundStyle(TFTheme.text.opacity(0.3))
-                // }
             }
             .padding(16)
             .tfDynamicCard(cornerRadius: 14)
@@ -992,12 +953,6 @@ struct StorageInfoView: View {
             }
             .navigationTitle("Recording Storage")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                        .foregroundStyle(TFTheme.yellow)
-                }
-            }
             .tfBackground()
             .confirmationDialog("Clear All Recordings?", isPresented: $showClearConfirmation, titleVisibility: .visible) {
                 Button("Clear All", role: .destructive) {

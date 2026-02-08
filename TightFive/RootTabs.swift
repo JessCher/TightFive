@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RootTabs: View {
+
     var body: some View {
         TabView {
             NavigationStack {
@@ -9,6 +10,11 @@ struct RootTabs: View {
             .tabItem { Label("Home", systemImage: "house.fill") }
 
             NavigationStack {
+                NotebookView()
+            }
+            .tabItem { Label("Notebook", systemImage: "book.fill") }
+            
+            NavigationStack {
                 BitsTabView()
             }
             .tabItem { Label("Bits", systemImage: "square.stack.3d.up.fill") }
@@ -16,22 +22,12 @@ struct RootTabs: View {
             NavigationStack {
                 SetlistsView()
             }
-            .tabItem { Label("Setlists", systemImage: "list.bullet") }
-            
-            NavigationStack {
-                NotebookView()
-            }
-            .tabItem { Label("Notebook", systemImage: "book.fill") }
+            .tabItem { Label("Sets", systemImage: "microphone.fill") }
 
             NavigationStack {
                 RunModeLauncherView()
             }
-            .tabItem { Label("Run Through", systemImage: "timer") }
-
-            NavigationStack {
-                ShowNotesView()
-            }
-            .tabItem { Label("Show Notes", systemImage: "note.text") }
+            .tabItem { Label("Run", systemImage: "timer") }
         }
         .tint(TFTheme.yellow)
     }

@@ -116,8 +116,8 @@ struct NotebookView: View {
         }
         .toolbar {
             ToolbarItem(placement: .principal) {
-                TFWordmarkTitle(title: "Notebook", size: 22)
-                    .offset(x: -6)
+                TFWordmarkTitle(title: "Note book", size: 22)
+                    .offset(x: -3)
             }
 
             ToolbarItem(placement: .topBarLeading) {
@@ -502,11 +502,16 @@ struct NoteEditorView: View {
 
     // Export state
     @State private var showExportFormatChoice = false
-    @State private var exportURL: URL?
+    @State private var exportURL: IdentifiableURL?
     @State private var showDeleteConfirmation = false
     @State private var showFolderPicker = false
 
     private enum ExportFormat: String { case txt, pdf, rtf, markdown }
+
+    private struct IdentifiableURL: Identifiable {
+        let id = UUID()
+        let url: URL
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -531,7 +536,10 @@ struct NoteEditorView: View {
                 .onChange(of: note.contentRTF) { _, _ in
                     note.updatedAt = Date()
                 }
-                .padding(.horizontal, 8)
+                .padding(12)
+                .background(Color.black.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 16)
         }
         .tfBackground()
         .navigationBarTitleDisplayMode(.inline)
@@ -595,8 +603,8 @@ struct NoteEditorView: View {
             Button("Markdown (.md)") { exportNote(format: .markdown) }
             Button("Cancel", role: .cancel) {}
         }
-        .sheet(item: $exportURL) { url in
-            ShareSheet(items: [url]) { _ in }
+        .sheet(item: $exportURL) { identifiable in
+            ShareSheet(items: [identifiable.url]) { _ in }
         }
         .sheet(isPresented: $showFolderPicker) {
             NoteFolderPickerSheet(
@@ -671,7 +679,7 @@ struct NoteEditorView: View {
                 let md = "# \(note.displayTitle)\n\n\(plainText)"
                 try md.data(using: .utf8)?.write(to: url, options: .atomic)
             }
-            exportURL = url
+            exportURL = IdentifiableURL(url: url)
         } catch {
             print("Export failed: \(error)")
             exportURL = nil

@@ -187,49 +187,39 @@ struct ProfileView: View {
     // MARK: - Methods
     
     private func loadProfile() {
-        // Ensure a profile exists
         if profiles.isEmpty {
-            print("Creating new profile...")
             let newProfile = UserProfile()
             modelContext.insert(newProfile)
             do {
                 try modelContext.save()
-                print("New profile created and saved")
             } catch {
-                print("Error creating profile: \(error.localizedDescription)")
+                assertionFailure("Error creating profile: \(error.localizedDescription)")
             }
         }
         
-        // Load profile data into state
         if let profile = profile {
-            print("Loading profile: name='\(profile.name)', shows=\(profile.showsPerformed)")
             name = profile.name
             showsPerformed = profile.showsPerformed
             
-            // Load existing image if available
             if let imageData = profile.profileImageData,
                let image = UIImage(data: imageData) {
                 profileImage = image
-                print("Profile image loaded successfully")
-            } else {
-                print("No profile image data available")
             }
         } else {
-            print("WARNING: No profile found after creation attempt")
+            assertionFailure("No profile found after creation attempt")
         }
     }
     
     private func saveProfile() {
         guard let profile = profile else {
-            print("WARNING: Attempted to save but no profile exists")
+            assertionFailure("Attempted to save but no profile exists")
             return
         }
         
         do {
             try modelContext.save()
-            print("Profile saved: name='\(profile.name)', shows=\(profile.showsPerformed)")
         } catch {
-            print("Error saving profile: \(error.localizedDescription)")
+            assertionFailure("Error saving profile: \(error.localizedDescription)")
         }
     }
     

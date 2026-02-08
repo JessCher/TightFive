@@ -1223,17 +1223,19 @@ enum AppFont: String, CaseIterable, Identifiable {
 
 // MARK: - Color Hex Extension
 extension Color {
-    /// Initialize a Color from a hex string (supports #RRGGBB format)
+    /// Initialize a Color from a hex string (supports #RRGGBB and #RRGGBBAA formats)
     init?(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         var int: UInt64 = 0
 
         guard Scanner(string: hex).scanHexInt64(&int) else { return nil }
 
-        let r, g, b: UInt64
+        let r, g, b, a: UInt64
         switch hex.count {
         case 6: // RGB (24-bit)
-            (r, g, b) = ((int >> 16) & 0xFF, (int >> 8) & 0xFF, int & 0xFF)
+            (r, g, b, a) = ((int >> 16) & 0xFF, (int >> 8) & 0xFF, int & 0xFF, 0xFF)
+        case 8: // RGBA (32-bit)
+            (r, g, b, a) = ((int >> 24) & 0xFF, (int >> 16) & 0xFF, (int >> 8) & 0xFF, int & 0xFF)
         default:
             return nil
         }
@@ -1243,13 +1245,21 @@ extension Color {
             red: Double(r) / 255,
             green: Double(g) / 255,
             blue: Double(b) / 255,
-            opacity: 1
+            opacity: Double(a) / 255
         )
     }
 
-    /// Convert a Color to hex string (approximate, works for simple colors)
+    /// Convert a Color to hex string.
+    /// Returns 8-character #RRGGBBAA when the color has meaningful transparency,
+    /// otherwise returns 6-character #RRGGBB.
     func toHex() -> String? {
-        guard let components = UIColor(self).cgColor.components,
+        #if canImport(UIKit)
+        let native = UIColor(self)
+        #else
+        let native = NSColor(self)
+        #endif
+
+        guard let components = native.cgColor.components,
               components.count >= 3 else {
             return nil
         }
@@ -1257,10 +1267,19 @@ extension Color {
         let r = Float(components[0])
         let g = Float(components[1])
         let b = Float(components[2])
+        let a = components.count >= 4 ? Float(components[3]) : 1.0
 
-        return String(format: "#%02lX%02lX%02lX",
-                     lroundf(r * 255),
-                     lroundf(g * 255),
-                     lroundf(b * 255))
+        if a < 1.0 {
+            return String(format: "#%02lX%02lX%02lX%02lX",
+                         lroundf(r * 255),
+                         lroundf(g * 255),
+                         lroundf(b * 255),
+                         lroundf(a * 255))
+        } else {
+            return String(format: "#%02lX%02lX%02lX",
+                         lroundf(r * 255),
+                         lroundf(g * 255),
+                         lroundf(b * 255))
+        }
     }
 }
