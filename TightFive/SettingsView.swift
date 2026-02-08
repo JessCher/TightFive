@@ -103,23 +103,25 @@ struct SettingsView: View {
                 Text("Adjust the app for your comfort and needs.")
             }
 
-            Section {
-                NavigationLink {
-                    DeveloperToolsSettingsView()
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "hammer.fill")
-                            .foregroundStyle(TFTheme.yellow)
-                            .frame(width: 24)
+            if DeveloperAccessControl.canAccessDevTools {
+                Section {
+                    NavigationLink {
+                        DeveloperToolsSettingsView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "hammer.fill")
+                                .foregroundStyle(TFTheme.yellow)
+                                .frame(width: 24)
 
-                        Text("Developer Tools")
-                            .foregroundStyle(.white)
+                            Text("Developer Tools")
+                                .foregroundStyle(.white)
+                        }
                     }
+                } header: {
+                    Text("Development")
+                } footer: {
+                    Text("Performance monitoring and debugging tools for development.")
                 }
-            } header: {
-                Text("Development")
-            } footer: {
-                Text("Performance monitoring and debugging tools for development.")
             }
         }
         .scrollContentBackground(.hidden)

@@ -715,6 +715,8 @@ private struct LooseDetailTextEditor: UIViewRepresentable {
         textView.layoutManager.showsInvisibleCharacters = false
         textView.layoutManager.showsControlCharacters = false
         textView.layoutManager.usesDefaultHyphenation = false
+
+        PencilInputSupport.configure(textView)
         
         return textView
     }
@@ -744,5 +746,4 @@ private struct LooseDetailTextEditor: UIViewRepresentable {
         }
     }
 }
-
 

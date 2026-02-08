@@ -24,6 +24,11 @@ final class Note {
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
 
+    // MARK: - Organization
+
+    /// Optional folder assignment. `nil` means the note is unfiled.
+    var folder: NoteFolder?
+
     // MARK: - Soft Delete
 
     /// When true, note is hidden from views but data is preserved
@@ -34,10 +39,11 @@ final class Note {
 
     // MARK: - Initialization
 
-    init(title: String = "", contentRTF: Data = Data()) {
+    init(title: String = "", contentRTF: Data = Data(), folder: NoteFolder? = nil) {
         self.id = UUID()
         self.title = title
         self.contentRTF = contentRTF
+        self.folder = folder
         let now = Date()
         self.createdAt = now
         self.updatedAt = now

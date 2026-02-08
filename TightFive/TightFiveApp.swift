@@ -20,7 +20,8 @@ struct TightFiveApp: App {
             SetlistAssignment.self,
             Performance.self,
             UserProfile.self,
-            Note.self
+            Note.self,
+            NoteFolder.self
         ])
         
         let modelConfiguration = ModelConfiguration(
@@ -56,6 +57,8 @@ struct TightFiveApp: App {
     // Configure appearance before views are created
     init() {
         configureGlobalAppearance()
+        DeveloperAccessControl.enforceRuntimePolicy()
+        PencilInputSupport.configureGlobalSupport()
     }
 
     var body: some Scene {
@@ -80,6 +83,7 @@ struct TightFiveApp: App {
                 .performanceOverlay()  // Add performance monitoring overlay
         }
         .modelContainer(Self.sharedModelContainer)
+        
     }
     
     private func handleScenePhaseChange(oldPhase: ScenePhase, newPhase: ScenePhase) {
@@ -151,4 +155,3 @@ extension UIFont {
         return UIFont(descriptor: descriptor, size: pointSize)
     }
 }
-

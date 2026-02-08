@@ -65,6 +65,8 @@ struct PlainTextEditor: UIViewRepresentable {
         
         // Keyboard accessory with undo/redo buttons
         textView.inputAccessoryView = PlainTextToolbar(textView: textView)
+
+        PencilInputSupport.configure(textView)
     }
 }
 
@@ -322,4 +324,3 @@ final class PlainTextToolbar: UIView {
         redoButton?.alpha = undoManager.canRedo ? 1.0 : 0.3
     }
 }
-

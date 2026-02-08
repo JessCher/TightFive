@@ -66,6 +66,8 @@ struct RichTextEditor: UIViewRepresentable {
         textView.panGestureRecognizer.cancelsTouchesInView = false
         // Ensure no tap-to-dismiss behavior; rely on interactive swipe-down
         textView.keyboardDismissMode = .interactive
+
+        PencilInputSupport.configure(textView)
     }
 }
 
@@ -1044,4 +1046,3 @@ extension NSParagraphStyle {
         return ps
     }
 }
-

@@ -397,8 +397,9 @@ extension View {
     /// Adds a performance monitoring overlay to the view hierarchy
     func performanceOverlay() -> some View {
         self.overlay(alignment: .topTrailing) {
-            PerformanceOverlay()
+            if DeveloperAccessControl.canAccessDevTools {
+                PerformanceOverlay()
+            }
         }
     }
 }
-

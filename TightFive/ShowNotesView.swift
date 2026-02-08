@@ -990,7 +990,7 @@ struct StorageInfoView: View {
                     .padding(.bottom, 20)
                 }
             }
-            .navigationTitle("Storage")
+            .navigationTitle("Recording Storage")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
