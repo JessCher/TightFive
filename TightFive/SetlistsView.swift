@@ -8,6 +8,7 @@ struct SetlistsView: View {
     @Query(sort: \Setlist.updatedAt, order: .reverse) private var setlists: [Setlist]
 
     @State private var newlyCreated: Setlist?
+    @State private var showImport = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -44,8 +45,14 @@ struct SetlistsView: View {
                     TFWordmarkTitle(title: "Set lists", size: 22)
                         .offset(x: -6)
                 }
-            }
-            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showImport = true
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                    .accessibilityLabel("Import Setlists")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         let s = Setlist(title: "Untitled Set", notesRTF: Data(), isDraft: true)
@@ -61,6 +68,9 @@ struct SetlistsView: View {
             .tfBackground()
             .navigationDestination(item: $newlyCreated) { set in
                 SetlistBuilderView(setlist: set)
+            }
+            .sheet(isPresented: $showImport) {
+                ImportContentView(mode: .setlists)
             }
     }
 }

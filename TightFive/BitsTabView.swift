@@ -13,6 +13,7 @@ struct BitsTabView: View {
     @State private var query: String = ""
     @State private var showQuickBit = false
     @State private var selectedBit: Bit?
+    @State private var showImport = false
 
     enum BitSegment: String, CaseIterable {
         case loose = "Ideas"
@@ -62,6 +63,14 @@ struct BitsTabView: View {
                 TFWordmarkTitle(title: "Bits", size: 22)
                     .offset(x: -6)
             }
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    showImport = true
+                } label: {
+                    Image(systemName: "square.and.arrow.down")
+                }
+                .accessibilityLabel("Import Bits")
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showQuickBit = true
@@ -82,6 +91,9 @@ struct BitsTabView: View {
         .sheet(isPresented: $showQuickBit) {
             QuickBitEditor()
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showImport) {
+            ImportContentView(mode: .bits, defaultStatus: selectedSegment == .finished ? .finished : .loose)
         }
     }
 }

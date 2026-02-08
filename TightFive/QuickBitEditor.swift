@@ -18,6 +18,12 @@ struct QuickBitEditor: View {
     @State private var pulsePhase = false
 
     @ObservedObject private var keyboard = TFKeyboardState.shared
+
+    // MARK: - Auto-Save State
+    /// Tracks whether the user explicitly tapped Cancel (discard) vs. any other dismissal (save)
+    @State private var userCancelled = false
+    @State private var saveIndicatorVisible = false
+    @State private var autoSaveTask: Task<Void, Never>? = nil
     
     var body: some View {
         NavigationStack {
@@ -43,7 +49,7 @@ struct QuickBitEditor: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") { cancelAndDismiss() }
                         .foregroundStyle(Color("TFYellow"))
                 }
                 
@@ -52,7 +58,7 @@ struct QuickBitEditor: View {
                     micButton
                         .offset(y: 4) // Push down slightly to sit nicely in the bar
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         saveAndDismiss()
@@ -62,9 +68,22 @@ struct QuickBitEditor: View {
                 }
             }
             .hideKeyboardInteractively() // Use combined tap + swipe-down dismissal
+            // Auto-save indicator — small, unobtrusive, bottom-trailing
+            .overlay(alignment: .bottomTrailing) {
+                saveIndicator
+            }
         }
         .onDisappear {
             speech.stopTranscribing()
+            // Save to Loose Ideas on any close EXCEPT explicit Cancel
+            guard !userCancelled else { return }
+            commitTranscription()
+            let plain = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !plain.isEmpty else { return }
+            modelContext.insert(Bit(text: plain, status: .loose))
+        }
+        .onChange(of: text) {
+            scheduleIndicator()
         }
     }
     
@@ -194,14 +213,52 @@ struct QuickBitEditor: View {
         .padding(20)
     }
     
-    // MARK: - Logic
-    
-    // This was missing in your snippet!
-    private var isEmpty: Bool {
-        let plain = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return plain.isEmpty
+    // MARK: - Save Indicator
+
+    private var saveIndicator: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.caption2)
+            Text("Saved")
+                .appFont(.caption2, weight: .medium)
+        }
+        .foregroundStyle(Color("TFYellow").opacity(0.8))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(.ultraThinMaterial, in: Capsule())
+        .padding(.bottom, 12)
+        .padding(.trailing, 16)
+        .opacity(saveIndicatorVisible ? 1 : 0)
+        .animation(.easeInOut(duration: 0.3), value: saveIndicatorVisible)
     }
-    
+
+    // MARK: - Auto-Save Logic
+
+    /// Debounce: shows the "Saved" indicator 2 s after the user stops typing.
+    private func scheduleIndicator() {
+        autoSaveTask?.cancel()
+        autoSaveTask = Task {
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            await showSaveIndicator()
+        }
+    }
+
+    @MainActor
+    private func showSaveIndicator() {
+        saveIndicatorVisible = true
+        Task {
+            try? await Task.sleep(for: .seconds(1.8))
+            saveIndicatorVisible = false
+        }
+    }
+
+    // MARK: - Logic
+
+    private var isEmpty: Bool {
+        text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     private func saveAndDismiss() {
         if speech.isRecording {
             commitTranscription()
@@ -209,16 +266,18 @@ struct QuickBitEditor: View {
         }
         let plain = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !plain.isEmpty else { return }
-        
-        // Assumes you have a 'Bit' model in SwiftData
         modelContext.insert(Bit(text: plain, status: .loose))
+        userCancelled = true // prevent onDisappear from double-inserting
         dismiss()
     }
-    
+
+    private func cancelAndDismiss() {
+        userCancelled = true
+        dismiss()
+    }
+
     private func commitTranscription() {
         guard !speech.transcript.isEmpty else { return }
-        
-        // Append transcribed text to existing text
         let prefix = text.isEmpty ? "" : " "
         text += prefix + speech.transcript
     }
