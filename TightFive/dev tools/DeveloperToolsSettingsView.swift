@@ -7,6 +7,7 @@ struct DeveloperToolsSettingsView: View {
     @State private var showingExportSheet = false
     @State private var exportedData: String = ""
     @State private var showingClearConfirmation = false
+    @State private var showingWelcomeResetAlert = false
     
     var body: some View {
         Form {
@@ -166,10 +167,23 @@ struct DeveloperToolsSettingsView: View {
                     }
                 }
                 .disabled(monitor.performanceEvents.isEmpty)
+                
+                Button {
+                    showingWelcomeResetAlert = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .foregroundStyle(TFTheme.yellow)
+                            .frame(width: 24)
+                        
+                        Text("Reset Welcome Screen")
+                            .foregroundStyle(.white)
+                    }
+                }
             } header: {
                 Text("Actions")
             } footer: {
-                Text("Export performance data as CSV for analysis in external tools like Excel or Numbers.")
+                Text("Export performance data as CSV for analysis in external tools like Excel or Numbers. Reset the welcome screen to test the first launch experience.")
             }
             
             // Developer Information Section
@@ -219,6 +233,22 @@ struct DeveloperToolsSettingsView: View {
         } message: {
             Text("This will permanently delete all \(monitor.performanceEvents.count) recorded performance events.")
         }
+        .alert("Reset Welcome Screen?", isPresented: $showingWelcomeResetAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Reset", role: .destructive) {
+                resetFirstLaunchFlag()
+            }
+        } message: {
+            Text("The welcome screen will appear the next time you fully restart the app. Close the app completely and reopen it to see the welcome screen again.")
+        }
+    }
+    
+    // MARK: - Helper Functions
+    
+    private func resetFirstLaunchFlag() {
+        UserDefaults.standard.set(false, forKey: "hasLaunchedBefore")
+        // Force the app to restart or show an alert
+        // Note: The welcome screen will appear next time the app is fully restarted
     }
     
     // MARK: - Computed Properties
