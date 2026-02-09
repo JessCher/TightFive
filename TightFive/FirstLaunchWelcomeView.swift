@@ -14,7 +14,7 @@ struct FirstLaunchWelcomeView: View {
                         .appFont(.title2, weight: .bold)
                         .foregroundStyle(TFTheme.text)
 
-                    Text("Your new home for the comedy workflow. From writing your first bit to performing live on stage to reflection and refinement. It all happens here.")
+                    Text("Your new home for the comedy workflow. From writing your first bit to performing live on stage to reflection and refinement. This is YOUR space and it all happens here.")
                         .appFont(.subheadline)
                         .foregroundStyle(TFTheme.text.opacity(0.65))
                         .fixedSize(horizontal: false, vertical: true)
@@ -25,6 +25,7 @@ struct FirstLaunchWelcomeView: View {
                     welcomeBullet("Build your setlists using bits or write fresh material from the setlist builder.")
                     welcomeBullet("Perform your sets live with Stage Mode.")
                     welcomeBullet("Reflect on your performances using Show Notes.")
+                    welcomeBullet("Customize the appearance of the app in Settings -> Themes and Customization.")
                     welcomeBullet("Visit our About section to learn how to use all of the features in TightFive.")
                 }
 
@@ -46,7 +47,7 @@ struct FirstLaunchWelcomeView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Text("Get Started")
+                        Text("Get To Work")
                             .appFont(.subheadline, weight: .semibold)
                             .foregroundStyle(TFTheme.text)
                             .frame(maxWidth: .infinity)
