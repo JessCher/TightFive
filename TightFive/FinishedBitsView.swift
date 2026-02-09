@@ -236,6 +236,17 @@ struct FinishedBitsView: View {
                                             systemImage: bit.isFavorite ? "star.slash" : "star.fill"
                                         )
                                     }
+                                    
+                                    // Demote to Idea action
+                                    Button {
+                                        withAnimation {
+                                            bit.status = .loose
+                                            bit.updatedAt = Date()
+                                            try? modelContext.save()
+                                        }
+                                    } label: {
+                                        Label("Demote to Idea", systemImage: "arrow.down.circle")
+                                    }
 
                                     // Share action
                                     Button {

@@ -14,6 +14,8 @@ struct VariationComparisonView: View {
     @State private var selectedVariationId: UUID?
     @State private var variationToDelete: BitVariation?
     @State private var showDeleteConfirmation = false
+    @State private var variationToPromote: BitVariation?
+    @State private var showPromoteConfirmation = false
     
     private var sortedVariations: [BitVariation] {
         (bit.variations ?? []).sorted { $0.createdAt > $1.createdAt }
@@ -37,6 +39,15 @@ struct VariationComparisonView: View {
                                 .listRowBackground(Color.clear)
                                 .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                                 .listRowSeparator(.hidden)
+                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                    Button {
+                                        variationToPromote = variation
+                                        showPromoteConfirmation = true
+                                    } label: {
+                                        Label("Promote", systemImage: "arrow.up.circle.fill")
+                                    }
+                                    .tint(TFTheme.yellow)
+                                }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
                                         variationToDelete = variation
@@ -46,6 +57,13 @@ struct VariationComparisonView: View {
                                     }
                                 }
                                 .contextMenu {
+                                    Button {
+                                        variationToPromote = variation
+                                        showPromoteConfirmation = true
+                                    } label: {
+                                        Label("Promote to Master", systemImage: "arrow.up.circle.fill")
+                                    }
+                                    
                                     Button(role: .destructive) {
                                         variationToDelete = variation
                                         showDeleteConfirmation = true
@@ -107,6 +125,16 @@ struct VariationComparisonView: View {
                 }
             } message: { variation in
                 Text("This will permanently delete the variation from \"\(variation.setlistTitle)\". This cannot be undone.")
+            }
+            .alert("Promote to Master?", isPresented: $showPromoteConfirmation, presenting: variationToPromote) { variation in
+                Button("Cancel", role: .cancel) {
+                    variationToPromote = nil
+                }
+                Button("Promote", role: .none) {
+                    promoteVariation(variation)
+                }
+            } message: { variation in
+                Text("This will replace the master bit text with the content from \"\(variation.setlistTitle)\". The current master text will be preserved as a variation.")
             }
         }
     }
@@ -449,6 +477,60 @@ struct VariationComparisonView: View {
             
             // Clear the deletion state
             variationToDelete = nil
+        }
+    }
+    
+    // MARK: - Promote Action
+    
+    private func promoteVariation(_ variation: BitVariation) {
+        withAnimation {
+            // Save the current master text as a new variation
+            let currentMasterText = bit.text
+            
+            // Create RTF data from current master (using plain text since we don't have styled version)
+            let currentMasterRTF: Data
+            if let attributedString = try? NSAttributedString(
+                string: currentMasterText,
+                attributes: [.font: UIFont.systemFont(ofSize: 16)]
+            ) {
+                currentMasterRTF = attributedString.rtfData() ?? Data()
+            } else {
+                currentMasterRTF = Data()
+            }
+            
+            // Create a new variation from the old master
+            let oldMasterVariation = BitVariation(
+                setlistId: UUID(), // Generic UUID since this wasn't from a setlist
+                setlistTitle: "Previous Master (\(Date().formatted(date: .abbreviated, time: .omitted)))",
+                rtfData: currentMasterRTF,
+                note: "Automatically preserved when promoting variation"
+            )
+            
+            // Add it to the bit's variations
+            if bit.variations == nil {
+                bit.variations = []
+            }
+            bit.variations?.append(oldMasterVariation)
+            oldMasterVariation.bit = bit
+            
+            // Promote the variation to master
+            bit.text = variation.plainText
+            bit.updatedAt = Date()
+            
+            // Remove the promoted variation from the list
+            bit.variations?.removeAll { $0.id == variation.id }
+            modelContext.delete(variation)
+            
+            // Save changes
+            try? modelContext.save()
+            
+            // Clear selection if promoting the currently selected variation
+            if selectedVariationId == variation.id {
+                selectedVariationId = nil
+            }
+            
+            // Clear the promotion state
+            variationToPromote = nil
         }
     }
 }

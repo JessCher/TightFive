@@ -402,6 +402,16 @@ private struct FinishedBitsContent: View {
                                 }
                                 
                                 Button {
+                                    withAnimation {
+                                        bit.status = .loose
+                                        bit.updatedAt = Date()
+                                        try? modelContext.save()
+                                    }
+                                } label: {
+                                    Label("Demote to Idea", systemImage: "arrow.down.circle")
+                                }
+                                
+                                Button {
                                     shareBit(bit)
                                 } label: {
                                     Label("Share", systemImage: "square.and.arrow.up")
@@ -588,6 +598,29 @@ private struct FavoritesBitsContent: View {
             }
         } label: {
             Label("Unfavorite", systemImage: "star.slash")
+        }
+        
+        // Add status toggle options
+        if bit.status == .finished {
+            Button {
+                withAnimation {
+                    bit.status = .loose
+                    bit.updatedAt = Date()
+                    try? modelContext.save()
+                }
+            } label: {
+                Label("Demote to Idea", systemImage: "arrow.down.circle")
+            }
+        } else {
+            Button {
+                withAnimation {
+                    bit.status = .finished
+                    bit.updatedAt = Date()
+                    try? modelContext.save()
+                }
+            } label: {
+                Label("Mark as Finished", systemImage: "checkmark.seal.fill")
+            }
         }
     }
     
