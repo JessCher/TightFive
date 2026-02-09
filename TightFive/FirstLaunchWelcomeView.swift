@@ -14,16 +14,18 @@ struct FirstLaunchWelcomeView: View {
                         .appFont(.title2, weight: .bold)
                         .foregroundStyle(TFTheme.text)
 
-                    Text("Build better material faster with one place for notes, sets, and post-show feedback.")
+                    Text("Your new home for the comedy workflow. From writing your first bit to performing live on stage to reflection and refinement. It all happens here.")
                         .appFont(.subheadline)
                         .foregroundStyle(TFTheme.text.opacity(0.65))
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    welcomeBullet("Capture ideas quickly with Notebook and Quick Bit.")
-                    welcomeBullet("Shape your act in Setlists and rehearse in Run Through.")
-                    welcomeBullet("Track progress over time using Show Notes.")
+                    welcomeBullet("Capture ideas quickly with Quick Bit button, or add a Quick Bit widget to your homescreen.")
+                    welcomeBullet("Build your setlists using bits or write fresh material from the setlist builder.")
+                    welcomeBullet("Perform your sets live with Stage Mode.")
+                    welcomeBullet("Reflect on your performances using Show Notes.")
+                    welcomeBullet("Visit our About section to learn how to use all of the features in TightFive.")
                 }
 
                 Spacer(minLength: 0)
@@ -32,7 +34,7 @@ struct FirstLaunchWelcomeView: View {
                     Button {
                         showAbout = true
                     } label: {
-                        Text("Learn more in About")
+                        Text("View our privacy policy and learn more in our About section")
                             .appFont(.headline, weight: .semibold)
                             .foregroundStyle(.black)
                             .frame(maxWidth: .infinity)
