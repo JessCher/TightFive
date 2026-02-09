@@ -29,3 +29,4 @@ TightFive requests permissions only to enable features you use:
 
 # Contact
 If you have questions, contact me at: jessecherrycomedy@gmail.com
+
