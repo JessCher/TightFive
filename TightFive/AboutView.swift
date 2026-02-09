@@ -1,13 +1,17 @@
 import SwiftUI
 
 struct AboutView: View {
+    @Environment(\.openURL) private var openURL
+    
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
                 aboutHeaderCard
-                appInformationCard
-                privacyPolicyCard
                 featureHelpCard
+                privacyPolicyCard
+                appInformationCard
+                
+                
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
@@ -21,6 +25,18 @@ struct AboutView: View {
             }
         }
         .tfBackground()
+    }
+    private var featureHelpCard: some View {
+        aboutCard(title: "Feature-Specific Help") {
+            ForEach(Feature.allFeatures) { feature in
+                NavigationLink {
+                    FeatureHelpDetailView(feature: feature)
+                } label: {
+                    featureHelpRow(feature.name, feature.shortDescription)
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
     private var aboutHeaderCard: some View {
@@ -45,31 +61,33 @@ struct AboutView: View {
         aboutCard(title: "App Information") {
             AboutRow(label: "App Name", value: AppMetadata.appName)
             AboutRow(label: "Bundle Version", value: "\(AppMetadata.version) (\(AppMetadata.build))")
-            AboutRow(label: "Placeholder", value: "Product story and support links coming soon.")
         }
     }
 
     private var privacyPolicyCard: some View {
-        aboutCard(title: "Privacy Policy") {
-            Text("Privacy policy placeholder")
-                .appFont(.subheadline, weight: .semibold)
-                .foregroundStyle(TFTheme.text)
-
-            Text("Add a summary of data collection, storage, and sharing practices here. Include links to your full policy when available.")
-                .appFont(.caption)
-                .foregroundStyle(TFTheme.text.opacity(0.65))
-                .fixedSize(horizontal: false, vertical: true)
+        Button {
+            if let url = URL(string: "https://jesscher.github.io/TightFive/privacy-policy.html") {
+                openURL(url)
+            }
+        } label: {
+            aboutCard(title: "Privacy Policy") {
+                HStack {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("TightFive does not collect, share, or sell any personal data for any users. We do not track any usage activity or have access to any material that you create. Everything you do on this app is contained completely on your personal device and belongs to you. To view the full privacy policy for TightFive, please click the link.")
+                            .appFont(.caption)
+                            .foregroundStyle(TFTheme.text.opacity(0.65))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.title3)
+                        .foregroundStyle(TFTheme.yellow.opacity(0.8))
+                }
+            }
         }
-    }
-
-    private var featureHelpCard: some View {
-        aboutCard(title: "Feature-Specific Help") {
-            featureHelpRow("Bits", "Placeholder: organizing and refining material.")
-            featureHelpRow("Notebook", "Placeholder: capturing notes and managing folders.")
-            featureHelpRow("Setlists", "Placeholder: building and rehearsing performance flow.")
-            featureHelpRow("Run Through", "Placeholder: guided timed practice.")
-            featureHelpRow("Show Notes", "Placeholder: post-show review and feedback.")
-        }
+        .buttonStyle(.plain)
     }
 
     private func aboutCard<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -87,15 +105,24 @@ struct AboutView: View {
     }
 
     private func featureHelpRow(_ title: String, _ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .appFont(.subheadline, weight: .semibold)
-                .foregroundStyle(TFTheme.text)
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .appFont(.subheadline, weight: .semibold)
+                    .foregroundStyle(TFTheme.text)
 
-            Text(text)
-                .appFont(.caption)
-                .foregroundStyle(TFTheme.text.opacity(0.65))
+                Text(text)
+                    .appFont(.caption)
+                    .foregroundStyle(TFTheme.text.opacity(0.65))
+            }
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(TFTheme.text.opacity(0.4))
         }
+        .contentShape(Rectangle())
     }
 }
 
