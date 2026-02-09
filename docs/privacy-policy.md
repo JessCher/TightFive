@@ -1,31 +1,32 @@
 # TightFive Privacy Policy
+Effective date: 2026-01-01
 
-**Effective Date**: 2026-01-01
+TightFive is built to keep your data on your device. We do not collect, sell, or share personal data.
 
-At TightFive, we are committed to protecting your privacy. This Privacy Policy outlines our practices regarding the collection, use, and disclosure of information that we receive from users of our services.
+# What we collect
+- Nothing. TightFive does not collect analytics, advertising identifiers, or account data.
+- Any information you enter (such as a display name to be used on shared Bit Cards) is stored locally on your device and is not accessible to the developer.
 
-## Data Collection
+# Where your data lives
+- On-device: Your bits, setlists, notes, profile information, and recordings are stored locally on your device.
+- Optional iCloud sync: If enabled, your data is stored and encrypted by Apple under your Apple ID. TightFive does not operate servers or access this data.
 
-We collect information about you when you use our app, including:
-- Information you provide when you create an account.
-- Usage data as you interact with the app, including but not limited to your location and interactions.
 
-## Where Data Lives
+# Voice, Siri, and speech recognition
+TightFive uses Apple’s built-in Siri and speech recognition capabilities to allow you to generate bits, transcribe voice-to-text, and drive our Cue Card based Stage Mode. Your voice input is processed by Apple under Apple’s Privacy Policy and Siri/Speech terms. TightFive does not receive or store your raw audio beyond what you record on-device for app features.
 
-All data is stored securely in the cloud and is protected by industry-standard encryption protocols. We ensure that your information is safe, and we implement measures to prevent unauthorized access.
+Learn more:
+- Apple Privacy Policy: https://www.apple.com/legal/privacy/
+- Siri & Dictation: https://support.apple.com/en-us/HT210657
 
-## Voice/Siri Information
+# Permissions you may be asked for
+TightFive requests permissions only to enable features you use:
+- Microphone  (speech input, rehearsal features, audio recording)
+- Speech Recognition  (Stage Mode, voice-driven cue card system)
+- Siri  (Siri shortcuts and voice workflows)
+- Photo library and File access (Save Bit Share Cards, import/export material)
+- iCloud  (optional sync via Apple)
 
-If you use voice features (like Siri), we may collect data related to your voice interactions to improve our services. This data is anonymized and used for analytical purposes only.
+# Contact
+If you have questions, contact me at: jessecherrycomedy@gmail.com
 
-## Permissions
-
-Our app requires specific permissions to function correctly, which may include:
-- Access to your device's microphone for voice interactions.
-- Location services for personalized experiences.
-
-## Contact Details
-
-If you have any questions or concerns about our privacy practices, please contact us:
-- Email: support@tightfive.com
-- Phone: 1-800-555-0199
