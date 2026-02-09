@@ -150,8 +150,11 @@ extension Bit {
     ///
     /// - Parameter context: The ModelContext to delete variations from
     func softDelete(context: ModelContext) {
+        // Set deletion flags FIRST before any other operations
+        // This ensures the bit is immediately filtered out of queries
         isDeleted = true
         deletedAt = Date()
+        updatedAt = Date()
         
         // Fetch all setlists that contain this bit
         let bitId = self.id

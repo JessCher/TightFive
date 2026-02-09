@@ -123,9 +123,12 @@ struct ShowNotesView: View {
 
         // Soft delete performances (moves to trashcan)
         for perf in performances where ids.contains(perf.id) {
-            perf.softDelete()
+            perf.softDelete(context: modelContext)
         }
-        try? modelContext.save()
+        // Save after deletion completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            try? modelContext.save()
+        }
     }
 }
 
@@ -699,13 +702,11 @@ struct PerformanceDetailView: View {
         let callback = onDelete
         
         // 3. Soft delete (move to trashcan)
-        performance.softDelete()
+        performance.softDelete(context: modelContext)
         
-        // 4. Save immediately
-        do {
-            try modelContext.save()
-        } catch {
-            print("Failed to save after deletion: \(error)")
+        // 4. Save after a brief delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            try? modelContext.save()
         }
         
         // 5. Dismiss sheet

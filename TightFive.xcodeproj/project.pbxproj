@@ -107,7 +107,6 @@
 				ShowNotesView.swift = (ios, );
 				SpeechRecognizer.swift = (ios, );
 				TFBackground.swift = (ios, );
-				TFIcons.swift = (ios, );
 				TFTheme.swift = (ios, );
 				TFWordmarkTitle.swift = (ios, );
 				TeleprompterSettingsDrawer.swift = (ios, );

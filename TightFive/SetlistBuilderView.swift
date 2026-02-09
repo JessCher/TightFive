@@ -516,8 +516,11 @@ struct SetlistBuilderView: View {
                 Divider()
                 
                 Button(role: .destructive) {
-                    setlist.softDelete()
-                    try? modelContext.save()
+                    setlist.softDelete(context: modelContext)
+                    // Save after a brief delay to allow SwiftData to process
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        try? modelContext.save()
+                    }
                     dismiss()
                 } label: {
                     Label("Delete Setlist", systemImage: "trash")

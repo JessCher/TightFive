@@ -196,7 +196,7 @@ extension Performance {
     /// - `deletedAt` set to current timestamp
     /// - Performance becomes recoverable from Trashcan
     /// - Audio file remains on disk
-    func softDelete() {
+    func softDelete(context: ModelContext) {
         isDeleted = true
         deletedAt = Date()
     }

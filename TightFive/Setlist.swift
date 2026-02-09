@@ -274,9 +274,10 @@ extension Setlist {
     /// - `deletedAt` set to current timestamp
     /// - Setlist becomes recoverable from Trashcan
     /// - All assignments and script content remain intact
-    func softDelete() {
+    func softDelete(context: ModelContext) {
         isDeleted = true
         deletedAt = Date()
+        updatedAt = Date()
     }
     
     /// Restore a soft-deleted setlist.

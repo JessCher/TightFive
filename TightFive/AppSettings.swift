@@ -177,98 +177,77 @@ class AppSettings {
         }
     }
 
-    /// Bit card frame color for shareable cards (background/border)
-    var bitCardFrameColor: BitCardFrameColor {
-        get {
-            observeChanges()
-            guard let rawValue = getString(forKey: "bitCardFrameColor"),
-                  let color = BitCardFrameColor(rawValue: rawValue) else {
-                return .default
-            }
-            return color
-        }
-        set {
-            setString(newValue.rawValue, forKey: "bitCardFrameColor")
-            notifyChange()
-        }
-    }
+    // MARK: - Shareable Bit Card Themes
 
-    /// Bit card bottom bar color for shareable cards
-    var bitCardBottomBarColor: BitCardFrameColor {
+    /// Frame theme for shareable bit cards (background/border)
+    var bitCardFrameTheme: TileCardTheme {
         get {
             observeChanges()
-            guard let rawValue = getString(forKey: "bitCardBottomBarColor"),
-                  let color = BitCardFrameColor(rawValue: rawValue) else {
-                return .default
-            }
-            return color
-        }
-        set {
-            setString(newValue.rawValue, forKey: "bitCardBottomBarColor")
-            notifyChange()
-        }
-    }
-
-    /// Bit window theme for the text area of shareable cards
-    var bitWindowTheme: BitWindowTheme {
-        get {
-            observeChanges()
-            guard let rawValue = getString(forKey: "bitWindowTheme"),
-                  let theme = BitWindowTheme(rawValue: rawValue) else {
-                return .chalkboard
+            guard let rawValue = getString(forKey: "bitCardFrameTheme"),
+                  let theme = TileCardTheme(rawValue: rawValue) else {
+                return .darkGrit
             }
             return theme
         }
         set {
-            setString(newValue.rawValue, forKey: "bitWindowTheme")
+            setString(newValue.rawValue, forKey: "bitCardFrameTheme")
             notifyChange()
         }
     }
 
-    /// Custom hex color for frame (when .custom is selected)
-    var customFrameColorHex: String {
+    /// Bottom bar theme for shareable bit cards
+    var bitCardBottomBarTheme: TileCardTheme {
         get {
             observeChanges()
-            return getString(forKey: "customFrameColorHex", default: "#3A3A3A") ?? "#3A3A3A"
+            guard let rawValue = getString(forKey: "bitCardBottomBarTheme"),
+                  let theme = TileCardTheme(rawValue: rawValue) else {
+                return .darkGrit
+            }
+            return theme
         }
         set {
-            setString(newValue, forKey: "customFrameColorHex")
+            setString(newValue.rawValue, forKey: "bitCardBottomBarTheme")
             notifyChange()
         }
     }
 
-    /// Custom hex color for bottom bar (when .custom is selected)
-    var customBottomBarColorHex: String {
+    /// Window (text area) theme for shareable bit cards
+    var bitCardWindowTheme: TileCardTheme {
         get {
             observeChanges()
-            return getString(forKey: "customBottomBarColorHex", default: "#3A3A3A") ?? "#3A3A3A"
+            guard let rawValue = getString(forKey: "bitCardWindowTheme"),
+                  let theme = TileCardTheme(rawValue: rawValue) else {
+                return .darkGrit
+            }
+            return theme
         }
         set {
-            setString(newValue, forKey: "customBottomBarColorHex")
+            setString(newValue.rawValue, forKey: "bitCardWindowTheme")
             notifyChange()
         }
     }
 
-    /// Grit level for shareable bit cards (0.0 = no grit, 1.0 = maximum grit)
-    var bitCardGritLevel: Double {
+    // MARK: - Bit Card Frame Customization
+
+    /// Custom frame background color (hex)
+    var bitCardFrameCustomColorHex: String {
         get {
             observeChanges()
-            let value = getDouble(forKey: "bitCardGritLevel")
-            // If never set, default to 1.0 (maximum grit)
-            return value == 0 && !hasBeenSet(forKey: "bitCardGritLevelHasBeenSet") ? 1.0 : value
+            return getString(forKey: "bitCardFrameCustomColorHex", default: "#3A3A3A") ?? "#3A3A3A"
         }
         set {
-            setDouble(newValue, forKey: "bitCardGritLevel")
-            setBool(true, forKey: "bitCardGritLevelHasBeenSet")
+            setString(newValue, forKey: "bitCardFrameCustomColorHex")
             notifyChange()
         }
     }
-    // MARK: - Bit Card Custom Grit Colors
 
-    /// Enable custom grit for frame when using custom color
+    /// Frame grit enabled
     var bitCardFrameGritEnabled: Bool {
         get {
             observeChanges()
+            guard hasBeenSet(forKey: "bitCardFrameGritEnabled") else {
+                return true
+            }
             return getBool(forKey: "bitCardFrameGritEnabled")
         }
         set {
@@ -277,10 +256,11 @@ class AppSettings {
         }
     }
 
+    /// Frame grit layer 1 color (hex)
     var bitCardFrameGritLayer1ColorHex: String {
         get {
             observeChanges()
-            return getString(forKey: "bitCardFrameGritLayer1ColorHex", default: "#8B4513") ?? "#8B4513"
+            return getString(forKey: "bitCardFrameGritLayer1ColorHex", default: "#F4C430") ?? "#F4C430"
         }
         set {
             setString(newValue, forKey: "bitCardFrameGritLayer1ColorHex")
@@ -288,10 +268,11 @@ class AppSettings {
         }
     }
 
+    /// Frame grit layer 2 color (hex)
     var bitCardFrameGritLayer2ColorHex: String {
         get {
             observeChanges()
-            return getString(forKey: "bitCardFrameGritLayer2ColorHex", default: "#000000") ?? "#000000"
+            return getString(forKey: "bitCardFrameGritLayer2ColorHex", default: "#FFFFFF4D") ?? "#FFFFFF4D"
         }
         set {
             setString(newValue, forKey: "bitCardFrameGritLayer2ColorHex")
@@ -299,10 +280,11 @@ class AppSettings {
         }
     }
 
+    /// Frame grit layer 3 color (hex)
     var bitCardFrameGritLayer3ColorHex: String {
         get {
             observeChanges()
-            return getString(forKey: "bitCardFrameGritLayer3ColorHex", default: "#CC6600") ?? "#CC6600"
+            return getString(forKey: "bitCardFrameGritLayer3ColorHex", default: "#FFFFFF1A") ?? "#FFFFFF1A"
         }
         set {
             setString(newValue, forKey: "bitCardFrameGritLayer3ColorHex")
@@ -310,10 +292,27 @@ class AppSettings {
         }
     }
 
-    /// Enable custom grit for bottom bar when using custom color
+    // MARK: - Bit Card Bottom Bar Customization
+
+    /// Custom bottom bar background color (hex)
+    var bitCardBottomBarCustomColorHex: String {
+        get {
+            observeChanges()
+            return getString(forKey: "bitCardBottomBarCustomColorHex", default: "#3A3A3A") ?? "#3A3A3A"
+        }
+        set {
+            setString(newValue, forKey: "bitCardBottomBarCustomColorHex")
+            notifyChange()
+        }
+    }
+
+    /// Bottom bar grit enabled
     var bitCardBottomBarGritEnabled: Bool {
         get {
             observeChanges()
+            guard hasBeenSet(forKey: "bitCardBottomBarGritEnabled") else {
+                return true
+            }
             return getBool(forKey: "bitCardBottomBarGritEnabled")
         }
         set {
@@ -322,10 +321,11 @@ class AppSettings {
         }
     }
 
+    /// Bottom bar grit layer 1 color (hex)
     var bitCardBottomBarGritLayer1ColorHex: String {
         get {
             observeChanges()
-            return getString(forKey: "bitCardBottomBarGritLayer1ColorHex", default: "#8B4513") ?? "#8B4513"
+            return getString(forKey: "bitCardBottomBarGritLayer1ColorHex", default: "#F4C430") ?? "#F4C430"
         }
         set {
             setString(newValue, forKey: "bitCardBottomBarGritLayer1ColorHex")
@@ -333,10 +333,11 @@ class AppSettings {
         }
     }
 
+    /// Bottom bar grit layer 2 color (hex)
     var bitCardBottomBarGritLayer2ColorHex: String {
         get {
             observeChanges()
-            return getString(forKey: "bitCardBottomBarGritLayer2ColorHex", default: "#000000") ?? "#000000"
+            return getString(forKey: "bitCardBottomBarGritLayer2ColorHex", default: "#FFFFFF4D") ?? "#FFFFFF4D"
         }
         set {
             setString(newValue, forKey: "bitCardBottomBarGritLayer2ColorHex")
@@ -344,10 +345,11 @@ class AppSettings {
         }
     }
 
+    /// Bottom bar grit layer 3 color (hex)
     var bitCardBottomBarGritLayer3ColorHex: String {
         get {
             observeChanges()
-            return getString(forKey: "bitCardBottomBarGritLayer3ColorHex", default: "#CC6600") ?? "#CC6600"
+            return getString(forKey: "bitCardBottomBarGritLayer3ColorHex", default: "#FFFFFF1A") ?? "#FFFFFF1A"
         }
         set {
             setString(newValue, forKey: "bitCardBottomBarGritLayer3ColorHex")
@@ -355,24 +357,27 @@ class AppSettings {
         }
     }
 
-    // MARK: - Bit Card Window (Text Area) Custom Settings
+    // MARK: - Bit Card Window (Text Area) Customization
 
-    /// Custom hex color for window (when using custom color)
-    var customWindowColorHex: String {
+    /// Custom window background color (hex)
+    var bitCardWindowCustomColorHex: String {
         get {
             observeChanges()
-            return getString(forKey: "customWindowColorHex", default: "#3A3A3A") ?? "#3A3A3A"
+            return getString(forKey: "bitCardWindowCustomColorHex", default: "#3A3A3A") ?? "#3A3A3A"
         }
         set {
-            setString(newValue, forKey: "customWindowColorHex")
+            setString(newValue, forKey: "bitCardWindowCustomColorHex")
             notifyChange()
         }
     }
 
-    /// Enable custom grit for window when using custom color
+    /// Window grit enabled
     var bitCardWindowGritEnabled: Bool {
         get {
             observeChanges()
+            guard hasBeenSet(forKey: "bitCardWindowGritEnabled") else {
+                return true
+            }
             return getBool(forKey: "bitCardWindowGritEnabled")
         }
         set {
@@ -381,10 +386,11 @@ class AppSettings {
         }
     }
 
+    /// Window grit layer 1 color (hex)
     var bitCardWindowGritLayer1ColorHex: String {
         get {
             observeChanges()
-            return getString(forKey: "bitCardWindowGritLayer1ColorHex", default: "#8B4513") ?? "#8B4513"
+            return getString(forKey: "bitCardWindowGritLayer1ColorHex", default: "#F4C430") ?? "#F4C430"
         }
         set {
             setString(newValue, forKey: "bitCardWindowGritLayer1ColorHex")
@@ -392,10 +398,11 @@ class AppSettings {
         }
     }
 
+    /// Window grit layer 2 color (hex)
     var bitCardWindowGritLayer2ColorHex: String {
         get {
             observeChanges()
-            return getString(forKey: "bitCardWindowGritLayer2ColorHex", default: "#000000") ?? "#000000"
+            return getString(forKey: "bitCardWindowGritLayer2ColorHex", default: "#FFFFFF4D") ?? "#FFFFFF4D"
         }
         set {
             setString(newValue, forKey: "bitCardWindowGritLayer2ColorHex")
@@ -403,57 +410,14 @@ class AppSettings {
         }
     }
 
+    /// Window grit layer 3 color (hex)
     var bitCardWindowGritLayer3ColorHex: String {
         get {
             observeChanges()
-            return getString(forKey: "bitCardWindowGritLayer3ColorHex", default: "#CC6600") ?? "#CC6600"
+            return getString(forKey: "bitCardWindowGritLayer3ColorHex", default: "#FFFFFF1A") ?? "#FFFFFF1A"
         }
         set {
             setString(newValue, forKey: "bitCardWindowGritLayer3ColorHex")
-            notifyChange()
-        }
-    }
-
-    // MARK: - Individual Grit Level Sliders for Each Section
-
-    /// Frame grit level (0.0 = no grit, 1.0 = maximum grit)
-    var bitCardFrameGritLevel: Double {
-        get {
-            observeChanges()
-            let value = getDouble(forKey: "bitCardFrameGritLevel")
-            return value == 0 && !hasBeenSet(forKey: "bitCardFrameGritLevelHasBeenSet") ? 1.0 : value
-        }
-        set {
-            setDouble(newValue, forKey: "bitCardFrameGritLevel")
-            setBool(true, forKey: "bitCardFrameGritLevelHasBeenSet")
-            notifyChange()
-        }
-    }
-
-    /// Bottom bar grit level (0.0 = no grit, 1.0 = maximum grit)
-    var bitCardBottomBarGritLevel: Double {
-        get {
-            observeChanges()
-            let value = getDouble(forKey: "bitCardBottomBarGritLevel")
-            return value == 0 && !hasBeenSet(forKey: "bitCardBottomBarGritLevelHasBeenSet") ? 1.0 : value
-        }
-        set {
-            setDouble(newValue, forKey: "bitCardBottomBarGritLevel")
-            setBool(true, forKey: "bitCardBottomBarGritLevelHasBeenSet")
-            notifyChange()
-        }
-    }
-
-    /// Window grit level (0.0 = no grit, 1.0 = maximum grit)
-    var bitCardWindowGritLevel: Double {
-        get {
-            observeChanges()
-            let value = getDouble(forKey: "bitCardWindowGritLevel")
-            return value == 0 && !hasBeenSet(forKey: "bitCardWindowGritLevelHasBeenSet") ? 1.0 : value
-        }
-        set {
-            setDouble(newValue, forKey: "bitCardWindowGritLevel")
-            setBool(true, forKey: "bitCardWindowGritLevelHasBeenSet")
             notifyChange()
         }
     }
@@ -810,19 +774,14 @@ class AppSettings {
 
     /// Returns true if any of the card elements are using a textured theme
     var hasAnyTexturedTheme: Bool {
-        return bitCardFrameColor.hasTexture ||
-               bitCardBottomBarColor.hasTexture ||
-               bitWindowTheme.hasTexture ||
-               (bitCardFrameColor == .custom && bitCardFrameGritEnabled) ||
-               (bitCardBottomBarColor == .custom && bitCardBottomBarGritEnabled) ||
-               (bitWindowTheme == .custom && bitCardWindowGritEnabled)
-    }
-
-    /// Calculates the adjusted grit density for shareable bit cards
-    /// - Parameter baseDensity: The maximum density value (at gritLevel = 1.0)
-    /// - Returns: The scaled density value
-    func adjustedBitCardGritDensity(_ baseDensity: Int) -> Int {
-        return Int(Double(baseDensity) * bitCardGritLevel)
+        let frameHasTexture = (bitCardFrameTheme != .custom) || 
+                             (bitCardFrameTheme == .custom && bitCardFrameGritEnabled)
+        let bottomBarHasTexture = (bitCardBottomBarTheme != .custom) || 
+                                  (bitCardBottomBarTheme == .custom && bitCardBottomBarGritEnabled)
+        let windowHasTexture = (bitCardWindowTheme != .custom) || 
+                               (bitCardWindowTheme == .custom && bitCardWindowGritEnabled)
+        
+        return frameHasTexture || bottomBarHasTexture || windowHasTexture
     }
 
     /// Calculates the adjusted grit density for app UI elements
@@ -962,25 +921,30 @@ class AppSettings {
     /// Migrate any local-only settings to iCloud
     private func migrateLocalSettingsToCloud() {
         let allKeys = [
-            "bitCardFrameColor", "bitCardBottomBarColor", "bitWindowTheme",
-            "customFrameColorHex", "customBottomBarColorHex", "customWindowColorHex",
-            "bitCardGritLevel", "bitCardFrameGritLevel", "bitCardBottomBarGritLevel", "bitCardWindowGritLevel",
-            "bitCardWindowGritLayer1", "bitCardWindowGritLayer2", "bitCardWindowGritLayer3",
-            "bitCardFrameGritLayer1Density", "bitCardFrameGritLayer2Density", "bitCardFrameGritLayer3Density",
-            "bitCardBottomBarGritLayer1Density", "bitCardBottomBarGritLayer2Density", "bitCardBottomBarGritLayer3Density",
-            "bitCardFrameGritEnabled", "bitCardBottomBarGritEnabled", "bitCardWindowGritEnabled",
+            // Shareable Bit Card themes
+            "bitCardFrameTheme", "bitCardBottomBarTheme", "bitCardWindowTheme",
+            // Bit Card Frame customization
+            "bitCardFrameCustomColorHex", "bitCardFrameGritEnabled",
             "bitCardFrameGritLayer1ColorHex", "bitCardFrameGritLayer2ColorHex", "bitCardFrameGritLayer3ColorHex",
+            // Bit Card Bottom Bar customization
+            "bitCardBottomBarCustomColorHex", "bitCardBottomBarGritEnabled",
             "bitCardBottomBarGritLayer1ColorHex", "bitCardBottomBarGritLayer2ColorHex", "bitCardBottomBarGritLayer3ColorHex",
+            // Bit Card Window customization
+            "bitCardWindowCustomColorHex", "bitCardWindowGritEnabled",
             "bitCardWindowGritLayer1ColorHex", "bitCardWindowGritLayer2ColorHex", "bitCardWindowGritLayer3ColorHex",
+            // App UI settings
             "appGritLevel", "appFont", "appFontColorHex", "appFontSizeMultiplier",
+            // Tile Card and Quick Bit
             "tileCardTheme", "quickBitTheme", "quickBitCustomColorHex",
             "quickBitGritEnabled", "quickBitGritLayer1ColorHex", "quickBitGritLayer2ColorHex", "quickBitGritLayer3ColorHex",
             "tileCardCustomColorHex", "tileCardGritEnabled",
             "tileCardGritLayer1ColorHex", "tileCardGritLayer2ColorHex", "tileCardGritLayer3ColorHex",
+            // Background customization
             "backgroundBaseColorHex", "backgroundCloudCount", "backgroundCloudOpacity",
             "backgroundCloudColor1Hex", "backgroundCloudColor2Hex", "backgroundCloudColor3Hex",
             "backgroundCloudOffsetX", "backgroundCloudOffsetY",
             "backgroundDustCount", "backgroundDustOpacity",
+            // Accessibility
             "accessibilityReduceMotion", "accessibilityHighContrast", "accessibilityHapticsEnabled",
             "accessibilityBoldText", "accessibilityLargerTouchTargets"
         ]
@@ -1003,116 +967,6 @@ class AppSettings {
         // Force sync after migration
         cloudStore.synchronize()
         print("✅ Migrated local settings to iCloud")
-    }
-}
-
-/// Available frame colors for shareable bit cards
-enum BitCardFrameColor: String, CaseIterable, Identifiable {
-    case `default` = "default"
-    case black = "black"
-    case white = "white"
-    case chalkboard = "chalkboard"
-    case yellowGrit = "yellowGrit"
-    case custom = "custom"
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .default: return "Default"
-        case .black: return "Black"
-        case .white: return "White"
-        case .chalkboard: return "Dark Grit"
-        case .yellowGrit: return "Yellow Grit"
-        case .custom: return "Custom Color"
-        }
-    }
-
-    var description: String {
-        switch self {
-        case .default: return "Standard card background"
-        case .black: return "Solid black"
-        case .white: return "Solid white"
-        case .chalkboard: return "Dark with subtle texture"
-        case .yellowGrit: return "Warm yellow with grit"
-        case .custom: return "Choose your own color"
-        }
-    }
-
-    func color(customHex: String? = nil) -> Color {
-        switch self {
-        case .default: return Color("TFCard")
-        case .black: return Color.black
-        case .white: return Color.white
-        case .chalkboard: return Color("TFCard")
-        case .yellowGrit: return Color("TFYellow")
-        case .custom:
-            if let hex = customHex {
-                return Color(hex: hex) ?? Color("TFCard")
-            }
-            return Color("TFCard")
-        }
-    }
-
-    /// Returns true if this color option should render with textured layers
-    var hasTexture: Bool {
-        switch self {
-        case .chalkboard, .yellowGrit: return true
-        default: return false
-        }
-    }
-
-    /// Returns the appropriate texture theme for rendering
-    var textureTheme: BitWindowTheme? {
-        switch self {
-        case .chalkboard: return .chalkboard
-        case .yellowGrit: return .yellowGrit
-        default: return nil
-        }
-    }
-}
-/// Available themes for the bit window (text area) on shareable cards
-enum BitWindowTheme: String, CaseIterable, Identifiable {
-    case chalkboard = "chalkboard"
-    case yellowGrit = "yellowGrit"
-    case custom = "custom"
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .chalkboard: return "Dark Grit"
-        case .yellowGrit: return "Yellow Grit"
-        case .custom: return "Custom Color"
-        }
-    }
-
-    var description: String {
-        switch self {
-        case .chalkboard: return "Dark with subtle texture"
-        case .yellowGrit: return "Warm yellow with grit"
-        case .custom: return "Choose your own color"
-        }
-    }
-
-    func color(customHex: String? = nil) -> Color {
-        switch self {
-        case .chalkboard: return Color("TFCard")
-        case .yellowGrit: return Color("TFYellow")
-        case .custom:
-            if let hex = customHex {
-                return Color(hex: hex) ?? Color("TFCard")
-            }
-            return Color("TFCard")
-        }
-    }
-
-    /// Returns true if this theme should render with textured layers
-    var hasTexture: Bool {
-        switch self {
-        case .chalkboard, .yellowGrit: return true
-        case .custom: return false
-        }
     }
 }
 

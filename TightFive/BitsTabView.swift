@@ -326,7 +326,10 @@ private struct LooseBitsContent: View {
 
     private func softDeleteBit(_ bit: Bit) {
         bit.softDelete(context: modelContext)
-        try? modelContext.save()
+        // Save AFTER a brief delay to allow animation to complete
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            try? self.modelContext.save()
+        }
     }
 }
 
@@ -336,30 +339,30 @@ private struct LooseBitsContent: View {
 private struct FinishedBitsContent: View {
     let query: String
     @Binding var selectedBit: Bit?
-
+    
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<Bit> { bit in
         !bit.isDeleted && bit.statusRaw == "finished"
     }, sort: \Bit.updatedAt, order: .reverse) private var finishedBits: [Bit]
-
+    
     @Query(sort: \Setlist.updatedAt, order: .reverse) private var allSetlists: [Setlist]
-
+    
     private var inProgressSetlists: [Setlist] {
         allSetlists.filter { $0.isDraft }
     }
-
+    
     @State private var flippedBitIds: Set<UUID> = []
     @State private var sortCriteria: BitSortCriteria = .dateCreated
     @State private var sortAscending: Bool = false
-
+    
     private var filtered: [Bit] {
         sortedBits(searchFilter(finishedBits, query: query), criteria: sortCriteria, ascending: sortAscending)
     }
-
+    
     var body: some View {
         VStack(spacing: 12) {
             BitSortMenuButton(sortCriteria: $sortCriteria, sortAscending: $sortAscending)
-
+            
             if filtered.isEmpty {
                 emptyState
                     .padding(.top, 40)
@@ -372,7 +375,7 @@ private struct FinishedBitsContent: View {
                             else { flippedBitIds.remove(bit.id) }
                         }
                     )
-
+                    
                     BitSwipeView(
                         bit: bit,
                         onFinish: { shareBit(bit) },
@@ -397,13 +400,13 @@ private struct FinishedBitsContent: View {
                                         systemImage: bit.isFavorite ? "star.slash" : "star.fill"
                                     )
                                 }
-
+                                
                                 Button {
                                     shareBit(bit)
                                 } label: {
                                     Label("Share", systemImage: "square.and.arrow.up")
                                 }
-
+                                
                                 if inProgressSetlists.isEmpty {
                                     Text("No in-progress setlists")
                                 } else {
@@ -424,13 +427,13 @@ private struct FinishedBitsContent: View {
         .padding(.top, 4)
         .padding(.bottom, 28)
     }
-
+    
     private var emptyState: some View {
         VStack(spacing: 14) {
             Text("No finished bits yet")
                 .appFont(.title3, weight: .semibold)
                 .foregroundStyle(TFTheme.text)
-
+            
             Text("Move a bit to Finished when it's stage-ready.")
                 .appFont(.subheadline)
                 .foregroundStyle(TFTheme.text.opacity(0.65))
@@ -438,36 +441,55 @@ private struct FinishedBitsContent: View {
                 .padding(.horizontal, 26)
         }
     }
-
+    
     private func softDeleteBit(_ bit: Bit) {
         bit.softDelete(context: modelContext)
-        try? modelContext.save()
+        // Save AFTER a brief delay to allow animation to complete
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            try? self.modelContext.save()
+        }
     }
-
+    
     private func add(bit: Bit, to setlist: Setlist) {
         setlist.insertBit(bit, at: nil, context: modelContext)
         setlist.updatedAt = Date()
         try? modelContext.save()
     }
-
+    
     private func shareBit(_ bit: Bit) {
         let descriptor = FetchDescriptor<UserProfile>()
         let userName = (try? modelContext.fetch(descriptor).first?.name) ?? ""
-
-        let renderer = ImageRenderer(content: BitShareCardForTab(bit: bit, userName: userName))
-        renderer.scale = 3.0
-
-        if let image = renderer.uiImage {
-            let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
-
-            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let rootVC = windowScene.windows.first?.rootViewController {
-                var topVC = rootVC
-                while let presentedVC = topVC.presentedViewController {
-                    topVC = presentedVC
+        
+        // Render on a background thread to avoid blocking the main thread
+        Task.detached(priority: .userInitiated) {
+            let shareCard = BitShareCardUnified(bit: bit, userName: userName)
+            let renderer = ImageRenderer(content: shareCard)
+            
+            // Use a reasonable scale - 2x for retina displays
+            await MainActor.run {
+                renderer.scale = 2.0
+            }
+            
+            // Let the renderer calculate the natural size
+            guard let image = await MainActor.run(body: { renderer.uiImage }) else {
+                await MainActor.run {
+                    print("Failed to render bit card image")
                 }
-                activityVC.popoverPresentationController?.sourceView = topVC.view
-                topVC.present(activityVC, animated: true)
+                return
+            }
+            
+            await MainActor.run {
+                let activityVC = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+                
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let rootVC = windowScene.windows.first?.rootViewController {
+                    var topVC = rootVC
+                    while let presentedVC = topVC.presentedViewController {
+                        topVC = presentedVC
+                    }
+                    activityVC.popoverPresentationController?.sourceView = topVC.view
+                    topVC.present(activityVC, animated: true)
+                }
             }
         }
     }
@@ -479,26 +501,26 @@ private struct FinishedBitsContent: View {
 private struct FavoritesBitsContent: View {
     let query: String
     @Binding var selectedBit: Bit?
-
+    
     @Environment(\.modelContext) private var modelContext
-
+    
     /// All non-deleted favorited bits (both loose and finished)
     @Query(filter: #Predicate<Bit> { bit in
         !bit.isDeleted && bit.isFavorite
     }, sort: \Bit.updatedAt, order: .reverse) private var favoriteBits: [Bit]
-
+    
     @State private var flippedBitIds: Set<UUID> = []
     @State private var sortCriteria: BitSortCriteria = .dateCreated
     @State private var sortAscending: Bool = false
-
+    
     private var filtered: [Bit] {
         sortedBits(searchFilter(favoriteBits, query: query), criteria: sortCriteria, ascending: sortAscending)
     }
-
+    
     var body: some View {
         VStack(spacing: 12) {
             BitSortMenuButton(sortCriteria: $sortCriteria, sortAscending: $sortAscending)
-
+            
             if filtered.isEmpty {
                 emptyState
                     .padding(.top, 40)
@@ -511,7 +533,7 @@ private struct FavoritesBitsContent: View {
                             else { flippedBitIds.remove(bit.id) }
                         }
                     )
-
+                    
                     // Use the appropriate card based on bit status
                     if bit.status == .finished {
                         BitSwipeView(
@@ -546,16 +568,16 @@ private struct FavoritesBitsContent: View {
                                     favoriteContextMenu(for: bit)
                                     statusLabel(for: bit)
                                 }
+                            }
                         }
                     }
                 }
             }
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 4)
-        .padding(.bottom, 28)
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
+            .padding(.bottom, 28)
     }
-
+    
     @ViewBuilder
     private func favoriteContextMenu(for bit: Bit) -> some View {
         Button {
@@ -568,7 +590,7 @@ private struct FavoritesBitsContent: View {
             Label("Unfavorite", systemImage: "star.slash")
         }
     }
-
+    
     @ViewBuilder
     private func statusLabel(for bit: Bit) -> some View {
         Label(
@@ -577,17 +599,17 @@ private struct FavoritesBitsContent: View {
         )
         .disabled(true)
     }
-
+    
     private var emptyState: some View {
         VStack(spacing: 14) {
             Image(systemName: "star")
                 .font(.system(size: 36))
                 .foregroundStyle(TFTheme.text.opacity(0.4))
-
+            
             Text("No favorites yet")
                 .appFont(.title3, weight: .semibold)
                 .foregroundStyle(TFTheme.text)
-
+            
             Text("Long-press any bit and tap Favorite to see it here.")
                 .appFont(.subheadline)
                 .foregroundStyle(TFTheme.text.opacity(0.65))
@@ -595,146 +617,487 @@ private struct FavoritesBitsContent: View {
                 .padding(.horizontal, 26)
         }
     }
-
+    
     private func markAsFinished(_ bit: Bit) {
         bit.status = .finished
         bit.updatedAt = Date()
         try? modelContext.save()
     }
-
+    
     private func softDeleteBit(_ bit: Bit) {
         bit.softDelete(context: modelContext)
-        try? modelContext.save()
+        // Save AFTER a brief delay to allow animation to complete
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            try? self.modelContext.save()
+        }
     }
 }
 
 // MARK: - Shared Card Row
 
 private struct BitsTabCardRow: View {
-    let bit: Bit
-
-    var body: some View {
-        VStack(alignment: .center, spacing: 8) {
-            Text(bit.titleLine)
-                .appFont(.title3, weight: .semibold)
-                .foregroundStyle(TFTheme.text)
-                .lineLimit(3)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-
-            HStack(spacing: 8) {
-                Text(bit.updatedAt, style: .date)
-                    .appFont(.subheadline)
-                    .foregroundStyle(TFTheme.text.opacity(0.55))
-
-                if bit.variationCount > 0 {
-                    Text("\u{2022}")
-                        .appFont(.subheadline)
-                        .foregroundStyle(TFTheme.text.opacity(0.4))
-
-                    Text("\(bit.variationCount) variation\(bit.variationCount == 1 ? "" : "s")")
+        let bit: Bit
+        
+        var body: some View {
+            VStack(alignment: .center, spacing: 8) {
+                Text(bit.titleLine)
+                    .appFont(.title3, weight: .semibold)
+                    .foregroundStyle(TFTheme.text)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                HStack(spacing: 8) {
+                    Text(bit.updatedAt, style: .date)
                         .appFont(.subheadline)
                         .foregroundStyle(TFTheme.text.opacity(0.55))
-                }
-
-                if bit.isFavorite {
-                    Text("\u{2022}")
-                        .appFont(.subheadline)
-                        .foregroundStyle(TFTheme.text.opacity(0.4))
-
-                    HStack(spacing: 4) {
-                        Image(systemName: "star.fill")
-                            .appFont(.caption)
-                            .foregroundStyle(TFTheme.yellow)
-                        Text("Favorite")
+                    
+                    if bit.variationCount > 0 {
+                        Text("\u{2022}")
+                            .appFont(.subheadline)
+                            .foregroundStyle(TFTheme.text.opacity(0.4))
+                        
+                        Text("\(bit.variationCount) variation\(bit.variationCount == 1 ? "" : "s")")
                             .appFont(.subheadline)
                             .foregroundStyle(TFTheme.text.opacity(0.55))
                     }
+                    
+                    if bit.isFavorite {
+                        Text("\u{2022}")
+                            .appFont(.subheadline)
+                            .foregroundStyle(TFTheme.text.opacity(0.4))
+                        
+                        HStack(spacing: 4) {
+                            Image(systemName: "star.fill")
+                                .appFont(.caption)
+                                .foregroundStyle(TFTheme.yellow)
+                            Text("Favorite")
+                                .appFont(.subheadline)
+                                .foregroundStyle(TFTheme.text.opacity(0.55))
+                        }
+                    }
                 }
-            }
-
-            if !bit.tags.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(bit.tags, id: \.self) { tag in
-                            Text(tag)
-                                .appFont(.caption2, weight: .medium)
-                                .foregroundStyle(.black)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(TFTheme.yellow.opacity(0.9))
-                                .clipShape(Capsule())
+                
+                if !bit.tags.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(bit.tags, id: \.self) { tag in
+                                Text(tag)
+                                    .appFont(.caption2, weight: .medium)
+                                    .foregroundStyle(.black)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(TFTheme.yellow.opacity(0.9))
+                                    .clipShape(Capsule())
+                            }
                         }
                     }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 18)
+            .tfDynamicCard(cornerRadius: 18)
         }
-        .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 18)
-        .tfDynamicCard(cornerRadius: 18)
     }
-}
-
-// MARK: - Share Card (simplified copy for tab view)
-
-private struct BitShareCardForTab: View {
-    let bit: Bit
-    let userName: String
-    let windowTheme: BitWindowTheme
-
-    init(bit: Bit, userName: String) {
-        self.bit = bit
-        self.userName = userName
-        self.windowTheme = AppSettings.shared.bitWindowTheme
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text(bit.text)
-                    .appFont(size: 18)
-                    .foregroundStyle(windowTheme == .chalkboard ? .white.opacity(0.95) : .black.opacity(0.85))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .lineSpacing(4)
+    
+    // MARK: - Share Card (unified for all bit sharing)
+    
+    private struct BitShareCardUnified: View {
+        let bit: Bit
+        let userName: String
+        
+        // Computed properties that read settings on every access
+        private var settings: AppSettings { AppSettings.shared }
+        
+        // Reduce grit density for rendering to prevent crashes
+        // Use 30% of normal density for share card rendering
+        private func renderDensity(_ normalDensity: Int) -> Int {
+            return max(50, Int(Double(normalDensity) * 0.3))
+        }
+        
+        private var frameTheme: TileCardTheme {
+            settings.bitCardFrameTheme
+        }
+        
+        private var bottomBarTheme: TileCardTheme {
+            settings.bitCardBottomBarTheme
+        }
+        
+        private var windowTheme: TileCardTheme {
+            settings.bitCardWindowTheme
+        }
+        
+        private var frameColor: Color {
+            switch frameTheme {
+            case .darkGrit:
+                return Color("TFCard")
+            case .yellowGrit:
+                return Color("TFYellow")
+            case .custom:
+                return Color(hex: settings.bitCardFrameCustomColorHex) ?? Color("TFCard")
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(32)
-            .background(
+        }
+        
+        private var bottomBarColor: Color {
+            switch bottomBarTheme {
+            case .darkGrit:
+                return Color("TFCard")
+            case .yellowGrit:
+                return Color("TFYellow")
+            case .custom:
+                return Color(hex: settings.bitCardBottomBarCustomColorHex) ?? Color("TFCard")
+            }
+        }
+        
+        private var windowColor: Color {
+            switch windowTheme {
+            case .darkGrit:
+                return Color("TFCard")
+            case .yellowGrit:
+                return Color("TFYellow")
+            case .custom:
+                return Color(hex: settings.bitCardWindowCustomColorHex) ?? Color("TFCard")
+            }
+        }
+        
+        // Helper to determine if bottom bar should use dark text
+        private var shouldUseDarkTextOnBottomBar: Bool {
+            if bottomBarTheme == .yellowGrit {
+                return true
+            }
+            if bottomBarTheme == .custom {
+                // Check luminance of custom color
+                if let components = UIColor(bottomBarColor).cgColor.components, components.count >= 3 {
+                    let r = components[0]
+                    let g = components[1]
+                    let b = components[2]
+                    let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                    return luminance > 0.5
+                }
+            }
+            return false
+        }
+        
+        // Helper to determine if window should use dark text
+        private var shouldUseDarkTextOnWindow: Bool {
+            if windowTheme == .yellowGrit {
+                return true
+            }
+            if windowTheme == .custom {
+                // Check luminance of custom color
+                if let components = UIColor(windowColor).cgColor.components, components.count >= 3 {
+                    let r = components[0]
+                    let g = components[1]
+                    let b = components[2]
+                    let luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                    return luminance > 0.5
+                }
+            }
+            return false
+        }
+        
+        var body: some View {
+            // Wrap everything in a container that includes the frame
+            ZStack {
+                // Frame background with grit
                 ZStack {
-                    windowTheme == .chalkboard ? Color("TFCard") : Color("TFYellow")
-
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(
-                            RadialGradient(
-                                colors: [.clear, .black.opacity(windowTheme == .chalkboard ? 0.3 : 0.15)],
-                                center: .center,
-                                startRadius: 50,
-                                endRadius: 400
+                    // Always render the base color first
+                    frameColor
+                    
+                    // Then render grit layers based on settings
+                    if frameTheme == .custom {
+                        // Custom color: use custom grit settings (if enabled)
+                        if settings.bitCardFrameGritEnabled {
+                            StaticGritLayer(
+                                density: renderDensity(800),
+                                opacity: 0.85,
+                                seed: 9999,
+                                particleColor: Color(hex: settings.bitCardFrameGritLayer1ColorHex) ?? Color("TFYellow")
                             )
+                            
+                            StaticGritLayer(
+                                density: renderDensity(100),
+                                opacity: 0.88,
+                                seed: 1111,
+                                particleColor: Color(hex: settings.bitCardFrameGritLayer2ColorHex) ?? .white.opacity(0.3)
+                            )
+                            
+                            StaticGritLayer(
+                                density: renderDensity(400),
+                                opacity: 0.88,
+                                seed: 2222,
+                                particleColor: Color(hex: settings.bitCardFrameGritLayer3ColorHex) ?? .white.opacity(0.1)
+                            )
+                        }
+                    } else if frameTheme == .darkGrit {
+                        // Dark grit theme
+                        StaticGritLayer(
+                            density: renderDensity(300),
+                            opacity: 0.55,
+                            seed: 9999,
+                            particleColor: Color("TFYellow")
                         )
+                        
+                        StaticGritLayer(
+                            density: renderDensity(300),
+                            opacity: 0.35,
+                            seed: 1111
+                        )
+                    } else if frameTheme == .yellowGrit {
+                        // Yellow grit theme
+                        StaticGritLayer(
+                            density: renderDensity(800),
+                            opacity: 0.85,
+                            seed: 2223,
+                            particleColor: .brown
+                        )
+                        
+                        StaticGritLayer(
+                            density: renderDensity(100),
+                            opacity: 0.88,
+                            seed: 3333,
+                            particleColor: .black
+                        )
+                        
+                        StaticGritLayer(
+                            density: renderDensity(400),
+                            opacity: 0.88,
+                            seed: 4444,
+                            particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
+                        )
+                    }
                 }
-            )
-            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 12, style: .continuous))
-
-            VStack(spacing: 4) {
-                TFWordmarkTitle(title: "written in TightFive", size: 16)
-
-                if !userName.isEmpty {
-                    Text("by \(userName)")
-                        .appFont(size: 14)
-                        .foregroundStyle(.white.opacity(0.7))
+                
+                // Content on top of frame
+                VStack(spacing: 0) {
+                    // Main content area with dynamic card texture - rounded only at top
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Bit text only (no title or tags)
+                        Text(bit.text)
+                            .appFont(size: 18)
+                            .foregroundStyle(shouldUseDarkTextOnWindow ? .black.opacity(0.85) : .white.opacity(0.95))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .lineSpacing(4)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(32)
+                    .background(
+                        ZStack {
+                            if windowTheme == .custom {
+                                // Custom color with optional custom grit
+                                windowColor
+                                
+                                if settings.bitCardWindowGritEnabled {
+                                    StaticGritLayer(
+                                        density: renderDensity(800),
+                                        opacity: 0.85,
+                                        seed: 7777,
+                                        particleColor: Color(hex: settings.bitCardWindowGritLayer1ColorHex) ?? Color("TFYellow")
+                                    )
+                                    
+                                    StaticGritLayer(
+                                        density: renderDensity(100),
+                                        opacity: 0.88,
+                                        seed: 8888,
+                                        particleColor: Color(hex: settings.bitCardWindowGritLayer2ColorHex) ?? .white.opacity(0.3)
+                                    )
+                                    
+                                    StaticGritLayer(
+                                        density: renderDensity(400),
+                                        opacity: 0.88,
+                                        seed: 8889,
+                                        particleColor: Color(hex: settings.bitCardWindowGritLayer3ColorHex) ?? .white.opacity(0.1)
+                                    )
+                                }
+                            } else if windowTheme == .darkGrit {
+                                // Dark grit theme
+                                Color("TFCard")
+                                
+                                StaticGritLayer(
+                                    density: renderDensity(300),
+                                    opacity: 0.55,
+                                    seed: 1234,
+                                    particleColor: Color("TFYellow")
+                                )
+                                
+                                StaticGritLayer(
+                                    density: renderDensity(300),
+                                    opacity: 0.35,
+                                    seed: 5678
+                                )
+                            } else {
+                                // Yellow grit theme
+                                Color("TFYellow")
+                                
+                                StaticGritLayer(
+                                    density: renderDensity(800),
+                                    opacity: 0.85,
+                                    seed: 7777,
+                                    particleColor: .brown
+                                )
+                                
+                                StaticGritLayer(
+                                    density: renderDensity(100),
+                                    opacity: 0.88,
+                                    seed: 8888,
+                                    particleColor: .black
+                                )
+                                
+                                StaticGritLayer(
+                                    density: renderDensity(400),
+                                    opacity: 0.88,
+                                    seed: 8889,
+                                    particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
+                                )
+                            }
+                            
+                            UnevenRoundedRectangle(
+                                topLeadingRadius: 12,
+                                bottomLeadingRadius: 0,
+                                bottomTrailingRadius: 0,
+                                topTrailingRadius: 12,
+                                style: .continuous
+                            )
+                            .fill(
+                                RadialGradient(
+                                    colors: [.clear, .black.opacity(windowTheme == .darkGrit ? 0.3 : 0.15)],
+                                    center: .center,
+                                    startRadius: 50,
+                                    endRadius: 400
+                                )
+                            )
+                        }
+                            .clipShape(
+                                UnevenRoundedRectangle(
+                                    topLeadingRadius: 12,
+                                    bottomLeadingRadius: 0,
+                                    bottomTrailingRadius: 0,
+                                    topTrailingRadius: 12,
+                                    style: .continuous
+                                )
+                            )
+                    )
+                    .overlay(
+                        UnevenRoundedRectangle(
+                            topLeadingRadius: 12,
+                            bottomLeadingRadius: 0,
+                            bottomTrailingRadius: 0,
+                            topTrailingRadius: 12,
+                            style: .continuous
+                        )
+                        .strokeBorder(Color("TFCardStroke"), lineWidth: 1.5)
+                        .opacity(0.9)
+                        .blendMode(.overlay)
+                    )
+                    
+                    // Polaroid-style bar at the bottom - rounded only at bottom
+                    VStack(spacing: 4) {
+                        TFWordmarkTitle(title: "written in TightFive", size: 16)
+                        
+                        if !userName.isEmpty {
+                            Text("by \(userName)")
+                                .appFont(size: 14)
+                                .foregroundStyle(shouldUseDarkTextOnBottomBar ? .black.opacity(0.7) : .white.opacity(0.7))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                    .background(
+                        ZStack {
+                            if bottomBarTheme == .custom {
+                                // Custom color with optional custom grit
+                                bottomBarColor
+                                
+                                if settings.bitCardBottomBarGritEnabled {
+                                    StaticGritLayer(
+                                        density: renderDensity(800),
+                                        opacity: 0.85,
+                                        seed: 5555,
+                                        particleColor: Color(hex: settings.bitCardBottomBarGritLayer1ColorHex) ?? Color("TFYellow")
+                                    )
+                                    
+                                    StaticGritLayer(
+                                        density: renderDensity(100),
+                                        opacity: 0.88,
+                                        seed: 6666,
+                                        particleColor: Color(hex: settings.bitCardBottomBarGritLayer2ColorHex) ?? .white.opacity(0.3)
+                                    )
+                                    
+                                    StaticGritLayer(
+                                        density: renderDensity(400),
+                                        opacity: 0.88,
+                                        seed: 7777,
+                                        particleColor: Color(hex: settings.bitCardBottomBarGritLayer3ColorHex) ?? .white.opacity(0.1)
+                                    )
+                                }
+                            } else if bottomBarTheme == .darkGrit {
+                                // Dark grit theme
+                                Color("TFCard")
+                                
+                                StaticGritLayer(
+                                    density: renderDensity(300),
+                                    opacity: 0.55,
+                                    seed: 1234,
+                                    particleColor: Color("TFYellow")
+                                )
+                                
+                                StaticGritLayer(
+                                    density: renderDensity(300),
+                                    opacity: 0.35,
+                                    seed: 5678
+                                )
+                            } else {
+                                // Yellow grit theme
+                                Color("TFYellow")
+                                
+                                StaticGritLayer(
+                                    density: renderDensity(800),
+                                    opacity: 0.85,
+                                    seed: 7778,
+                                    particleColor: .brown
+                                )
+                                
+                                StaticGritLayer(
+                                    density: renderDensity(100),
+                                    opacity: 0.88,
+                                    seed: 8889,
+                                    particleColor: .black
+                                )
+                                
+                                StaticGritLayer(
+                                    density: renderDensity(400),
+                                    opacity: 0.88,
+                                    seed: 8890,
+                                    particleColor: Color(red: 0.8, green: 0.4, blue: 0.0)
+                                )
+                            }
+                            
+                            UnevenRoundedRectangle(
+                                topLeadingRadius: 0,
+                                bottomLeadingRadius: 12,
+                                bottomTrailingRadius: 12,
+                                topTrailingRadius: 0,
+                                style: .continuous
+                            )
+                            .fill(.clear)
+                        }
+                            .clipShape(
+                                UnevenRoundedRectangle(
+                                    topLeadingRadius: 0,
+                                    bottomLeadingRadius: 12,
+                                    bottomTrailingRadius: 12,
+                                    topTrailingRadius: 0,
+                                    style: .continuous
+                                )
+                            )
+                    )
                 }
+                .padding(12) // Creates visible frame border
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
-            .background(Color("TFCard"))
-            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 0, bottomLeadingRadius: 12, bottomTrailingRadius: 12, topTrailingRadius: 0, style: .continuous))
+            .frame(width: 524) // 500 content + 24 padding for frame
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
         }
-        .frame(width: 500)
-        .padding(12)
-        .background(Color("TFCard"))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
     }
-}
+

@@ -170,7 +170,10 @@ struct NotebookView: View {
             Button("Delete", role: .destructive) {
                 if let note = noteToDelete {
                     withAnimation(.snappy) {
-                        note.softDelete()
+                        note.softDelete(context: modelContext)
+                    }
+                    // Save after animation completes
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                         try? modelContext.save()
                     }
                 }
@@ -619,8 +622,11 @@ struct NoteEditorView: View {
         }
         .alert("Delete Note?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
-                note.softDelete()
-                try? modelContext.save()
+                note.softDelete(context: modelContext)
+                // Save after a brief delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    try? modelContext.save()
+                }
                 dismiss()
             }
             Button("Cancel", role: .cancel) {}

@@ -83,9 +83,10 @@ extension Note {
 extension Note {
 
     /// Soft delete the note (hides from views, preserves data)
-    func softDelete() {
+    func softDelete(context: ModelContext) {
         isDeleted = true
         deletedAt = Date()
+        updatedAt = Date()
     }
 
     /// Restore a soft-deleted note
