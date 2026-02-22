@@ -914,15 +914,23 @@ struct StorageInfoView: View {
                                     .appFont(.subheadline)
                                     .foregroundStyle(TFTheme.text)
                                     .lineLimit(1)
-                                
+
                                 Spacer()
-                                
+
                                 Text(performance.formattedFileSize)
                                     .appFont(.caption)
                                     .foregroundStyle(TFTheme.text.opacity(0.5))
+
+                                if performance.audioFileExists, let url = performance.audioURL {
+                                    ShareLink(item: url) {
+                                        Image(systemName: "square.and.arrow.up")
+                                            .font(.system(size: 14))
+                                            .foregroundStyle(TFTheme.yellow)
+                                    }
+                                }
                             }
                             .padding(.vertical, 8)
-                            
+
                             if performance.id != performances.last?.id {
                                 Divider().opacity(0.2)
                             }

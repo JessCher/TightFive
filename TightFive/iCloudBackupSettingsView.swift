@@ -35,7 +35,7 @@ struct iCloudBackupSettingsView: View {
                     }
                 }
                 .tint(TFTheme.yellow)
-                .disabled(!backupManager.isICloudAvailable())
+                .disabled(syncStatus != .available)
                 
                 // Storage usage
                 if backupManager.syncAudioRecordings {
@@ -119,8 +119,8 @@ struct iCloudBackupSettingsView: View {
             } header: {
                 Text("AUDIO RECORDINGS")
             } footer: {
-                if !backupManager.isICloudAvailable() {
-                    Text("iCloud Drive is not available. Sign in to iCloud in Settings to enable backup.")
+                if case .unavailable(let reason) = syncStatus {
+                    Text("\(reason). Sign in to iCloud in Settings to enable backup.")
                 } else if backupManager.syncAudioRecordings {
                     Text("Audio recordings will automatically backup to iCloud Drive. You can manually backup at any time.")
                 } else {

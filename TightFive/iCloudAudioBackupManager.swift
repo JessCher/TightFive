@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import SwiftData
+import CloudKit
 import Combine
 
 /// Manages backup and sync of audio recordings to iCloud Drive.
@@ -108,9 +109,28 @@ class iCloudAudioBackupManager: ObservableObject {
     
     // MARK: - Public Methods
     
-    /// Check if iCloud is available for audio backup
-    func isICloudAvailable() -> Bool {
+    /// Check if iCloud Drive ubiquity container is reachable for audio backup.
+    ///
+    /// > Note: This only checks the ubiquity container. The iCloud *account*
+    /// > may be available (CloudKit works) even when this returns `false` – for
+    /// > example before the container has been initialised on a fresh install.
+    /// > UI that gates user interaction should prefer ``isICloudAccountAvailable()``
+    /// > which checks the CloudKit account status instead.
+    func isICloudDriveAvailable() -> Bool {
         return iCloudRecordingsURL != nil
+    }
+
+    /// Check whether the user's iCloud account is signed-in and available
+    /// via CloudKit. This is the correct check for determining whether the
+    /// backup toggle should be enabled, because CloudKit availability is
+    /// what the rest of the app relies on for sync.
+    func isICloudAccountAvailable() async -> Bool {
+        do {
+            let status = try await CKContainer.default().accountStatus()
+            return status == .available
+        } catch {
+            return false
+        }
     }
     
     /// Manually trigger backup of all recordings
