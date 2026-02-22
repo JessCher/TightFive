@@ -65,7 +65,7 @@ extension CueCard {
         // Load custom phrase overrides if they exist
         let customPhrasesMap = loadCustomPhrases(from: setlist)
         
-        for (blockIndex, block) in setlist.scriptBlocks.enumerated() {
+        for (blockIndex, block) in setlist.effectiveScriptBlocks.enumerated() {
             let text = block.plainText(using: setlist.assignments)
                 .replacingOccurrences(of: "\r\n", with: "\n")
                 .replacingOccurrences(of: "\r", with: "\n")

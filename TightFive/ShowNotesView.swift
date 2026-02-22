@@ -329,7 +329,7 @@ struct PerformanceDetailView: View {
             
             if let setlist = setlist {
                 FlippableScriptBlockList(
-                    blocks: setlist.scriptBlocks,
+                    blocks: setlist.effectiveScriptBlocks,
                     assignments: setlist.assignments ?? [],
                     performance: performance
                 )
@@ -1268,4 +1268,3 @@ struct CreateShowNoteView: View {
         }
     }
 }
-

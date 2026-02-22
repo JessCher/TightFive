@@ -52,16 +52,16 @@ struct StageModeViewScript: View {
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
-        .onAppear { 
+        .onAppear {
             // Keep screen awake during Stage Mode
             UIApplication.shared.isIdleTimerDisabled = true
-            startSessionIfNeeded() 
+            startSessionIfNeeded()
         }
-        .onDisappear { 
+        .onDisappear {
             // Re-enable screen dimming when exiting Stage Mode
             UIApplication.shared.isIdleTimerDisabled = false
             stopTimer()
-            engine.stop() 
+            engine.stop()
         }
     }
     
@@ -182,7 +182,7 @@ struct StageModeViewScript: View {
                     .frame(height: 2)
                     .frame(maxWidth: 100)
                 
-                ForEach(setlist.scriptBlocks) { block in
+                ForEach(setlist.effectiveScriptBlocks) { block in
                     scriptBlockContent(block)
                 }
                 
@@ -309,8 +309,8 @@ struct StageModeViewScript: View {
                     }
                     
                     // Cancel
-                    Button("Cancel") { 
-                        showExitConfirmation = false 
+                    Button("Cancel") {
+                        showExitConfirmation = false
                     }
                     .appFont(.subheadline)
                     .foregroundStyle(.white.opacity(0.7))

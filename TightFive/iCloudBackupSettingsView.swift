@@ -8,7 +8,7 @@ struct iCloudBackupSettingsView: View {
     @State private var syncStatus: iCloudSyncStatus = .checking
     @State private var showBackupConfirmation = false
     
-    enum iCloudSyncStatus {
+    enum iCloudSyncStatus: Equatable {
         case checking
         case available
         case unavailable(String)
@@ -310,3 +310,4 @@ struct iCloudBackupSettingsView: View {
         iCloudBackupSettingsView()
     }
 }
+
