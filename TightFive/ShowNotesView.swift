@@ -1321,6 +1321,7 @@ struct CreateShowNoteView: View {
                 await MainActor.run {
                     modelContext.insert(performance)
                     try? modelContext.save()
+                    performance.autoBackupIfNeeded()
                     
                     isImporting = false
                     dismiss()

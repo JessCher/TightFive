@@ -153,6 +153,7 @@ class iCloudAudioBackupManager: ObservableObject {
         guard syncAudioRecordings else { return }
         guard let iCloudURL = iCloudRecordingsURL else {
             backupStatus = .error("iCloud Drive not available")
+            errorMessage = "iCloud Drive not available"
             return
         }
         
