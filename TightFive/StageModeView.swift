@@ -156,6 +156,7 @@ struct StageModeViewCueCard: View {
 
             modelContext.insert(performance)
             try? modelContext.save()
+            performance.autoBackupIfNeeded()
             showSaveConfirmation = true
         } else if !settings.recordingEnabled {
             // Recording was disabled - save performance without audio
@@ -173,6 +174,7 @@ struct StageModeViewCueCard: View {
 
             modelContext.insert(performance)
             try? modelContext.save()
+            performance.autoBackupIfNeeded()
             showSaveConfirmation = true
         } else {
             dismiss()

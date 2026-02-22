@@ -113,6 +113,7 @@ struct StageModeViewTeleprompter: View {
             
             modelContext.insert(performance)
             try? modelContext.save()
+            performance.autoBackupIfNeeded()
             showSaveConfirmation = true
         } else {
             dismiss()

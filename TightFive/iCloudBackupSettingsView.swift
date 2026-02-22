@@ -4,7 +4,7 @@ import CloudKit
 /// Settings view for iCloud backup and sync configuration
 struct iCloudBackupSettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var backupManager = iCloudAudioBackupManager.shared
+    @StateObject private var backupManager = iCloudAudioBackupManager.shared
     @State private var syncStatus: iCloudSyncStatus = .checking
     @State private var showBackupConfirmation = false
     
