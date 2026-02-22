@@ -269,7 +269,7 @@ struct RunModeView: View {
                     .frame(height: 2)
                     .frame(maxWidth: 100)
 
-                ForEach(setlist.scriptBlocks) { block in
+                ForEach(setlist.effectiveScriptBlocks) { block in
                     scriptBlockContent(block)
                 }
 
@@ -375,7 +375,7 @@ struct RunModeView: View {
         parts.append(setlist.title.uppercased())
         parts.append("") // breathing room
 
-        for block in setlist.scriptBlocks {
+        for block in setlist.effectiveScriptBlocks {
             let content = blockContentText(block).trimmingCharacters(in: .whitespacesAndNewlines)
             if content.isEmpty { continue }
 

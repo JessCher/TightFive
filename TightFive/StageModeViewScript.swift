@@ -182,7 +182,7 @@ struct StageModeViewScript: View {
                     .frame(height: 2)
                     .frame(maxWidth: 100)
                 
-                ForEach(setlist.scriptBlocks) { block in
+                ForEach(setlist.effectiveScriptBlocks) { block in
                     scriptBlockContent(block)
                 }
                 

@@ -154,10 +154,36 @@ extension Setlist {
     }
 }
 
+// MARK: - Effective Script Blocks (Mode-Aware)
+
+extension Setlist {
+
+    /// Script blocks for display in Stage Mode and Run Through, respecting the
+    /// current script mode.
+    ///
+    /// - **Modular mode** → returns the regular `scriptBlocks` array.
+    /// - **Traditional mode** → wraps `traditionalScriptRTF` as a single
+    ///   freeform block so every consumer (Script, Teleprompter, Cue Card
+    ///   extraction) sees the content the comedian actually edited.
+    ///
+    /// All Stage/Run mode views should read from this property instead of
+    /// accessing `scriptBlocks` directly.
+    var effectiveScriptBlocks: [ScriptBlock] {
+        switch currentScriptMode {
+        case .modular:
+            return scriptBlocks
+        case .traditional:
+            guard !traditionalScriptRTF.isEmpty else { return [] }
+            // Use the setlist's own UUID for stability across SwiftUI renders
+            return [.freeform(id: id, rtfData: traditionalScriptRTF)]
+        }
+    }
+}
+
 // MARK: - Script Content
 
 extension Setlist {
-    
+
     /// Full plain text of the performance script (for search, display)
     var scriptPlainText: String {
         switch currentScriptMode {

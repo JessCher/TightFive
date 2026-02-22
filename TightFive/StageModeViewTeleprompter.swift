@@ -274,10 +274,10 @@ struct StageModeViewTeleprompter: View {
         parts.append(setlist.title.uppercased())
         parts.append("") // breathing room
         
-        for block in setlist.scriptBlocks {
+        for block in setlist.effectiveScriptBlocks {
             let content = blockContentText(block).trimmingCharacters(in: .whitespacesAndNewlines)
             if content.isEmpty { continue }
-            
+
             parts.append(content)
             parts.append("")          // spacing
             parts.append("• • •")     // a subtle divider to cue block transitions
