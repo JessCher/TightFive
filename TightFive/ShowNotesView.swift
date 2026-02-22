@@ -236,7 +236,9 @@ struct PerformanceDetailView: View {
     @StateObject private var player = AudioPlayerManager()
     @State private var showDeleteConfirmation = false
     @State private var isDeleting = false
-    
+    @State private var isDownloadingFromiCloud = false
+    @State private var hasDownloadedFromiCloud = false
+
     @State private var editableTitle: String = ""
     @State private var setlist: Setlist?
     @ObservedObject private var keyboard = TFKeyboardState.shared
@@ -248,9 +250,11 @@ struct PerformanceDetailView: View {
                     headerSection
                     performanceDetailsSection
                     
-                    if performance.audioFileExists {
+                    if performance.audioFileExists || performance.resolvedAudioURL != nil || hasDownloadedFromiCloud {
                         audioPlayerSection
                         setlistSection
+                    } else if performance.needsICloudDownload {
+                        iCloudDownloadSection
                     } else {
                         audioMissingSection
                     }
@@ -514,12 +518,12 @@ struct PerformanceDetailView: View {
         .tfDynamicCard(cornerRadius: 16)
     }
     
-    /// FIXED: Proper play/pause toggle
+    /// FIXED: Proper play/pause toggle – resolves from iCloud when local file is absent
     private func togglePlayback() {
         if player.isPlaying {
             player.pause()
         } else {
-            if let url = performance.audioURL {
+            if let url = performance.resolvedAudioURL ?? performance.audioURL {
                 player.play(url: url)
             }
         }
@@ -530,11 +534,11 @@ struct PerformanceDetailView: View {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 32))
                 .foregroundStyle(.orange)
-            
+
             Text("Recording Not Found")
                 .appFont(.headline)
                 .foregroundStyle(TFTheme.text)
-            
+
             Text("The audio file may have been deleted.")
                 .appFont(.caption)
                 .foregroundStyle(TFTheme.text.opacity(0.6))
@@ -542,6 +546,68 @@ struct PerformanceDetailView: View {
         .padding(20)
         .frame(maxWidth: .infinity)
         .tfDynamicCard(cornerRadius: 16)
+    }
+
+    // MARK: - iCloud Download
+
+    private var iCloudDownloadSection: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "icloud.and.arrow.down")
+                .font(.system(size: 32))
+                .foregroundStyle(TFTheme.yellow)
+
+            Text("Recording in iCloud")
+                .appFont(.headline)
+                .foregroundStyle(TFTheme.text)
+
+            Text("This recording was made on another device. Download it to listen here.")
+                .appFont(.caption)
+                .foregroundStyle(TFTheme.text.opacity(0.6))
+                .multilineTextAlignment(.center)
+
+            if isDownloadingFromiCloud {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: TFTheme.yellow))
+                    .padding(.top, 8)
+                Text("Downloading...")
+                    .appFont(.caption)
+                    .foregroundStyle(TFTheme.text.opacity(0.5))
+            } else {
+                Button {
+                    downloadFromiCloud()
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.down.circle.fill")
+                        Text("Download Recording")
+                    }
+                    .appFont(.subheadline, weight: .semibold)
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(TFTheme.yellow)
+                    .clipShape(Capsule())
+                }
+                .padding(.top, 8)
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .tfDynamicCard(cornerRadius: 16)
+    }
+
+    private func downloadFromiCloud() {
+        isDownloadingFromiCloud = true
+        Task {
+            do {
+                _ = try await iCloudAudioBackupManager.shared.downloadRecordingFromiCloud(
+                    filename: performance.audioFilename
+                )
+                hasDownloadedFromiCloud = true
+            } catch {
+                // Download failed – fall through to show missing section on next render
+            }
+            isDownloadingFromiCloud = false
+        }
     }
     
     private var ratingSection: some View {
@@ -654,7 +720,7 @@ struct PerformanceDetailView: View {
     
     private var actionsSection: some View {
         VStack(spacing: 12) {
-            if performance.audioFileExists, let url = performance.audioURL {
+            if let url = performance.resolvedAudioURL ?? performance.audioURL, performance.isAudioAvailable {
                 ShareLink(item: url) {
                     HStack {
                         Image(systemName: "square.and.arrow.up")
@@ -921,7 +987,7 @@ struct StorageInfoView: View {
                                     .appFont(.caption)
                                     .foregroundStyle(TFTheme.text.opacity(0.5))
 
-                                if performance.audioFileExists, let url = performance.audioURL {
+                                if let url = performance.resolvedAudioURL ?? performance.audioURL, performance.isAudioAvailable {
                                     ShareLink(item: url) {
                                         Image(systemName: "square.and.arrow.up")
                                             .font(.system(size: 14))
