@@ -22,6 +22,8 @@ class iCloudAudioBackupManager: ObservableObject {
     @Published var totalFiles: Int = 0
     @Published var backedUpFiles: Int = 0
     @Published var errorMessage: String?
+    @Published var isDownloading = false
+    @Published var downloadError: String?
     
     // MARK: - User Preferences (stored separately to avoid @Observable/@AppStorage conflict)
     
@@ -241,39 +243,125 @@ class iCloudAudioBackupManager: ObservableObject {
     func getStorageUsage() -> (local: Int64, iCloud: Int64) {
         var localSize: Int64 = 0
         var iCloudSize: Int64 = 0
-        
+
         // Calculate local size
         if let localFiles = try? FileManager.default.contentsOfDirectory(
             at: localRecordingsURL,
-            includingPropertiesForKeys: [.fileSizeKey]
+            includingPropertiesForKeys: [.fileSizeKey],
+            options: [.skipsHiddenFiles]
         ) {
             for file in localFiles {
-                if let attributes = try? FileManager.default.attributesOfItem(atPath: file.path),
-                   let size = attributes[.size] as? Int64 {
-                    localSize += size
+                if let values = try? file.resourceValues(forKeys: [.fileSizeKey]),
+                   let size = values.fileSize {
+                    localSize += Int64(size)
                 }
             }
         }
-        
-        // Calculate iCloud size
+
+        // Calculate iCloud size – must handle both downloaded files and
+        // evicted .icloud placeholder files. When iCloud reclaims disk space
+        // it replaces "File.m4a" with ".File.m4a.icloud" (a small binary
+        // plist). We parse the plist to recover the real file size.
         if let iCloudURL = iCloudRecordingsURL,
            let iCloudFiles = try? FileManager.default.contentsOfDirectory(
             at: iCloudURL,
             includingPropertiesForKeys: [.fileSizeKey]
            ) {
             for file in iCloudFiles {
-                if let attributes = try? FileManager.default.attributesOfItem(atPath: file.path),
-                   let size = attributes[.size] as? Int64 {
-                    iCloudSize += size
+                let name = file.lastPathComponent
+
+                if name.hasPrefix(".") && name.hasSuffix(".icloud") {
+                    // Evicted iCloud file – extract actual size from placeholder plist
+                    if let size = iCloudPlaceholderFileSize(at: file) {
+                        iCloudSize += size
+                    }
+                } else {
+                    // Downloaded file – use actual size via resource values
+                    if let values = try? file.resourceValues(forKeys: [.fileSizeKey]),
+                       let size = values.fileSize {
+                        iCloudSize += Int64(size)
+                    }
                 }
             }
         }
-        
+
         return (local: localSize, iCloud: iCloudSize)
     }
+
+    /// Extract the actual file size from a `.icloud` placeholder file.
+    /// These placeholders are binary plists containing the original file's size.
+    private func iCloudPlaceholderFileSize(at url: URL) -> Int64? {
+        guard let data = try? Data(contentsOf: url),
+              let plist = try? PropertyListSerialization.propertyList(
+                from: data, format: nil
+              ) as? [String: Any] else {
+            return nil
+        }
+        if let size = plist["NSURLFileSizeKey"] as? NSNumber {
+            return size.int64Value
+        }
+        return nil
+    }
     
+    // MARK: - iCloud Download
+
+    /// Download a recording from iCloud Drive and copy it to local storage.
+    /// Returns the local URL once the file is available for playback.
+    func downloadRecordingFromiCloud(filename: String) async throws -> URL {
+        guard let iCloudBase = FileManager.default.url(forUbiquityContainerIdentifier: nil)?
+            .appendingPathComponent("Documents")
+            .appendingPathComponent("Recordings") else {
+            throw BackupError.iCloudUnavailable
+        }
+
+        let iCloudFileURL = iCloudBase.appendingPathComponent(filename)
+        let localFile = localRecordingsURL.appendingPathComponent(filename)
+
+        // Already available locally
+        if FileManager.default.fileExists(atPath: localFile.path) {
+            return localFile
+        }
+
+        // Downloaded in ubiquity container but not copied locally yet
+        if FileManager.default.fileExists(atPath: iCloudFileURL.path) {
+            try FileManager.default.copyItem(at: iCloudFileURL, to: localFile)
+            return localFile
+        }
+
+        // File is evicted – trigger iCloud download
+        isDownloading = true
+        downloadError = nil
+        defer { isDownloading = false }
+
+        do {
+            try FileManager.default.startDownloadingUbiquitousItem(at: iCloudFileURL)
+        } catch {
+            downloadError = error.localizedDescription
+            throw error
+        }
+
+        // Poll until the file materialises (or timeout)
+        let maxWait: TimeInterval = 120
+        let start = Date()
+
+        while !FileManager.default.fileExists(atPath: iCloudFileURL.path) {
+            if Date().timeIntervalSince(start) > maxWait {
+                downloadError = BackupError.downloadTimeout.localizedDescription
+                throw BackupError.downloadTimeout
+            }
+            try await Task.sleep(for: .milliseconds(500))
+        }
+
+        // Copy to local recordings directory for future offline access
+        if !FileManager.default.fileExists(atPath: localFile.path) {
+            try FileManager.default.copyItem(at: iCloudFileURL, to: localFile)
+        }
+
+        return localFile
+    }
+
     // MARK: - Helper Methods
-    
+
     /// Format bytes to human-readable string
     static func formatBytes(_ bytes: Int64) -> String {
         let formatter = ByteCountFormatter()
@@ -289,7 +377,8 @@ enum BackupError: LocalizedError {
     case iCloudUnavailable
     case syncDisabled
     case fileNotFound
-    
+    case downloadTimeout
+
     var errorDescription: String? {
         switch self {
         case .iCloudUnavailable:
@@ -298,6 +387,8 @@ enum BackupError: LocalizedError {
             return "Audio sync is disabled"
         case .fileNotFound:
             return "Recording file not found"
+        case .downloadTimeout:
+            return "Download timed out. Please check your internet connection and try again."
         }
     }
 }

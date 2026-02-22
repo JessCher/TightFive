@@ -93,19 +93,65 @@ final class Performance {
 }
 
 extension Performance {
-    
+
     var displayTitle: String {
         customTitle?.isEmpty == false ? customTitle! : setlistTitle
     }
-    
+
     var audioURL: URL? {
         guard !audioFilename.isEmpty else { return nil }
         return Performance.recordingsDirectory.appendingPathComponent(audioFilename)
     }
-    
+
     var audioFileExists: Bool {
         guard let url = audioURL else { return false }
         return FileManager.default.fileExists(atPath: url.path)
+    }
+
+    // MARK: - iCloud-Aware Audio Resolution
+
+    /// URL to the recording inside the iCloud Drive ubiquity container.
+    var iCloudAudioURL: URL? {
+        guard !audioFilename.isEmpty else { return nil }
+        guard let iCloudBase = FileManager.default.url(forUbiquityContainerIdentifier: nil)?
+            .appendingPathComponent("Documents")
+            .appendingPathComponent("Recordings") else { return nil }
+        return iCloudBase.appendingPathComponent(audioFilename)
+    }
+
+    /// Whether the audio file is available from *any* source (local or iCloud).
+    /// Use this instead of ``audioFileExists`` when deciding whether to show
+    /// the player vs the "Recording Not Found" message.
+    var isAudioAvailable: Bool {
+        if audioFileExists { return true }
+        guard let iCloudURL = iCloudAudioURL else { return false }
+        // File is downloaded in ubiquity container
+        if FileManager.default.fileExists(atPath: iCloudURL.path) { return true }
+        // File is evicted – .icloud placeholder exists
+        let dir = iCloudURL.deletingLastPathComponent()
+        let placeholder = dir.appendingPathComponent(".\(audioFilename).icloud")
+        return FileManager.default.fileExists(atPath: placeholder.path)
+    }
+
+    /// True when the recording is in iCloud but must be downloaded before playback.
+    var needsICloudDownload: Bool {
+        guard !audioFileExists, !audioFilename.isEmpty else { return false }
+        guard let iCloudURL = iCloudAudioURL else { return false }
+        // Already downloaded in the ubiquity container → can play directly
+        if FileManager.default.fileExists(atPath: iCloudURL.path) { return false }
+        // Evicted placeholder exists → needs download
+        let dir = iCloudURL.deletingLastPathComponent()
+        let placeholder = dir.appendingPathComponent(".\(audioFilename).icloud")
+        return FileManager.default.fileExists(atPath: placeholder.path)
+    }
+
+    /// Best available URL for immediate playback.
+    /// Prefers local file, falls back to the iCloud ubiquity container copy.
+    var resolvedAudioURL: URL? {
+        if audioFileExists, let url = audioURL { return url }
+        guard let iCloudURL = iCloudAudioURL else { return nil }
+        if FileManager.default.fileExists(atPath: iCloudURL.path) { return iCloudURL }
+        return nil
     }
     
     var formattedDuration: String {
