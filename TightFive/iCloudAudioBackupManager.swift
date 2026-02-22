@@ -12,6 +12,7 @@ class iCloudAudioBackupManager: ObservableObject {
     // MARK: - Singleton
     
     static let shared = iCloudAudioBackupManager()
+    private static let ubiquityContainerIdentifier = "iCloud.com.tightfive.app"
     
     // MARK: - Published Properties
     
@@ -89,7 +90,7 @@ class iCloudAudioBackupManager: ObservableObject {
     
     /// iCloud Drive recordings directory (only available when iCloud is enabled)
     private var iCloudRecordingsURL: URL? {
-        guard let iCloudURL = FileManager.default.url(forUbiquityContainerIdentifier: nil)?
+        guard let iCloudURL = ubiquityContainerURL()?
             .appendingPathComponent("Documents")
             .appendingPathComponent("Recordings") else {
             return nil
@@ -98,6 +99,17 @@ class iCloudAudioBackupManager: ObservableObject {
         // Ensure directory exists
         try? FileManager.default.createDirectory(at: iCloudURL, withIntermediateDirectories: true)
         return iCloudURL
+    }
+
+    /// Resolve ubiquity container with an explicit identifier first, then fallback
+    /// to the default container for compatibility with older builds.
+    private func ubiquityContainerURL() -> URL? {
+        if let explicit = FileManager.default.url(
+            forUbiquityContainerIdentifier: Self.ubiquityContainerIdentifier
+        ) {
+            return explicit
+        }
+        return FileManager.default.url(forUbiquityContainerIdentifier: nil)
     }
     
     // MARK: - Initialization
@@ -308,7 +320,7 @@ class iCloudAudioBackupManager: ObservableObject {
     /// Download a recording from iCloud Drive and copy it to local storage.
     /// Returns the local URL once the file is available for playback.
     func downloadRecordingFromiCloud(filename: String) async throws -> URL {
-        guard let iCloudBase = FileManager.default.url(forUbiquityContainerIdentifier: nil)?
+        guard let iCloudBase = ubiquityContainerURL()?
             .appendingPathComponent("Documents")
             .appendingPathComponent("Recordings") else {
             throw BackupError.iCloudUnavailable

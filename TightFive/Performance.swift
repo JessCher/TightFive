@@ -113,7 +113,12 @@ extension Performance {
     /// URL to the recording inside the iCloud Drive ubiquity container.
     var iCloudAudioURL: URL? {
         guard !audioFilename.isEmpty else { return nil }
-        guard let iCloudBase = FileManager.default.url(forUbiquityContainerIdentifier: nil)?
+
+        let container = FileManager.default.url(
+            forUbiquityContainerIdentifier: "iCloud.com.tightfive.app"
+        ) ?? FileManager.default.url(forUbiquityContainerIdentifier: nil)
+
+        guard let iCloudBase = container?
             .appendingPathComponent("Documents")
             .appendingPathComponent("Recordings") else { return nil }
         return iCloudBase.appendingPathComponent(audioFilename)
